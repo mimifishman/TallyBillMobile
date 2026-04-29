@@ -74,6 +74,7 @@ export default function TotalsScreen() {
   };
 
   const currency = billData?.bill.currency ?? "";
+  const fmt = (n: number) => `${currency ? `${currency} ` : ""}${n.toFixed(2)}`;
 
   if (isLoading || !totals) {
     return (
@@ -95,11 +96,11 @@ export default function TotalsScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
         <View style={[styles.grandCard, { backgroundColor: colors.primary }]}>
           <Text style={styles.grandLabel}>Grand Total</Text>
-          <Text style={styles.grandAmount}>{currency} {totals.grandTotal.toFixed(2)}</Text>
+          <Text style={styles.grandAmount}>{fmt(totals.grandTotal)}</Text>
           <View style={styles.grandBreakdown}>
-            <Text style={styles.grandSub}>Subtotal: {currency} {totals.billSubtotal.toFixed(2)}</Text>
-            <Text style={styles.grandSub}>Tax: {currency} {totals.taxAmount.toFixed(2)}</Text>
-            <Text style={styles.grandSub}>Tip: {currency} {totals.tipAmount.toFixed(2)}</Text>
+            <Text style={styles.grandSub}>Subtotal: {fmt(totals.billSubtotal)}</Text>
+            <Text style={styles.grandSub}>Tax: {fmt(totals.taxAmount)}</Text>
+            <Text style={styles.grandSub}>Tip: {fmt(totals.tipAmount)}</Text>
           </View>
         </View>
 
@@ -119,7 +120,7 @@ export default function TotalsScreen() {
                 <View style={styles.personInfo}>
                   <Text style={[styles.personName, { color: colors.foreground }]}>{person.name}</Text>
                   <Text style={[styles.personTotal, { color: colors.primary }]}>
-                    {currency} {person.total.toFixed(2)}
+                    {fmt(person.total)}
                   </Text>
                 </View>
               </View>
@@ -128,13 +129,13 @@ export default function TotalsScreen() {
                 <View style={styles.breakdownRow}>
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Items</Text>
                   <Text style={[styles.breakdownValue, { color: colors.foreground }]}>
-                    {currency} {person.subtotal.toFixed(2)}
+                    {fmt(person.subtotal)}
                   </Text>
                 </View>
                 <View style={styles.breakdownRow}>
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Tax share</Text>
                   <Text style={[styles.breakdownValue, { color: colors.foreground }]}>
-                    {currency} {person.taxShare.toFixed(2)}
+                    {fmt(person.taxShare)}
                   </Text>
                 </View>
                 <View style={styles.breakdownRow}>
@@ -143,7 +144,7 @@ export default function TotalsScreen() {
                   </Text>
                   <View style={styles.tipRow}>
                     <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>
-                      {currency} {person.tipAmount.toFixed(2)}
+                      {fmt(person.tipAmount)}
                     </Text>
                     <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipAmount)} style={styles.editTipBtn}>
                       <Feather name="edit-2" size={13} color={colors.mutedForeground} />

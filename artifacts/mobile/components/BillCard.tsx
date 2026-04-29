@@ -7,7 +7,7 @@ interface BillCardProps {
   title: string;
   restaurantName?: string | null;
   date: string;
-  currency: string;
+  currency?: string | null;
   joinCode: string;
   onPress: () => void;
 }
@@ -31,8 +31,12 @@ export function BillCard({ title, restaurantName, date, currency, joinCode, onPr
         ) : null}
         <View style={styles.meta}>
           <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{date}</Text>
-          <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{currency}</Text>
+          {currency ? (
+            <>
+              <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{currency}</Text>
+            </>
+          ) : null}
         </View>
       </View>
       <View style={[styles.codeBadge, { backgroundColor: colors.muted }]}>

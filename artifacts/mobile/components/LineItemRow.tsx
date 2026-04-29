@@ -25,7 +25,7 @@ interface LineItemRowProps {
   total: number;
   assignedUserIds: number[];
   billUsers: BillUser[];
-  currency: string;
+  currency?: string | null;
   onToggleUser: (lineId: number, billUserId: number) => void;
   onDelete: (lineId: number) => void;
   onUpdate: (lineId: number, data: { description: string; quantity: number; total: number }) => void;
@@ -92,7 +92,7 @@ export function LineItemRow({
               {description}
             </Text>
             <Text style={[styles.itemTotal, { color: colors.mutedForeground }]}>
-              {currency} {Number(total).toFixed(2)}
+              {currency ? `${currency} ` : ""}{Number(total).toFixed(2)}
             </Text>
           </View>
           <TouchableOpacity onPress={() => setEditing(true)} style={styles.iconBtn}>

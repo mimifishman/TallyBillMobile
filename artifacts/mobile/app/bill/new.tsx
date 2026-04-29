@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { useCreateBill, useDetectCurrency } from "@workspace/api-client-react";
 
 const today = new Date().toISOString().split("T")[0]!;
@@ -25,7 +26,7 @@ export default function NewBillScreen() {
   const [title, setTitle] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [date, setDate] = useState(today);
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("");
   const [taxAmount, setTaxAmount] = useState("0");
   const [tipAmount, setTipAmount] = useState("0");
 
@@ -55,7 +56,7 @@ export default function NewBillScreen() {
         title: title.trim(),
         restaurantName: restaurantName.trim() || null,
         date,
-        currency,
+        currency: currency || null,
         taxAmount: parseFloat(taxAmount) || 0,
         tipAmount: parseFloat(tipAmount) || 0,
       },
@@ -122,17 +123,9 @@ export default function NewBillScreen() {
               onChangeText={setDate}
             />
           </View>
-          <View style={[styles.formGroup, { width: 100 }]}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>CURRENCY</Text>
-            <TextInput
-              style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="USD"
-              placeholderTextColor={colors.mutedForeground}
-              value={currency}
-              onChangeText={setCurrency}
-              autoCapitalize="characters"
-              maxLength={3}
-            />
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>CURRENCY (OPTIONAL)</Text>
+            <CurrencyPicker value={currency} onChange={setCurrency} />
           </View>
         </View>
 
@@ -214,7 +207,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   inputInner: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  row: { flexDirection: "row", gap: 12 },
+  row: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
   hintCard: {
     flexDirection: "row",
     alignItems: "flex-start",

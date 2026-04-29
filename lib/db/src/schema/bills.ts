@@ -9,7 +9,7 @@ export const billsTable = pgTable("bills", {
   title: text("title").notNull(),
   restaurantName: text("restaurant_name"),
   date: text("date").notNull(),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default(""),
   taxAmount: numeric("tax_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   tipAmount: numeric("tip_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   joinCode: text("join_code").notNull().unique(),

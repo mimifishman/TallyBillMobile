@@ -43,7 +43,7 @@ export interface Bill {
   title: string;
   restaurantName?: string | null;
   date: string;
-  currency: string;
+  currency?: string | null;
   taxAmount: number;
   tipAmount: number;
   joinCode: string;
@@ -80,7 +80,7 @@ export interface CreateBillRequest {
   title: string;
   restaurantName?: string | null;
   date: string;
-  currency: string;
+  currency?: string | null;
   taxAmount: number;
   tipAmount: number;
 }

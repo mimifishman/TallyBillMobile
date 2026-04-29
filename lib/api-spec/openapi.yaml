@@ -644,6 +644,7 @@ components:
           type: string
         currency:
           type: string
+          nullable: true
         taxAmount:
           type: number
         tipAmount:
@@ -657,7 +658,6 @@ components:
         - id
         - title
         - date
-        - currency
         - taxAmount
         - tipAmount
         - joinCode
@@ -693,6 +693,7 @@ components:
           type: string
         currency:
           type: string
+          nullable: true
         taxAmount:
           type: number
         tipAmount:
@@ -700,7 +701,6 @@ components:
       required:
         - title
         - date
-        - currency
         - taxAmount
         - tipAmount
 

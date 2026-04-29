@@ -52,8 +52,8 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/", optionalAuth, async (req: AuthRequest, res) => {
   const { title, restaurantName, date, currency, taxAmount, tipAmount } = req.body;
-  if (!title || !date || !currency) {
-    res.status(400).json({ error: "title, date, and currency are required" });
+  if (!title || !date) {
+    res.status(400).json({ error: "title and date are required" });
     return;
   }
   let joinCode = generateJoinCode();
@@ -62,7 +62,7 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
     title,
     restaurantName: restaurantName || null,
     date,
-    currency,
+    currency: currency || "",
     taxAmount: String(taxAmount ?? 0),
     tipAmount: String(tipAmount ?? 0),
     joinCode,
