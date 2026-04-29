@@ -8,9 +8,383 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary Register a new user
+ */
+export const registerBodyPasswordMin = 6;
+
+export const RegisterBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string().min(registerBodyPasswordMin),
+  displayName: zod.string(),
+});
+
+/**
+ * @summary Login
+ */
+export const LoginBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    email: zod.string(),
+    displayName: zod.string(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Get user's bills
+ */
+export const GetBillsResponseItem = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number().nullish(),
+  title: zod.string(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string(),
+  currency: zod.string(),
+  taxAmount: zod.number(),
+  tipAmount: zod.number(),
+  joinCode: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const GetBillsResponse = zod.array(GetBillsResponseItem);
+
+/**
+ * @summary Create a new bill
+ */
+export const CreateBillBody = zod.object({
+  title: zod.string(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string(),
+  currency: zod.string(),
+  taxAmount: zod.number(),
+  tipAmount: zod.number(),
+});
+
+/**
+ * @summary Join a bill by code
+ */
+export const JoinBillBody = zod.object({
+  joinCode: zod.string(),
+});
+
+export const JoinBillResponse = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number().nullish(),
+  title: zod.string(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string(),
+  currency: zod.string(),
+  taxAmount: zod.number(),
+  tipAmount: zod.number(),
+  joinCode: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get a bill by ID
+ */
+export const GetBillParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const GetBillResponse = zod.object({
+  bill: zod.object({
+    id: zod.number(),
+    ownerUserId: zod.number().nullish(),
+    title: zod.string(),
+    restaurantName: zod.string().nullish(),
+    date: zod.string(),
+    currency: zod.string(),
+    taxAmount: zod.number(),
+    tipAmount: zod.number(),
+    joinCode: zod.string(),
+    createdAt: zod.coerce.date(),
+  }),
+  lines: zod.array(
+    zod.object({
+      id: zod.number(),
+      billId: zod.number(),
+      description: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      total: zod.number(),
+      assignedUserIds: zod.array(zod.number()),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  users: zod.array(
+    zod.object({
+      id: zod.number(),
+      billId: zod.number(),
+      name: zod.string(),
+      color: zod.string(),
+      tipOverride: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a bill
+ */
+export const UpdateBillParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const UpdateBillBody = zod.object({
+  title: zod.string().optional(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string().optional(),
+  currency: zod.string().optional(),
+  taxAmount: zod.number().optional(),
+  tipAmount: zod.number().optional(),
+});
+
+export const UpdateBillResponse = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number().nullish(),
+  title: zod.string(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string(),
+  currency: zod.string(),
+  taxAmount: zod.number(),
+  tipAmount: zod.number(),
+  joinCode: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a bill
+ */
+export const DeleteBillParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get bill line items
+ */
+export const GetBillLinesParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const GetBillLinesResponseItem = zod.object({
+  id: zod.number(),
+  billId: zod.number(),
+  description: zod.string(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  total: zod.number(),
+  assignedUserIds: zod.array(zod.number()),
+  createdAt: zod.coerce.date(),
+});
+export const GetBillLinesResponse = zod.array(GetBillLinesResponseItem);
+
+/**
+ * @summary Add a line item
+ */
+export const CreateBillLineParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const CreateBillLineBody = zod.object({
+  description: zod.string(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Bulk create line items (from OCR)
+ */
+export const BulkCreateBillLinesParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const BulkCreateBillLinesBody = zod.object({
+  lines: zod.array(
+    zod.object({
+      description: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a line item
+ */
+export const UpdateBillLineParams = zod.object({
+  billId: zod.coerce.number(),
+  lineId: zod.coerce.number(),
+});
+
+export const UpdateBillLineBody = zod.object({
+  description: zod.string(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  total: zod.number(),
+});
+
+export const UpdateBillLineResponse = zod.object({
+  id: zod.number(),
+  billId: zod.number(),
+  description: zod.string(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  total: zod.number(),
+  assignedUserIds: zod.array(zod.number()),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a line item
+ */
+export const DeleteBillLineParams = zod.object({
+  billId: zod.coerce.number(),
+  lineId: zod.coerce.number(),
+});
+
+/**
+ * @summary Assign or unassign a bill user to a line item
+ */
+export const ToggleBillLineUserParams = zod.object({
+  billId: zod.coerce.number(),
+  lineId: zod.coerce.number(),
+});
+
+export const ToggleBillLineUserBody = zod.object({
+  billUserId: zod.number(),
+});
+
+export const ToggleBillLineUserResponse = zod.object({
+  assigned: zod.boolean(),
+});
+
+/**
+ * @summary Get bill participants
+ */
+export const GetBillUsersParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const GetBillUsersResponseItem = zod.object({
+  id: zod.number(),
+  billId: zod.number(),
+  name: zod.string(),
+  color: zod.string(),
+  tipOverride: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetBillUsersResponse = zod.array(GetBillUsersResponseItem);
+
+/**
+ * @summary Add a participant
+ */
+export const CreateBillUserParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const CreateBillUserBody = zod.object({
+  name: zod.string(),
+  color: zod.string(),
+});
+
+/**
+ * @summary Update a participant (e.g. tip_override)
+ */
+export const UpdateBillUserParams = zod.object({
+  billId: zod.coerce.number(),
+  userId: zod.coerce.number(),
+});
+
+export const UpdateBillUserBody = zod.object({
+  name: zod.string().optional(),
+  color: zod.string().optional(),
+  tipOverride: zod.number().nullish(),
+});
+
+export const UpdateBillUserResponse = zod.object({
+  id: zod.number(),
+  billId: zod.number(),
+  name: zod.string(),
+  color: zod.string(),
+  tipOverride: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a participant
+ */
+export const DeleteBillUserParams = zod.object({
+  billId: zod.coerce.number(),
+  userId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get per-person totals
+ */
+export const GetBillTotalsParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const GetBillTotalsResponse = zod.object({
+  billSubtotal: zod.number(),
+  taxAmount: zod.number(),
+  tipAmount: zod.number(),
+  grandTotal: zod.number(),
+  perPerson: zod.array(
+    zod.object({
+      billUserId: zod.number(),
+      name: zod.string(),
+      color: zod.string(),
+      subtotal: zod.number(),
+      taxShare: zod.number(),
+      tipAmount: zod.number(),
+      tipIsCustom: zod.boolean(),
+      total: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Parse a receipt image via Veryfi OCR
+ */
+export const OcrReceiptBody = zod.object({
+  imageBase64: zod.string().describe("Base64-encoded image"),
+  fileName: zod.string().optional(),
+});
+
+export const OcrReceiptResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      description: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  taxAmount: zod.number().nullish(),
+  tipAmount: zod.number().nullish(),
+  currency: zod.string().nullish(),
+});
+
+/**
+ * @summary Detect currency from IP
+ */
+export const DetectCurrencyResponse = zod.object({
+  currency: zod.string(),
+  countryCode: zod.string(),
 });

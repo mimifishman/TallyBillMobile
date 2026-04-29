@@ -5,18 +5,44 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AuthResponse,
+  Bill,
+  BillDetail,
+  BillLine,
+  BillTotals,
+  BillUser,
+  BulkCreateBillLinesBody,
+  CreateBillLineRequest,
+  CreateBillRequest,
+  CreateBillUserRequest,
+  CurrencyResponse,
+  ErrorResponse,
+  HealthStatus,
+  JoinBillRequest,
+  LoginRequest,
+  OcrReceiptBody,
+  OcrResult,
+  RegisterRequest,
+  ToggleBillLineUser200,
+  ToggleBillLineUserBody,
+  UpdateBillRequest,
+  UpdateBillUserRequest,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -25,7 +51,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -92,6 +117,1783 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Register a new user
+ */
+export const getRegisterUrl = () => {
+  return `/api/auth/register`;
+};
+
+export const register = async (
+  registerRequest: RegisterRequest,
+  options?: RequestInit,
+): Promise<AuthResponse> => {
+  return customFetch<AuthResponse>(getRegisterUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerRequest),
+  });
+};
+
+export const getRegisterMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof register>>,
+    TError,
+    { data: BodyType<RegisterRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof register>>,
+  TError,
+  { data: BodyType<RegisterRequest> },
+  TContext
+> => {
+  const mutationKey = ["register"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof register>>,
+    { data: BodyType<RegisterRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return register(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof register>>
+>;
+export type RegisterMutationBody = BodyType<RegisterRequest>;
+export type RegisterMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Register a new user
+ */
+export const useRegister = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof register>>,
+    TError,
+    { data: BodyType<RegisterRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof register>>,
+  TError,
+  { data: BodyType<RegisterRequest> },
+  TContext
+> => {
+  return useMutation(getRegisterMutationOptions(options));
+};
+
+/**
+ * @summary Login
+ */
+export const getLoginUrl = () => {
+  return `/api/auth/login`;
+};
+
+export const login = async (
+  loginRequest: LoginRequest,
+  options?: RequestInit,
+): Promise<AuthResponse> => {
+  return customFetch<AuthResponse>(getLoginUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(loginRequest),
+  });
+};
+
+export const getLoginMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof login>>,
+    TError,
+    { data: BodyType<LoginRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof login>>,
+  TError,
+  { data: BodyType<LoginRequest> },
+  TContext
+> => {
+  const mutationKey = ["login"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof login>>,
+    { data: BodyType<LoginRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return login(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof login>>
+>;
+export type LoginMutationBody = BodyType<LoginRequest>;
+export type LoginMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Login
+ */
+export const useLogin = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof login>>,
+    TError,
+    { data: BodyType<LoginRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof login>>,
+  TError,
+  { data: BodyType<LoginRequest> },
+  TContext
+> => {
+  return useMutation(getLoginMutationOptions(options));
+};
+
+/**
+ * @summary Get user's bills
+ */
+export const getGetBillsUrl = () => {
+  return `/api/bills`;
+};
+
+export const getBills = async (options?: RequestInit): Promise<Bill[]> => {
+  return customFetch<Bill[]>(getGetBillsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillsQueryKey = () => {
+  return [`/api/bills`] as const;
+};
+
+export const getGetBillsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBills>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getBills>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBills>>> = ({
+    signal,
+  }) => getBills({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBills>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBills>>
+>;
+export type GetBillsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get user's bills
+ */
+
+export function useGetBills<
+  TData = Awaited<ReturnType<typeof getBills>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getBills>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new bill
+ */
+export const getCreateBillUrl = () => {
+  return `/api/bills`;
+};
+
+export const createBill = async (
+  createBillRequest: CreateBillRequest,
+  options?: RequestInit,
+): Promise<Bill> => {
+  return customFetch<Bill>(getCreateBillUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBillRequest),
+  });
+};
+
+export const getCreateBillMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBill>>,
+    TError,
+    { data: BodyType<CreateBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBill>>,
+  TError,
+  { data: BodyType<CreateBillRequest> },
+  TContext
+> => {
+  const mutationKey = ["createBill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBill>>,
+    { data: BodyType<CreateBillRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createBill(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBill>>
+>;
+export type CreateBillMutationBody = BodyType<CreateBillRequest>;
+export type CreateBillMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new bill
+ */
+export const useCreateBill = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBill>>,
+    TError,
+    { data: BodyType<CreateBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBill>>,
+  TError,
+  { data: BodyType<CreateBillRequest> },
+  TContext
+> => {
+  return useMutation(getCreateBillMutationOptions(options));
+};
+
+/**
+ * @summary Join a bill by code
+ */
+export const getJoinBillUrl = () => {
+  return `/api/bills/join`;
+};
+
+export const joinBill = async (
+  joinBillRequest: JoinBillRequest,
+  options?: RequestInit,
+): Promise<Bill> => {
+  return customFetch<Bill>(getJoinBillUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(joinBillRequest),
+  });
+};
+
+export const getJoinBillMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinBill>>,
+    TError,
+    { data: BodyType<JoinBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof joinBill>>,
+  TError,
+  { data: BodyType<JoinBillRequest> },
+  TContext
+> => {
+  const mutationKey = ["joinBill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof joinBill>>,
+    { data: BodyType<JoinBillRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return joinBill(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type JoinBillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof joinBill>>
+>;
+export type JoinBillMutationBody = BodyType<JoinBillRequest>;
+export type JoinBillMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Join a bill by code
+ */
+export const useJoinBill = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinBill>>,
+    TError,
+    { data: BodyType<JoinBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof joinBill>>,
+  TError,
+  { data: BodyType<JoinBillRequest> },
+  TContext
+> => {
+  return useMutation(getJoinBillMutationOptions(options));
+};
+
+/**
+ * @summary Get a bill by ID
+ */
+export const getGetBillUrl = (billId: number) => {
+  return `/api/bills/${billId}`;
+};
+
+export const getBill = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<BillDetail> => {
+  return customFetch<BillDetail>(getGetBillUrl(billId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillQueryKey = (billId: number) => {
+  return [`/api/bills/${billId}`] as const;
+};
+
+export const getGetBillQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBill>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getBill>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillQueryKey(billId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBill>>> = ({
+    signal,
+  }) => getBill(billId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!billId,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getBill>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetBillQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBill>>
+>;
+export type GetBillQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a bill by ID
+ */
+
+export function useGetBill<
+  TData = Awaited<ReturnType<typeof getBill>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getBill>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillQueryOptions(billId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a bill
+ */
+export const getUpdateBillUrl = (billId: number) => {
+  return `/api/bills/${billId}`;
+};
+
+export const updateBill = async (
+  billId: number,
+  updateBillRequest: UpdateBillRequest,
+  options?: RequestInit,
+): Promise<Bill> => {
+  return customFetch<Bill>(getUpdateBillUrl(billId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateBillRequest),
+  });
+};
+
+export const getUpdateBillMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBill>>,
+    TError,
+    { billId: number; data: BodyType<UpdateBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBill>>,
+  TError,
+  { billId: number; data: BodyType<UpdateBillRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateBill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBill>>,
+    { billId: number; data: BodyType<UpdateBillRequest> }
+  > = (props) => {
+    const { billId, data } = props ?? {};
+
+    return updateBill(billId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBill>>
+>;
+export type UpdateBillMutationBody = BodyType<UpdateBillRequest>;
+export type UpdateBillMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a bill
+ */
+export const useUpdateBill = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBill>>,
+    TError,
+    { billId: number; data: BodyType<UpdateBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBill>>,
+  TError,
+  { billId: number; data: BodyType<UpdateBillRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateBillMutationOptions(options));
+};
+
+/**
+ * @summary Delete a bill
+ */
+export const getDeleteBillUrl = (billId: number) => {
+  return `/api/bills/${billId}`;
+};
+
+export const deleteBill = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteBillUrl(billId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBillMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBill>>,
+    TError,
+    { billId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBill>>,
+  TError,
+  { billId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBill>>,
+    { billId: number }
+  > = (props) => {
+    const { billId } = props ?? {};
+
+    return deleteBill(billId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBill>>
+>;
+
+export type DeleteBillMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a bill
+ */
+export const useDeleteBill = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBill>>,
+    TError,
+    { billId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBill>>,
+  TError,
+  { billId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBillMutationOptions(options));
+};
+
+/**
+ * @summary Get bill line items
+ */
+export const getGetBillLinesUrl = (billId: number) => {
+  return `/api/bills/${billId}/lines`;
+};
+
+export const getBillLines = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<BillLine[]> => {
+  return customFetch<BillLine[]>(getGetBillLinesUrl(billId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillLinesQueryKey = (billId: number) => {
+  return [`/api/bills/${billId}/lines`] as const;
+};
+
+export const getGetBillLinesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillLines>>,
+  TError = ErrorType<unknown>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillLines>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillLinesQueryKey(billId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillLines>>> = ({
+    signal,
+  }) => getBillLines(billId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!billId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillLines>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillLinesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillLines>>
+>;
+export type GetBillLinesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get bill line items
+ */
+
+export function useGetBillLines<
+  TData = Awaited<ReturnType<typeof getBillLines>>,
+  TError = ErrorType<unknown>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillLines>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillLinesQueryOptions(billId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a line item
+ */
+export const getCreateBillLineUrl = (billId: number) => {
+  return `/api/bills/${billId}/lines`;
+};
+
+export const createBillLine = async (
+  billId: number,
+  createBillLineRequest: CreateBillLineRequest,
+  options?: RequestInit,
+): Promise<BillLine> => {
+  return customFetch<BillLine>(getCreateBillLineUrl(billId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBillLineRequest),
+  });
+};
+
+export const getCreateBillLineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillLine>>,
+    TError,
+    { billId: number; data: BodyType<CreateBillLineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBillLine>>,
+  TError,
+  { billId: number; data: BodyType<CreateBillLineRequest> },
+  TContext
+> => {
+  const mutationKey = ["createBillLine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBillLine>>,
+    { billId: number; data: BodyType<CreateBillLineRequest> }
+  > = (props) => {
+    const { billId, data } = props ?? {};
+
+    return createBillLine(billId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBillLineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBillLine>>
+>;
+export type CreateBillLineMutationBody = BodyType<CreateBillLineRequest>;
+export type CreateBillLineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a line item
+ */
+export const useCreateBillLine = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillLine>>,
+    TError,
+    { billId: number; data: BodyType<CreateBillLineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBillLine>>,
+  TError,
+  { billId: number; data: BodyType<CreateBillLineRequest> },
+  TContext
+> => {
+  return useMutation(getCreateBillLineMutationOptions(options));
+};
+
+/**
+ * @summary Bulk create line items (from OCR)
+ */
+export const getBulkCreateBillLinesUrl = (billId: number) => {
+  return `/api/bills/${billId}/lines/bulk`;
+};
+
+export const bulkCreateBillLines = async (
+  billId: number,
+  bulkCreateBillLinesBody: BulkCreateBillLinesBody,
+  options?: RequestInit,
+): Promise<BillLine[]> => {
+  return customFetch<BillLine[]>(getBulkCreateBillLinesUrl(billId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bulkCreateBillLinesBody),
+  });
+};
+
+export const getBulkCreateBillLinesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkCreateBillLines>>,
+    TError,
+    { billId: number; data: BodyType<BulkCreateBillLinesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkCreateBillLines>>,
+  TError,
+  { billId: number; data: BodyType<BulkCreateBillLinesBody> },
+  TContext
+> => {
+  const mutationKey = ["bulkCreateBillLines"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkCreateBillLines>>,
+    { billId: number; data: BodyType<BulkCreateBillLinesBody> }
+  > = (props) => {
+    const { billId, data } = props ?? {};
+
+    return bulkCreateBillLines(billId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BulkCreateBillLinesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkCreateBillLines>>
+>;
+export type BulkCreateBillLinesMutationBody = BodyType<BulkCreateBillLinesBody>;
+export type BulkCreateBillLinesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Bulk create line items (from OCR)
+ */
+export const useBulkCreateBillLines = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkCreateBillLines>>,
+    TError,
+    { billId: number; data: BodyType<BulkCreateBillLinesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof bulkCreateBillLines>>,
+  TError,
+  { billId: number; data: BodyType<BulkCreateBillLinesBody> },
+  TContext
+> => {
+  return useMutation(getBulkCreateBillLinesMutationOptions(options));
+};
+
+/**
+ * @summary Update a line item
+ */
+export const getUpdateBillLineUrl = (billId: number, lineId: number) => {
+  return `/api/bills/${billId}/lines/${lineId}`;
+};
+
+export const updateBillLine = async (
+  billId: number,
+  lineId: number,
+  createBillLineRequest: CreateBillLineRequest,
+  options?: RequestInit,
+): Promise<BillLine> => {
+  return customFetch<BillLine>(getUpdateBillLineUrl(billId, lineId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBillLineRequest),
+  });
+};
+
+export const getUpdateBillLineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBillLine>>,
+    TError,
+    { billId: number; lineId: number; data: BodyType<CreateBillLineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBillLine>>,
+  TError,
+  { billId: number; lineId: number; data: BodyType<CreateBillLineRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateBillLine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBillLine>>,
+    { billId: number; lineId: number; data: BodyType<CreateBillLineRequest> }
+  > = (props) => {
+    const { billId, lineId, data } = props ?? {};
+
+    return updateBillLine(billId, lineId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBillLineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBillLine>>
+>;
+export type UpdateBillLineMutationBody = BodyType<CreateBillLineRequest>;
+export type UpdateBillLineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a line item
+ */
+export const useUpdateBillLine = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBillLine>>,
+    TError,
+    { billId: number; lineId: number; data: BodyType<CreateBillLineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBillLine>>,
+  TError,
+  { billId: number; lineId: number; data: BodyType<CreateBillLineRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateBillLineMutationOptions(options));
+};
+
+/**
+ * @summary Delete a line item
+ */
+export const getDeleteBillLineUrl = (billId: number, lineId: number) => {
+  return `/api/bills/${billId}/lines/${lineId}`;
+};
+
+export const deleteBillLine = async (
+  billId: number,
+  lineId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteBillLineUrl(billId, lineId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBillLineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBillLine>>,
+    TError,
+    { billId: number; lineId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBillLine>>,
+  TError,
+  { billId: number; lineId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBillLine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBillLine>>,
+    { billId: number; lineId: number }
+  > = (props) => {
+    const { billId, lineId } = props ?? {};
+
+    return deleteBillLine(billId, lineId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBillLineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBillLine>>
+>;
+
+export type DeleteBillLineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a line item
+ */
+export const useDeleteBillLine = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBillLine>>,
+    TError,
+    { billId: number; lineId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBillLine>>,
+  TError,
+  { billId: number; lineId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBillLineMutationOptions(options));
+};
+
+/**
+ * @summary Assign or unassign a bill user to a line item
+ */
+export const getToggleBillLineUserUrl = (billId: number, lineId: number) => {
+  return `/api/bills/${billId}/lines/${lineId}/users`;
+};
+
+export const toggleBillLineUser = async (
+  billId: number,
+  lineId: number,
+  toggleBillLineUserBody: ToggleBillLineUserBody,
+  options?: RequestInit,
+): Promise<ToggleBillLineUser200> => {
+  return customFetch<ToggleBillLineUser200>(
+    getToggleBillLineUserUrl(billId, lineId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(toggleBillLineUserBody),
+    },
+  );
+};
+
+export const getToggleBillLineUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleBillLineUser>>,
+    TError,
+    { billId: number; lineId: number; data: BodyType<ToggleBillLineUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleBillLineUser>>,
+  TError,
+  { billId: number; lineId: number; data: BodyType<ToggleBillLineUserBody> },
+  TContext
+> => {
+  const mutationKey = ["toggleBillLineUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleBillLineUser>>,
+    { billId: number; lineId: number; data: BodyType<ToggleBillLineUserBody> }
+  > = (props) => {
+    const { billId, lineId, data } = props ?? {};
+
+    return toggleBillLineUser(billId, lineId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleBillLineUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleBillLineUser>>
+>;
+export type ToggleBillLineUserMutationBody = BodyType<ToggleBillLineUserBody>;
+export type ToggleBillLineUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Assign or unassign a bill user to a line item
+ */
+export const useToggleBillLineUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleBillLineUser>>,
+    TError,
+    { billId: number; lineId: number; data: BodyType<ToggleBillLineUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleBillLineUser>>,
+  TError,
+  { billId: number; lineId: number; data: BodyType<ToggleBillLineUserBody> },
+  TContext
+> => {
+  return useMutation(getToggleBillLineUserMutationOptions(options));
+};
+
+/**
+ * @summary Get bill participants
+ */
+export const getGetBillUsersUrl = (billId: number) => {
+  return `/api/bills/${billId}/users`;
+};
+
+export const getBillUsers = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<BillUser[]> => {
+  return customFetch<BillUser[]>(getGetBillUsersUrl(billId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillUsersQueryKey = (billId: number) => {
+  return [`/api/bills/${billId}/users`] as const;
+};
+
+export const getGetBillUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillUsers>>,
+  TError = ErrorType<unknown>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillUsersQueryKey(billId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillUsers>>> = ({
+    signal,
+  }) => getBillUsers(billId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!billId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillUsers>>
+>;
+export type GetBillUsersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get bill participants
+ */
+
+export function useGetBillUsers<
+  TData = Awaited<ReturnType<typeof getBillUsers>>,
+  TError = ErrorType<unknown>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillUsersQueryOptions(billId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a participant
+ */
+export const getCreateBillUserUrl = (billId: number) => {
+  return `/api/bills/${billId}/users`;
+};
+
+export const createBillUser = async (
+  billId: number,
+  createBillUserRequest: CreateBillUserRequest,
+  options?: RequestInit,
+): Promise<BillUser> => {
+  return customFetch<BillUser>(getCreateBillUserUrl(billId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createBillUserRequest),
+  });
+};
+
+export const getCreateBillUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillUser>>,
+    TError,
+    { billId: number; data: BodyType<CreateBillUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBillUser>>,
+  TError,
+  { billId: number; data: BodyType<CreateBillUserRequest> },
+  TContext
+> => {
+  const mutationKey = ["createBillUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBillUser>>,
+    { billId: number; data: BodyType<CreateBillUserRequest> }
+  > = (props) => {
+    const { billId, data } = props ?? {};
+
+    return createBillUser(billId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBillUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBillUser>>
+>;
+export type CreateBillUserMutationBody = BodyType<CreateBillUserRequest>;
+export type CreateBillUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a participant
+ */
+export const useCreateBillUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillUser>>,
+    TError,
+    { billId: number; data: BodyType<CreateBillUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBillUser>>,
+  TError,
+  { billId: number; data: BodyType<CreateBillUserRequest> },
+  TContext
+> => {
+  return useMutation(getCreateBillUserMutationOptions(options));
+};
+
+/**
+ * @summary Update a participant (e.g. tip_override)
+ */
+export const getUpdateBillUserUrl = (billId: number, userId: number) => {
+  return `/api/bills/${billId}/users/${userId}`;
+};
+
+export const updateBillUser = async (
+  billId: number,
+  userId: number,
+  updateBillUserRequest: UpdateBillUserRequest,
+  options?: RequestInit,
+): Promise<BillUser> => {
+  return customFetch<BillUser>(getUpdateBillUserUrl(billId, userId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateBillUserRequest),
+  });
+};
+
+export const getUpdateBillUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBillUser>>,
+    TError,
+    { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBillUser>>,
+  TError,
+  { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateBillUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBillUser>>,
+    { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> }
+  > = (props) => {
+    const { billId, userId, data } = props ?? {};
+
+    return updateBillUser(billId, userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBillUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBillUser>>
+>;
+export type UpdateBillUserMutationBody = BodyType<UpdateBillUserRequest>;
+export type UpdateBillUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a participant (e.g. tip_override)
+ */
+export const useUpdateBillUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBillUser>>,
+    TError,
+    { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBillUser>>,
+  TError,
+  { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateBillUserMutationOptions(options));
+};
+
+/**
+ * @summary Remove a participant
+ */
+export const getDeleteBillUserUrl = (billId: number, userId: number) => {
+  return `/api/bills/${billId}/users/${userId}`;
+};
+
+export const deleteBillUser = async (
+  billId: number,
+  userId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteBillUserUrl(billId, userId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBillUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBillUser>>,
+    TError,
+    { billId: number; userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBillUser>>,
+  TError,
+  { billId: number; userId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBillUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBillUser>>,
+    { billId: number; userId: number }
+  > = (props) => {
+    const { billId, userId } = props ?? {};
+
+    return deleteBillUser(billId, userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBillUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBillUser>>
+>;
+
+export type DeleteBillUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a participant
+ */
+export const useDeleteBillUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBillUser>>,
+    TError,
+    { billId: number; userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBillUser>>,
+  TError,
+  { billId: number; userId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBillUserMutationOptions(options));
+};
+
+/**
+ * @summary Get per-person totals
+ */
+export const getGetBillTotalsUrl = (billId: number) => {
+  return `/api/bills/${billId}/totals`;
+};
+
+export const getBillTotals = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<BillTotals> => {
+  return customFetch<BillTotals>(getGetBillTotalsUrl(billId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillTotalsQueryKey = (billId: number) => {
+  return [`/api/bills/${billId}/totals`] as const;
+};
+
+export const getGetBillTotalsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillTotals>>,
+  TError = ErrorType<unknown>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillTotals>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillTotalsQueryKey(billId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillTotals>>> = ({
+    signal,
+  }) => getBillTotals(billId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!billId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillTotals>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillTotalsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillTotals>>
+>;
+export type GetBillTotalsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get per-person totals
+ */
+
+export function useGetBillTotals<
+  TData = Awaited<ReturnType<typeof getBillTotals>>,
+  TError = ErrorType<unknown>,
+>(
+  billId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillTotals>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillTotalsQueryOptions(billId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Parse a receipt image via Veryfi OCR
+ */
+export const getOcrReceiptUrl = () => {
+  return `/api/ocr`;
+};
+
+export const ocrReceipt = async (
+  ocrReceiptBody: OcrReceiptBody,
+  options?: RequestInit,
+): Promise<OcrResult> => {
+  return customFetch<OcrResult>(getOcrReceiptUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ocrReceiptBody),
+  });
+};
+
+export const getOcrReceiptMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ocrReceipt>>,
+    TError,
+    { data: BodyType<OcrReceiptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ocrReceipt>>,
+  TError,
+  { data: BodyType<OcrReceiptBody> },
+  TContext
+> => {
+  const mutationKey = ["ocrReceipt"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ocrReceipt>>,
+    { data: BodyType<OcrReceiptBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ocrReceipt(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type OcrReceiptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ocrReceipt>>
+>;
+export type OcrReceiptMutationBody = BodyType<OcrReceiptBody>;
+export type OcrReceiptMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Parse a receipt image via Veryfi OCR
+ */
+export const useOcrReceipt = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ocrReceipt>>,
+    TError,
+    { data: BodyType<OcrReceiptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ocrReceipt>>,
+  TError,
+  { data: BodyType<OcrReceiptBody> },
+  TContext
+> => {
+  return useMutation(getOcrReceiptMutationOptions(options));
+};
+
+/**
+ * @summary Detect currency from IP
+ */
+export const getDetectCurrencyUrl = () => {
+  return `/api/currency`;
+};
+
+export const detectCurrency = async (
+  options?: RequestInit,
+): Promise<CurrencyResponse> => {
+  return customFetch<CurrencyResponse>(getDetectCurrencyUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDetectCurrencyQueryKey = () => {
+  return [`/api/currency`] as const;
+};
+
+export const getDetectCurrencyQueryOptions = <
+  TData = Awaited<ReturnType<typeof detectCurrency>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof detectCurrency>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getDetectCurrencyQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof detectCurrency>>> = ({
+    signal,
+  }) => detectCurrency({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof detectCurrency>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DetectCurrencyQueryResult = NonNullable<
+  Awaited<ReturnType<typeof detectCurrency>>
+>;
+export type DetectCurrencyQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Detect currency from IP
+ */
+
+export function useDetectCurrency<
+  TData = Awaited<ReturnType<typeof detectCurrency>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof detectCurrency>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDetectCurrencyQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

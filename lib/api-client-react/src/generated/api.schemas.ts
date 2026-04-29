@@ -8,3 +8,166 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  /** @minLength 6 */
+  password: string;
+  displayName: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface User {
+  id: number;
+  email: string;
+  displayName: string;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+export interface Bill {
+  id: number;
+  ownerUserId?: number | null;
+  title: string;
+  restaurantName?: string | null;
+  date: string;
+  currency: string;
+  taxAmount: number;
+  tipAmount: number;
+  joinCode: string;
+  createdAt: string;
+}
+
+export interface BillLine {
+  id: number;
+  billId: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  assignedUserIds: number[];
+  createdAt: string;
+}
+
+export interface BillUser {
+  id: number;
+  billId: number;
+  name: string;
+  color: string;
+  tipOverride?: number | null;
+  createdAt: string;
+}
+
+export interface BillDetail {
+  bill: Bill;
+  lines: BillLine[];
+  users: BillUser[];
+}
+
+export interface CreateBillRequest {
+  title: string;
+  restaurantName?: string | null;
+  date: string;
+  currency: string;
+  taxAmount: number;
+  tipAmount: number;
+}
+
+export interface UpdateBillRequest {
+  title?: string;
+  restaurantName?: string | null;
+  date?: string;
+  currency?: string;
+  taxAmount?: number;
+  tipAmount?: number;
+}
+
+export interface JoinBillRequest {
+  joinCode: string;
+}
+
+export interface CreateBillUserRequest {
+  name: string;
+  color: string;
+}
+
+export interface UpdateBillUserRequest {
+  name?: string;
+  color?: string;
+  tipOverride?: number | null;
+}
+
+export interface CreateBillLineRequest {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface PersonTotal {
+  billUserId: number;
+  name: string;
+  color: string;
+  subtotal: number;
+  taxShare: number;
+  tipAmount: number;
+  tipIsCustom: boolean;
+  total: number;
+}
+
+export interface BillTotals {
+  billSubtotal: number;
+  taxAmount: number;
+  tipAmount: number;
+  grandTotal: number;
+  perPerson: PersonTotal[];
+}
+
+export interface OcrLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface OcrResult {
+  items: OcrLineItem[];
+  taxAmount?: number | null;
+  tipAmount?: number | null;
+  currency?: string | null;
+}
+
+export interface CurrencyResponse {
+  currency: string;
+  countryCode: string;
+}
+
+export type BulkCreateBillLinesBody = {
+  lines: CreateBillLineRequest[];
+};
+
+export type ToggleBillLineUserBody = {
+  billUserId: number;
+};
+
+export type ToggleBillLineUser200 = {
+  assigned: boolean;
+};
+
+export type OcrReceiptBody = {
+  /** Base64-encoded image */
+  imageBase64: string;
+  fileName?: string;
+};

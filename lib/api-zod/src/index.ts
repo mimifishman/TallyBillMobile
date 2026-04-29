@@ -1,2 +1,25 @@
 export * from "./generated/api";
-export * from "./generated/types";
+export type {
+  AuthResponse,
+  Bill,
+  BillDetail,
+  BillLine,
+  BillTotals,
+  BillUser,
+  CreateBillLineRequest,
+  CreateBillRequest,
+  CreateBillUserRequest,
+  CurrencyResponse,
+  ErrorResponse,
+  HealthStatus,
+  JoinBillRequest,
+  LoginRequest,
+  OcrLineItem,
+  OcrResult,
+  PersonTotal,
+  RegisterRequest,
+  ToggleBillLineUser200,
+  UpdateBillRequest,
+  UpdateBillUserRequest,
+  User,
+} from "./generated/types";

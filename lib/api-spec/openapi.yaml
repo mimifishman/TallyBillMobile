@@ -10,13 +10,25 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: bills
+    description: Bill management
+  - name: bill-users
+    description: Bill participants
+  - name: bill-lines
+    description: Bill line items
+  - name: ocr
+    description: Receipt OCR
+  - name: currency
+    description: Currency detection
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +36,523 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bills:
+    get:
+      operationId: getBills
+      tags: [bills]
+      summary: Get user's bills
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bill"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createBill
+      tags: [bills]
+      summary: Create a new bill
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+
+  /bills/join:
+    post:
+      operationId: joinBill
+      tags: [bills]
+      summary: Join a bill by code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinBillRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+        "404":
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bills/{billId}:
+    get:
+      operationId: getBill
+      tags: [bills]
+      summary: Get a bill by ID
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateBill
+      tags: [bills]
+      summary: Update a bill
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBillRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+    delete:
+      operationId: deleteBill
+      tags: [bills]
+      summary: Delete a bill
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+
+  /bills/{billId}/lines:
+    get:
+      operationId: getBillLines
+      tags: [bill-lines]
+      summary: Get bill line items
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillLine"
+    post:
+      operationId: createBillLine
+      tags: [bill-lines]
+      summary: Add a line item
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillLineRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillLine"
+
+  /bills/{billId}/lines/bulk:
+    post:
+      operationId: bulkCreateBillLines
+      tags: [bill-lines]
+      summary: Bulk create line items (from OCR)
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lines:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CreateBillLineRequest"
+              required:
+                - lines
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillLine"
+
+  /bills/{billId}/lines/{lineId}:
+    put:
+      operationId: updateBillLine
+      tags: [bill-lines]
+      summary: Update a line item
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillLineRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillLine"
+    delete:
+      operationId: deleteBillLine
+      tags: [bill-lines]
+      summary: Delete a line item
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+
+  /bills/{billId}/lines/{lineId}/users:
+    post:
+      operationId: toggleBillLineUser
+      tags: [bill-lines]
+      summary: Assign or unassign a bill user to a line item
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                billUserId:
+                  type: integer
+              required:
+                - billUserId
+      responses:
+        "200":
+          description: OK (assigned = true, unassigned = false)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assigned:
+                    type: boolean
+                required:
+                  - assigned
+
+  /bills/{billId}/users:
+    get:
+      operationId: getBillUsers
+      tags: [bill-users]
+      summary: Get bill participants
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillUser"
+    post:
+      operationId: createBillUser
+      tags: [bill-users]
+      summary: Add a participant
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillUserRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillUser"
+
+  /bills/{billId}/users/{userId}:
+    put:
+      operationId: updateBillUser
+      tags: [bill-users]
+      summary: Update a participant (e.g. tip_override)
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBillUserRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillUser"
+    delete:
+      operationId: deleteBillUser
+      tags: [bill-users]
+      summary: Remove a participant
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+
+  /bills/{billId}/totals:
+    get:
+      operationId: getBillTotals
+      tags: [bills]
+      summary: Get per-person totals
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillTotals"
+
+  /ocr:
+    post:
+      operationId: ocrReceipt
+      tags: [ocr]
+      summary: Parse a receipt image via Veryfi OCR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imageBase64:
+                  type: string
+                  description: Base64-encoded image
+                fileName:
+                  type: string
+              required:
+                - imageBase64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OcrResult"
+        "500":
+          description: OCR failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /currency:
+    get:
+      operationId: detectCurrency
+      tags: [currency]
+      summary: Detect currency from IP
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrencyResponse"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +562,362 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        displayName:
+          type: string
+      required:
+        - email
+        - password
+        - displayName
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        displayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - displayName
+        - createdAt
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    Bill:
+      type: object
+      properties:
+        id:
+          type: integer
+        ownerUserId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        restaurantName:
+          type: string
+          nullable: true
+        date:
+          type: string
+        currency:
+          type: string
+        taxAmount:
+          type: number
+        tipAmount:
+          type: number
+        joinCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - date
+        - currency
+        - taxAmount
+        - tipAmount
+        - joinCode
+        - createdAt
+
+    BillDetail:
+      type: object
+      properties:
+        bill:
+          $ref: "#/components/schemas/Bill"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillLine"
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillUser"
+      required:
+        - bill
+        - lines
+        - users
+
+    CreateBillRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        restaurantName:
+          type: string
+          nullable: true
+        date:
+          type: string
+        currency:
+          type: string
+        taxAmount:
+          type: number
+        tipAmount:
+          type: number
+      required:
+        - title
+        - date
+        - currency
+        - taxAmount
+        - tipAmount
+
+    UpdateBillRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        restaurantName:
+          type: string
+          nullable: true
+        date:
+          type: string
+        currency:
+          type: string
+        taxAmount:
+          type: number
+        tipAmount:
+          type: number
+
+    JoinBillRequest:
+      type: object
+      properties:
+        joinCode:
+          type: string
+      required:
+        - joinCode
+
+    BillUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        billId:
+          type: integer
+        name:
+          type: string
+        color:
+          type: string
+        tipOverride:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - billId
+        - name
+        - color
+        - createdAt
+
+    CreateBillUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+      required:
+        - name
+        - color
+
+    UpdateBillUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        tipOverride:
+          type: number
+          nullable: true
+
+    BillLine:
+      type: object
+      properties:
+        id:
+          type: integer
+        billId:
+          type: integer
+        description:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        total:
+          type: number
+        assignedUserIds:
+          type: array
+          items:
+            type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - billId
+        - description
+        - quantity
+        - unitPrice
+        - total
+        - assignedUserIds
+        - createdAt
+
+    CreateBillLineRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        total:
+          type: number
+      required:
+        - description
+        - quantity
+        - unitPrice
+        - total
+
+    PersonTotal:
+      type: object
+      properties:
+        billUserId:
+          type: integer
+        name:
+          type: string
+        color:
+          type: string
+        subtotal:
+          type: number
+        taxShare:
+          type: number
+        tipAmount:
+          type: number
+        tipIsCustom:
+          type: boolean
+        total:
+          type: number
+      required:
+        - billUserId
+        - name
+        - color
+        - subtotal
+        - taxShare
+        - tipAmount
+        - tipIsCustom
+        - total
+
+    BillTotals:
+      type: object
+      properties:
+        billSubtotal:
+          type: number
+        taxAmount:
+          type: number
+        tipAmount:
+          type: number
+        grandTotal:
+          type: number
+        perPerson:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonTotal"
+      required:
+        - billSubtotal
+        - taxAmount
+        - tipAmount
+        - grandTotal
+        - perPerson
+
+    OcrLineItem:
+      type: object
+      properties:
+        description:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        total:
+          type: number
+      required:
+        - description
+        - quantity
+        - unitPrice
+        - total
+
+    OcrResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OcrLineItem"
+        taxAmount:
+          type: number
+          nullable: true
+        tipAmount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+      required:
+        - items
+
+    CurrencyResponse:
+      type: object
+      properties:
+        currency:
+          type: string
+        countryCode:
+          type: string
+      required:
+        - currency
+        - countryCode

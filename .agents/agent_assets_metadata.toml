@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "NYXOll7tcLg87L7iOfvUv"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "tallybill app icon"
+
+[[generated]]
+id = "i2tnxJOzyp0BfoD9kvKfR"
+uri = "file://artifacts/mobile/assets/images/splash.png"
+type = "image"
+title = "tallybill splash"
