@@ -62,7 +62,7 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
     title,
     restaurantName: restaurantName || null,
     date,
-    currency: currency || "",
+    currency: currency || null,
     taxAmount: String(taxAmount ?? 0),
     tipAmount: String(tipAmount ?? 0),
     joinCode,
@@ -101,7 +101,7 @@ router.post("/join", requireAuth, async (req: AuthRequest, res) => {
 });
 
 router.get("/:billId", optionalAuth, async (req: AuthRequest, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt(String(req.params["billId"]));
   const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
   if (!bill) {
     res.status(404).json({ error: "Bill not found" });
@@ -113,7 +113,7 @@ router.get("/:billId", optionalAuth, async (req: AuthRequest, res) => {
 });
 
 router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt(String(req.params["billId"]));
   const hasAccess = await getBillWithAccess(billId, req.user?.userId);
   if (!hasAccess) {
     res.status(403).json({ error: "Forbidden" });
@@ -124,7 +124,7 @@ router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
     ...(title && { title }),
     ...(restaurantName !== undefined && { restaurantName }),
     ...(date && { date }),
-    ...(currency && { currency }),
+    ...(currency !== undefined && { currency: currency || null }),
     ...(taxAmount !== undefined && { taxAmount: String(taxAmount) }),
     ...(tipAmount !== undefined && { tipAmount: String(tipAmount) }),
   }).where(eq(billsTable.id, billId)).returning();
@@ -132,7 +132,7 @@ router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
 });
 
 router.delete("/:billId", requireAuth, async (req: AuthRequest, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt(String(req.params["billId"]));
   const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
   if (!bill || bill.ownerUserId !== req.user!.userId) {
     res.status(403).json({ error: "Forbidden" });

@@ -18,13 +18,13 @@ async function getBillLinesWithAssignments(billId: number) {
 }
 
 router.get("/", async (req, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt((req.params as Record<string, string>)["billId"]);
   const lines = await getBillLinesWithAssignments(billId);
   res.json(lines);
 });
 
 router.post("/", async (req, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt((req.params as Record<string, string>)["billId"]);
   const { description, quantity, unitPrice, total } = req.body;
   if (!description) {
     res.status(400).json({ error: "description is required" });
@@ -41,7 +41,7 @@ router.post("/", async (req, res) => {
 });
 
 router.post("/bulk", async (req, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt((req.params as Record<string, string>)["billId"]);
   const { lines } = req.body;
   if (!Array.isArray(lines) || lines.length === 0) {
     res.status(400).json({ error: "lines array is required" });
@@ -60,7 +60,7 @@ router.post("/bulk", async (req, res) => {
 });
 
 router.put("/:lineId", async (req, res) => {
-  const lineId = parseInt(req.params["lineId"]!);
+  const lineId = parseInt((req.params as Record<string, string>)["lineId"]);
   const { description, quantity, unitPrice, total } = req.body;
   const [updated] = await db.update(billLinesTable).set({
     ...(description && { description }),
@@ -73,13 +73,13 @@ router.put("/:lineId", async (req, res) => {
 });
 
 router.delete("/:lineId", async (req, res) => {
-  const lineId = parseInt(req.params["lineId"]!);
+  const lineId = parseInt((req.params as Record<string, string>)["lineId"]);
   await db.delete(billLinesTable).where(eq(billLinesTable.id, lineId));
   res.status(204).send();
 });
 
 router.post("/:lineId/users", async (req, res) => {
-  const lineId = parseInt(req.params["lineId"]!);
+  const lineId = parseInt((req.params as Record<string, string>)["lineId"]);
   const { billUserId } = req.body;
   if (!billUserId) {
     res.status(400).json({ error: "billUserId is required" });

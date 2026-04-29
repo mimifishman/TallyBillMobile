@@ -6,7 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 const router = Router({ mergeParams: true });
 
 router.get("/", async (req, res) => {
-  const billId = parseInt(req.params["billId"]!);
+  const billId = parseInt((req.params as Record<string, string>)["billId"]!);
 
   const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
   if (!bill) {
