@@ -250,13 +250,13 @@ export default function BillDetailScreen() {
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-              {bill.currency} {parseFloat(String(bill.taxAmount)).toFixed(2)}
+              {bill.currency ? `${bill.currency} ` : ""}{parseFloat(String(bill.taxAmount)).toFixed(2)}
             </Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-              {bill.currency} {parseFloat(String(bill.tipAmount)).toFixed(2)}
+              {bill.currency ? `${bill.currency} ` : ""}{parseFloat(String(bill.tipAmount)).toFixed(2)}
             </Text>
           </View>
         </View>
