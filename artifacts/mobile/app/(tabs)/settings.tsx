@@ -112,10 +112,18 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {user && (
+      {user && !isGuest && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
           <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.menuItem, { borderBottomColor: colors.border }]}
+              onPress={() => router.push("/(auth)/change-password")}
+            >
+              <Feather name="lock" size={18} color={colors.foreground} />
+              <Text style={[styles.menuItemText, { color: colors.foreground }]}>Change Password</Text>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.menuItem, { borderBottomColor: colors.border }]}
               onPress={handleLogout}

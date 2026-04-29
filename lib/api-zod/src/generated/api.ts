@@ -26,6 +26,20 @@ export const RegisterBody = zod.object({
 });
 
 /**
+ * @summary Change the authenticated user's password
+ */
+export const changePasswordBodyNewPasswordMin = 6;
+
+export const ChangePasswordBody = zod.object({
+  currentPassword: zod.string(),
+  newPassword: zod.string().min(changePasswordBodyNewPasswordMin),
+});
+
+export const ChangePasswordResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
  * @summary Login
  */
 export const LoginBody = zod.object({

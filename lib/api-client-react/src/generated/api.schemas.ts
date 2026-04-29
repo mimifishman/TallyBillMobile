@@ -37,6 +37,16 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  /** @minLength 6 */
+  newPassword: string;
+}
+
+export interface SuccessResponse {
+  message: string;
+}
+
 export interface Bill {
   id: number;
   ownerUserId?: number | null;
