@@ -63,13 +63,11 @@ export default function LoginScreen() {
     }
     if (signIn.status === "complete") {
       await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
+        navigate: ({ session }) => {
           if (session?.currentTask) return;
-          const url = decorateUrl("/");
-          router.replace(url.startsWith("http") ? "/(tabs)/bills" : (url as any));
+          router.replace("/(tabs)/bills");
         },
       });
-      router.replace("/(tabs)/bills");
     } else if (signIn.status === "needs_client_trust") {
       await signIn.mfa.sendEmailCode();
     }
