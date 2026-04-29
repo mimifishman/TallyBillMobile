@@ -40,9 +40,14 @@ export default function RegisterScreen() {
       Alert.alert("Error", "Password must be at least 8 characters");
       return;
     }
+    const nameParts = displayName.trim().split(/\s+/);
+    const firstName = nameParts[0] ?? displayName;
+    const lastName = nameParts.slice(1).join(" ") || undefined;
     const { error } = await signUp.password({
       emailAddress: email.trim().toLowerCase(),
       password,
+      firstName,
+      lastName,
     });
     if (error) {
       Alert.alert("Registration Failed", error.message || "Could not create account");
