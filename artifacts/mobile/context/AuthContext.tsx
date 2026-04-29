@@ -1,5 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
+import { useAuth as useClerkAuth, useUser } from "@clerk/expo";
 import React, {
   createContext,
   useCallback,
@@ -7,11 +6,10 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Platform } from "react-native";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
-interface UserInfo {
-  id: number;
+export interface UserInfo {
+  id: string;
   email: string;
   displayName: string;
 }
@@ -26,32 +24,6 @@ interface AuthContextType {
   continueAsGuest: () => void;
 }
 
-const TOKEN_KEY = "auth_token";
-const USER_KEY = "auth_user";
-
-async function storeToken(token: string) {
-  if (Platform.OS === "web") {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
-  } else {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-  }
-}
-
-async function getStoredToken(): Promise<string | null> {
-  if (Platform.OS === "web") {
-    return AsyncStorage.getItem(TOKEN_KEY);
-  }
-  return SecureStore.getItemAsync(TOKEN_KEY);
-}
-
-async function removeToken() {
-  if (Platform.OS === "web") {
-    await AsyncStorage.removeItem(TOKEN_KEY);
-  } else {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-  }
-}
-
 const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
@@ -63,47 +35,41 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoaded, isSignedIn, signOut, getToken } = useClerkAuth();
+  const { user: clerkUser } = useUser();
   const [isGuest, setIsGuest] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const storedToken = await getStoredToken();
-        const storedUser = await AsyncStorage.getItem(USER_KEY);
-        if (storedToken && storedUser) {
-          const parsedUser = JSON.parse(storedUser) as UserInfo;
-          setToken(storedToken);
-          setUser(parsedUser);
-          setAuthTokenGetter(() => storedToken);
+  const user: UserInfo | null =
+    isSignedIn && clerkUser
+      ? {
+          id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+          displayName:
+            clerkUser.fullName ||
+            clerkUser.firstName ||
+            clerkUser.username ||
+            "User",
         }
-      } catch {
-        // ignore
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
+      : null;
 
-  const login = useCallback(async (newToken: string, newUser: UserInfo) => {
-    await storeToken(newToken);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser));
-    setToken(newToken);
-    setUser(newUser);
-    setIsGuest(false);
-    setAuthTokenGetter(() => newToken);
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      setIsGuest(false);
+      setAuthTokenGetter(() => getToken());
+    } else {
+      setAuthTokenGetter(() => null);
+    }
+  }, [isLoaded, isSignedIn, getToken]);
+
+  const login = useCallback(async (_token: string, _user: UserInfo) => {
   }, []);
 
   const logout = useCallback(async () => {
-    await removeToken();
-    await AsyncStorage.removeItem(USER_KEY);
-    setToken(null);
-    setUser(null);
     setIsGuest(false);
     setAuthTokenGetter(() => null);
-  }, []);
+    await signOut();
+  }, [signOut]);
 
   const continueAsGuest = useCallback(() => {
     setIsGuest(true);
@@ -111,7 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, isGuest, login, logout, continueAsGuest }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token: null,
+        isLoading: !isLoaded,
+        isGuest,
+        login,
+        logout,
+        continueAsGuest,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

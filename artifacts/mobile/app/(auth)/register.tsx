@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useSignUp } from "@clerk/expo";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -6,6 +7,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,38 +17,54 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { useRegister } from "@workspace/api-client-react";
 
 export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { login, continueAsGuest } = useAuth();
+  const { continueAsGuest } = useAuth();
+  const { signUp, fetchStatus, errors } = useSignUp();
+
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
 
-  const registerMutation = useRegister({
-    mutation: {
-      onSuccess: async (data) => {
-        await login(data.token, data.user);
-        router.replace("/(tabs)/bills");
-      },
-      onError: (err: Error) => {
-        Alert.alert("Registration Failed", err.message || "Could not create account");
-      },
-    },
-  });
+  const isPending = fetchStatus === "fetching";
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!displayName || !email || !password) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters");
       return;
     }
-    registerMutation.mutate({ data: { displayName, email: email.trim().toLowerCase(), password } });
+    const { error } = await signUp.password({
+      emailAddress: email.trim().toLowerCase(),
+      password,
+    });
+    if (error) {
+      Alert.alert("Registration Failed", error.message || "Could not create account");
+      return;
+    }
+    if (!error) {
+      await signUp.verifications.sendEmailCode();
+    }
+  };
+
+  const handleVerify = async () => {
+    await signUp.verifications.verifyEmailCode({ code: verificationCode });
+    if (signUp.status === "complete") {
+      await signUp.finalize({
+        navigate: ({ session }) => {
+          if (session?.currentTask) return;
+          router.replace("/(tabs)/bills");
+        },
+      });
+    } else {
+      Alert.alert("Error", "Verification failed. Please try again.");
+    }
   };
 
   const handleGuest = () => {
@@ -54,19 +72,97 @@ export default function RegisterScreen() {
     router.replace("/bill/new");
   };
 
+  if (
+    signUp.status === "missing_requirements" &&
+    signUp.unverifiedFields.includes("email_address") &&
+    signUp.missingFields.length === 0
+  ) {
+    return (
+      <KeyboardAvoidingView
+        style={[styles.flex, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View
+          style={[
+            styles.container,
+            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+          ]}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.foreground }]}>Check your email</Text>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+              We sent a verification code to {email}
+            </Text>
+          </View>
+          <View style={styles.form}>
+            <View style={[styles.inputWrap, { borderColor: colors.border }]}>
+              <Feather name="key" size={18} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="Enter verification code"
+                placeholderTextColor={colors.mutedForeground}
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                keyboardType="numeric"
+                autoFocus
+              />
+            </View>
+            {errors?.fields?.code && (
+              <Text style={[styles.errorText, { color: "#DC2626" }]}>
+                {errors.fields.code.message}
+              </Text>
+            )}
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+              onPress={handleVerify}
+              disabled={isPending}
+              activeOpacity={0.8}
+            >
+              {isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryBtnText}>Verify Email</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => signUp.verifications.sendEmailCode()}
+              style={styles.linkBtn}
+            >
+              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
+                Resend code
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View nativeID="clerk-captcha" />
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={[styles.flex, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
 
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.foreground }]}>Create Account</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Start splitting bills</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            Start splitting bills
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -95,26 +191,36 @@ export default function RegisterScreen() {
               autoCorrect={false}
             />
           </View>
+          {errors?.fields?.emailAddress && (
+            <Text style={[styles.errorText, { color: "#DC2626" }]}>
+              {errors.fields.emailAddress.message}
+            </Text>
+          )}
 
           <View style={[styles.inputWrap, { borderColor: colors.border }]}>
             <Feather name="lock" size={18} color={colors.mutedForeground} />
             <TextInput
               style={[styles.input, { color: colors.foreground }]}
-              placeholder="Password (min. 6 characters)"
+              placeholder="Password (min. 8 characters)"
               placeholderTextColor={colors.mutedForeground}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
             />
           </View>
+          {errors?.fields?.password && (
+            <Text style={[styles.errorText, { color: "#DC2626" }]}>
+              {errors.fields.password.message}
+            </Text>
+          )}
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={handleRegister}
-            disabled={registerMutation.isPending}
+            disabled={isPending}
             activeOpacity={0.8}
           >
-            {registerMutation.isPending ? (
+            {isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryBtnText}>Create Account</Text>
@@ -124,7 +230,9 @@ export default function RegisterScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.linkBtn}>
             <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
               Already have an account?{" "}
-              <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Sign in</Text>
+              <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                Sign in
+              </Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -141,16 +249,20 @@ export default function RegisterScreen() {
           activeOpacity={0.7}
         >
           <Feather name="user" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.ghostBtnText, { color: colors.mutedForeground }]}>Continue without account</Text>
+          <Text style={[styles.ghostBtnText, { color: colors.mutedForeground }]}>
+            Continue without account
+          </Text>
         </TouchableOpacity>
-      </View>
+
+        <View nativeID="clerk-captcha" />
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, paddingHorizontal: 24, gap: 0 },
+  container: { flexGrow: 1, paddingHorizontal: 24 },
   backBtn: { marginBottom: 20, alignSelf: "flex-start", padding: 4 },
   header: { marginBottom: 28, gap: 4 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
@@ -183,4 +295,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   ghostBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  errorText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: -4 },
 });
