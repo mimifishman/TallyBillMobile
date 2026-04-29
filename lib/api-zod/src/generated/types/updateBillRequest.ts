@@ -10,7 +10,7 @@ export interface UpdateBillRequest {
   title?: string;
   restaurantName?: string | null;
   date?: string;
-  currency?: string;
+  currency?: string | null;
   taxAmount?: number;
   tipAmount?: number;
 }

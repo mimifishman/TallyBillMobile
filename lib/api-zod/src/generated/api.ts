@@ -147,7 +147,7 @@ export const UpdateBillBody = zod.object({
   title: zod.string().optional(),
   restaurantName: zod.string().nullish(),
   date: zod.string().optional(),
-  currency: zod.string().optional(),
+  currency: zod.string().nullish(),
   taxAmount: zod.number().optional(),
   tipAmount: zod.number().optional(),
 });
