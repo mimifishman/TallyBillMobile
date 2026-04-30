@@ -139,6 +139,11 @@ export default function BillDetailScreen() {
     });
   };
 
+  const fmt = (n: number) => {
+    const currency = data?.bill.currency ?? "";
+    return `${currency ? `${currency} ` : ""}${n.toFixed(2)}`;
+  };
+
   if (isLoading || !data) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -247,18 +252,33 @@ export default function BillDetailScreen() {
         </View>
 
         <View style={[styles.billSummary, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-              {bill.currency ? `${bill.currency} ` : ""}{parseFloat(String(bill.taxAmount)).toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-              {bill.currency ? `${bill.currency} ` : ""}{parseFloat(String(bill.tipAmount)).toFixed(2)}
-            </Text>
-          </View>
+          {(() => {
+            const subtotal = lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0);
+            const taxAmount = parseFloat(String(bill.taxAmount));
+            const tipAmount = parseFloat(String(bill.tipAmount));
+            const grandTotal = subtotal + taxAmount + tipAmount;
+            return (
+              <>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Subtotal</Text>
+                  <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(subtotal)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax</Text>
+                  <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(taxAmount)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip</Text>
+                  <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(tipAmount)}</Text>
+                </View>
+                <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, styles.summaryTotalLabel, { color: colors.foreground }]}>Total</Text>
+                  <Text style={[styles.summaryValue, styles.summaryTotalValue, { color: colors.primary }]}>{fmt(grandTotal)}</Text>
+                </View>
+              </>
+            );
+          })()}
         </View>
       </ScrollView>
 
@@ -367,6 +387,9 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   summaryLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
   summaryValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  summaryDivider: { height: 1, marginVertical: 4 },
+  summaryTotalLabel: { fontFamily: "Inter_600SemiBold" },
+  summaryTotalValue: { fontSize: 16, fontFamily: "Inter_700Bold" },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
