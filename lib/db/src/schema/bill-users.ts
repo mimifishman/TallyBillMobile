@@ -8,7 +8,7 @@ export const billUsersTable = pgTable("bill_users", {
   billId: integer("bill_id").notNull().references(() => billsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   color: text("color").notNull(),
-  tipOverride: numeric("tip_override", { precision: 10, scale: 2 }),
+  tipPercentOverride: numeric("tip_percent_override", { precision: 10, scale: 4 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

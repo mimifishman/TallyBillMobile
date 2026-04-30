@@ -47,22 +47,22 @@ export default function TotalsScreen() {
     },
   });
 
-  const handleEditTip = (userId: number, currentTip: number) => {
+  const handleEditTip = (userId: number, currentTipPercent: number) => {
     setEditingUserId(userId);
-    setEditTipValue(String(currentTip));
+    setEditTipValue(String(currentTipPercent));
   };
 
   const handleSaveTip = () => {
     if (editingUserId === null) return;
-    const tip = parseFloat(editTipValue);
-    if (isNaN(tip) || tip < 0) {
-      Alert.alert("Invalid amount", "Please enter a valid tip amount");
+    const pct = parseFloat(editTipValue);
+    if (isNaN(pct) || pct < 0) {
+      Alert.alert("Invalid value", "Please enter a valid tip percentage (e.g. 15 for 15%)");
       return;
     }
     updateUserMutation.mutate({
       billId,
       userId: editingUserId,
-      data: { tipOverride: tip },
+      data: { tipPercentOverride: pct },
     });
   };
 
@@ -70,12 +70,16 @@ export default function TotalsScreen() {
     updateUserMutation.mutate({
       billId,
       userId,
-      data: { tipOverride: null },
+      data: { tipPercentOverride: null },
     });
   };
 
   const currencySymbol = getCurrencySymbol(billData?.bill.currency);
   const fmt = (n: number) => `${currencySymbol ? `${currencySymbol} ` : ""}${n.toFixed(2)}`;
+  const fmtPct = (n: number) => {
+    const rounded = Math.round(n * 100) / 100;
+    return Number.isInteger(rounded) ? `${rounded}` : `${rounded}`;
+  };
 
   if (isLoading || !totals) {
     return (
@@ -100,8 +104,10 @@ export default function TotalsScreen() {
           <Text style={styles.grandAmount}>{fmt(totals.grandTotal)}</Text>
           <View style={styles.grandBreakdown}>
             <Text style={styles.grandSub}>Subtotal: {fmt(totals.billSubtotal)}</Text>
-            <Text style={styles.grandSub}>Tax ({totals.taxPercent}%): {fmt(totals.taxAmount)}</Text>
-            <Text style={styles.grandSub}>Tip ({totals.tipPercent}%): {fmt(totals.tipAmount)}</Text>
+            <Text style={styles.grandSub}>Tax ({fmtPct(totals.taxPercent)}%): {fmt(totals.taxAmount)}</Text>
+            <Text style={styles.grandSub}>
+              Tip (avg {fmtPct(totals.averageTipPercent)}%): {fmt(totals.tipAmount)}
+            </Text>
           </View>
         </View>
 
@@ -141,13 +147,13 @@ export default function TotalsScreen() {
                 </View>
                 <View style={styles.breakdownRow}>
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>
-                    Tip {person.tipIsCustom ? "(custom)" : "(proportional)"}
+                    Tip ({fmtPct(person.tipPercent)}%)
                   </Text>
                   <View style={styles.tipRow}>
                     <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>
                       {fmt(person.tipAmount)}
                     </Text>
-                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipAmount)} style={styles.editTipBtn}>
+                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn}>
                       <Feather name="edit-2" size={13} color={colors.mutedForeground} />
                     </TouchableOpacity>
                     {person.tipIsCustom && (
@@ -166,13 +172,13 @@ export default function TotalsScreen() {
       <Modal visible={editingUserId !== null} transparent animationType="fade">
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setEditingUserId(null)}>
           <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Custom Tip</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Custom Tip %</Text>
             <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-              Enter a custom tip amount for this person. Reset to restore proportional split.
+              Enter a tip percentage for this person (e.g. 20 for 20%). Reset to restore the bill default.
             </Text>
             <TextInput
               style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="0.00"
+              placeholder="15"
               placeholderTextColor={colors.mutedForeground}
               value={editTipValue}
               onChangeText={setEditTipValue}
@@ -184,7 +190,7 @@ export default function TotalsScreen() {
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleSaveTip} style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.modalConfirmText}>Set Tip</Text>
+                <Text style={styles.modalConfirmText}>Set Tip %</Text>
               </TouchableOpacity>
             </View>
           </View>

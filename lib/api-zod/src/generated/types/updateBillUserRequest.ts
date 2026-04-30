@@ -9,5 +9,5 @@
 export interface UpdateBillUserRequest {
   name?: string;
   color?: string;
-  tipOverride?: number | null;
+  tipPercentOverride?: number | null;
 }

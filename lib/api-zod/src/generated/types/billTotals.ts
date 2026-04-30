@@ -13,6 +13,7 @@ export interface BillTotals {
   taxAmount: number;
   tipPercent: number;
   tipAmount: number;
+  averageTipPercent: number;
   grandTotal: number;
   perPerson: PersonTotal[];
 }

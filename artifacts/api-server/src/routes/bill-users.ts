@@ -24,11 +24,11 @@ router.post("/", async (req, res) => {
 
 router.put("/:userId", async (req, res) => {
   const userId = parseInt((req.params as Record<string, string>)["userId"]);
-  const { name, color, tipOverride } = req.body;
+  const { name, color, tipPercentOverride } = req.body;
   const [updated] = await db.update(billUsersTable).set({
     ...(name !== undefined && { name }),
     ...(color !== undefined && { color }),
-    ...(tipOverride !== undefined && { tipOverride: tipOverride === null ? null : String(tipOverride) }),
+    ...(tipPercentOverride !== undefined && { tipPercentOverride: tipPercentOverride === null ? null : String(tipPercentOverride) }),
   }).where(eq(billUsersTable.id, userId)).returning();
   res.json(updated);
 });

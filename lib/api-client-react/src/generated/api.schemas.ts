@@ -76,7 +76,7 @@ export interface BillUser {
   billId: number;
   name: string;
   color: string;
-  tipOverride?: number | null;
+  tipPercentOverride?: number | null;
   createdAt: string;
 }
 
@@ -116,7 +116,7 @@ export interface CreateBillUserRequest {
 export interface UpdateBillUserRequest {
   name?: string;
   color?: string;
-  tipOverride?: number | null;
+  tipPercentOverride?: number | null;
 }
 
 export interface CreateBillLineRequest {
@@ -132,6 +132,7 @@ export interface PersonTotal {
   color: string;
   subtotal: number;
   taxShare: number;
+  tipPercent: number;
   tipAmount: number;
   tipIsCustom: boolean;
   total: number;
@@ -143,6 +144,7 @@ export interface BillTotals {
   taxAmount: number;
   tipPercent: number;
   tipAmount: number;
+  averageTipPercent: number;
   grandTotal: number;
   perPerson: PersonTotal[];
 }

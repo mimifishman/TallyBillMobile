@@ -144,7 +144,7 @@ export const GetBillResponse = zod.object({
       billId: zod.number(),
       name: zod.string(),
       color: zod.string(),
-      tipOverride: zod.number().nullish(),
+      tipPercentOverride: zod.number().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -299,7 +299,7 @@ export const GetBillUsersResponseItem = zod.object({
   billId: zod.number(),
   name: zod.string(),
   color: zod.string(),
-  tipOverride: zod.number().nullish(),
+  tipPercentOverride: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const GetBillUsersResponse = zod.array(GetBillUsersResponseItem);
@@ -317,7 +317,7 @@ export const CreateBillUserBody = zod.object({
 });
 
 /**
- * @summary Update a participant (e.g. tip_override)
+ * @summary Update a participant (e.g. tipPercentOverride)
  */
 export const UpdateBillUserParams = zod.object({
   billId: zod.coerce.number(),
@@ -327,7 +327,7 @@ export const UpdateBillUserParams = zod.object({
 export const UpdateBillUserBody = zod.object({
   name: zod.string().optional(),
   color: zod.string().optional(),
-  tipOverride: zod.number().nullish(),
+  tipPercentOverride: zod.number().nullish(),
 });
 
 export const UpdateBillUserResponse = zod.object({
@@ -335,7 +335,7 @@ export const UpdateBillUserResponse = zod.object({
   billId: zod.number(),
   name: zod.string(),
   color: zod.string(),
-  tipOverride: zod.number().nullish(),
+  tipPercentOverride: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -360,6 +360,7 @@ export const GetBillTotalsResponse = zod.object({
   taxAmount: zod.number(),
   tipPercent: zod.number(),
   tipAmount: zod.number(),
+  averageTipPercent: zod.number(),
   grandTotal: zod.number(),
   perPerson: zod.array(
     zod.object({
@@ -368,6 +369,7 @@ export const GetBillTotalsResponse = zod.object({
       color: zod.string(),
       subtotal: zod.number(),
       taxShare: zod.number(),
+      tipPercent: zod.number(),
       tipAmount: zod.number(),
       tipIsCustom: zod.boolean(),
       total: zod.number(),

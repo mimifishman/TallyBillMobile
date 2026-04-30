@@ -470,7 +470,7 @@ paths:
     put:
       operationId: updateBillUser
       tags: [bill-users]
-      summary: Update a participant (e.g. tip_override)
+      summary: Update a participant (e.g. tipPercentOverride)
       parameters:
         - name: billId
           in: path
@@ -794,7 +794,7 @@ components:
           type: string
         color:
           type: string
-        tipOverride:
+        tipPercentOverride:
           type: number
           nullable: true
         createdAt:
@@ -825,7 +825,7 @@ components:
           type: string
         color:
           type: string
-        tipOverride:
+        tipPercentOverride:
           type: number
           nullable: true
 
@@ -891,6 +891,8 @@ components:
           type: number
         taxShare:
           type: number
+        tipPercent:
+          type: number
         tipAmount:
           type: number
         tipIsCustom:
@@ -903,6 +905,7 @@ components:
         - color
         - subtotal
         - taxShare
+        - tipPercent
         - tipAmount
         - tipIsCustom
         - total
@@ -920,6 +923,8 @@ components:
           type: number
         tipAmount:
           type: number
+        averageTipPercent:
+          type: number
         grandTotal:
           type: number
         perPerson:
@@ -932,6 +937,7 @@ components:
         - taxAmount
         - tipPercent
         - tipAmount
+        - averageTipPercent
         - grandTotal
         - perPerson
 

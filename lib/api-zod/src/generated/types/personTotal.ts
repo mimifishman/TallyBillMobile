@@ -12,6 +12,7 @@ export interface PersonTotal {
   color: string;
   subtotal: number;
   taxShare: number;
+  tipPercent: number;
   tipAmount: number;
   tipIsCustom: boolean;
   total: number;

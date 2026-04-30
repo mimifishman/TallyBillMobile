@@ -1570,7 +1570,7 @@ export const useCreateBillUser = <
 };
 
 /**
- * @summary Update a participant (e.g. tip_override)
+ * @summary Update a participant (e.g. tipPercentOverride)
  */
 export const getUpdateBillUserUrl = (billId: number, userId: number) => {
   return `/api/bills/${billId}/users/${userId}`;
@@ -1635,7 +1635,7 @@ export type UpdateBillUserMutationBody = BodyType<UpdateBillUserRequest>;
 export type UpdateBillUserMutationError = ErrorType<unknown>;
 
 /**
- * @summary Update a participant (e.g. tip_override)
+ * @summary Update a participant (e.g. tipPercentOverride)
  */
 export const useUpdateBillUser = <
   TError = ErrorType<unknown>,

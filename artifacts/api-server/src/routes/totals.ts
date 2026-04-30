@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
     : [];
 
   const taxPercent = parseFloat(String(bill.taxPercent)) || 0;
-  const tipPercent = parseFloat(String(bill.tipPercent)) || 0;
+  const billTipPercent = parseFloat(String(bill.tipPercent)) || 0;
 
   const personSubtotals = new Map<number, number>();
   for (const user of billUsers) {
@@ -40,34 +40,19 @@ router.get("/", async (req, res) => {
   }
 
   const billSubtotal = Array.from(personSubtotals.values()).reduce((a, b) => a + b, 0);
-
   const taxAmount = Math.round(billSubtotal * (taxPercent / 100) * 100) / 100;
-  const tipAmount = Math.round(billSubtotal * (tipPercent / 100) * 100) / 100;
-
-  const customTipTotal = billUsers
-    .filter((u) => u.tipOverride !== null)
-    .reduce((sum, u) => sum + (parseFloat(String(u.tipOverride)) || 0), 0);
 
   const perPerson = billUsers.map((user) => {
     const subtotal = personSubtotals.get(user.id) ?? 0;
     const proportion = billSubtotal > 0 ? subtotal / billSubtotal : 0;
     const taxShare = Math.round(taxAmount * proportion * 100) / 100;
 
-    let personTip: number;
-    let tipIsCustom: boolean;
-    if (user.tipOverride !== null && user.tipOverride !== undefined) {
-      personTip = parseFloat(String(user.tipOverride)) || 0;
-      tipIsCustom = true;
-    } else {
-      const unassignedTip = tipAmount - customTipTotal;
-      const usersWithoutOverride = billUsers.filter((u) => u.tipOverride === null || u.tipOverride === undefined);
-      const subtotalWithoutOverride = usersWithoutOverride.reduce(
-        (sum, u) => sum + (personSubtotals.get(u.id) ?? 0), 0
-      );
-      const proportionOfRemaining = subtotalWithoutOverride > 0 ? subtotal / subtotalWithoutOverride : 0;
-      personTip = Math.round(unassignedTip * proportionOfRemaining * 100) / 100;
-      tipIsCustom = false;
-    }
+    const hasOverride = user.tipPercentOverride !== null && user.tipPercentOverride !== undefined;
+    const personTipPercent = hasOverride
+      ? (parseFloat(String(user.tipPercentOverride)) || 0)
+      : billTipPercent;
+
+    const personTipAmount = Math.round(subtotal * (personTipPercent / 100) * 100) / 100;
 
     return {
       billUserId: user.id,
@@ -75,19 +60,28 @@ router.get("/", async (req, res) => {
       color: user.color,
       subtotal: Math.round(subtotal * 100) / 100,
       taxShare,
-      tipAmount: personTip,
-      tipIsCustom,
-      total: Math.round((subtotal + taxShare + personTip) * 100) / 100,
+      tipPercent: personTipPercent,
+      tipAmount: personTipAmount,
+      tipIsCustom: hasOverride,
+      total: Math.round((subtotal + taxShare + personTipAmount) * 100) / 100,
     };
   });
+
+  const totalTipAmount = perPerson.reduce((sum, p) => sum + p.tipAmount, 0);
+  const grandTotal = Math.round((billSubtotal + taxAmount + totalTipAmount) * 100) / 100;
+
+  const averageTipPercent = billUsers.length > 0
+    ? Math.round(perPerson.reduce((sum, p) => sum + p.tipPercent, 0) / billUsers.length * 100) / 100
+    : billTipPercent;
 
   res.json({
     billSubtotal: Math.round(billSubtotal * 100) / 100,
     taxPercent,
     taxAmount,
-    tipPercent,
-    tipAmount,
-    grandTotal: Math.round((billSubtotal + taxAmount + tipAmount) * 100) / 100,
+    tipPercent: billTipPercent,
+    tipAmount: Math.round(totalTipAmount * 100) / 100,
+    averageTipPercent,
+    grandTotal,
     perPerson,
   });
 });

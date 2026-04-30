@@ -11,6 +11,6 @@ export interface BillUser {
   billId: number;
   name: string;
   color: string;
-  tipOverride?: number | null;
+  tipPercentOverride?: number | null;
   createdAt: Date;
 }
