@@ -54,8 +54,8 @@ export interface Bill {
   restaurantName?: string | null;
   date: string;
   currency?: string | null;
-  taxAmount: number;
-  tipAmount: number;
+  taxPercent: number;
+  tipPercent: number;
   joinCode: string;
   createdAt: string;
 }
@@ -91,8 +91,8 @@ export interface CreateBillRequest {
   restaurantName?: string | null;
   date: string;
   currency?: string | null;
-  taxAmount: number;
-  tipAmount: number;
+  taxPercent: number;
+  tipPercent: number;
 }
 
 export interface UpdateBillRequest {
@@ -100,8 +100,8 @@ export interface UpdateBillRequest {
   restaurantName?: string | null;
   date?: string;
   currency?: string | null;
-  taxAmount?: number;
-  tipAmount?: number;
+  taxPercent?: number;
+  tipPercent?: number;
 }
 
 export interface JoinBillRequest {
@@ -139,7 +139,9 @@ export interface PersonTotal {
 
 export interface BillTotals {
   billSubtotal: number;
+  taxPercent: number;
   taxAmount: number;
+  tipPercent: number;
   tipAmount: number;
   grandTotal: number;
   perPerson: PersonTotal[];

@@ -51,7 +51,7 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/", optionalAuth, async (req: AuthRequest, res) => {
-  const { title, restaurantName, date, currency, taxAmount, tipAmount } = req.body;
+  const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
   if (!title || !date) {
     res.status(400).json({ error: "title and date are required" });
     return;
@@ -63,8 +63,8 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
     restaurantName: restaurantName || null,
     date,
     currency: currency || null,
-    taxAmount: String(taxAmount ?? 0),
-    tipAmount: String(tipAmount ?? 0),
+    taxPercent: String(taxPercent ?? 0),
+    tipPercent: String(tipPercent ?? 0),
     joinCode,
   }).returning();
   if (req.user && bill) {
@@ -119,14 +119,14 @@ router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
-  const { title, restaurantName, date, currency, taxAmount, tipAmount } = req.body;
+  const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
   const [updated] = await db.update(billsTable).set({
     ...(title && { title }),
     ...(restaurantName !== undefined && { restaurantName }),
     ...(date && { date }),
     ...(currency !== undefined && { currency: currency || null }),
-    ...(taxAmount !== undefined && { taxAmount: String(taxAmount) }),
-    ...(tipAmount !== undefined && { tipAmount: String(tipAmount) }),
+    ...(taxPercent !== undefined && { taxPercent: String(taxPercent) }),
+    ...(tipPercent !== undefined && { tipPercent: String(tipPercent) }),
   }).where(eq(billsTable.id, billId)).returning();
   res.json(updated);
 });

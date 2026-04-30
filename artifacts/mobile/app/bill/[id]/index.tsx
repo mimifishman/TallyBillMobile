@@ -156,8 +156,10 @@ export default function BillDetailScreen() {
   };
 
   const subtotal = lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0);
-  const taxAmount = parseFloat(String(bill.taxAmount));
-  const tipAmount = parseFloat(String(bill.tipAmount));
+  const taxPercent = parseFloat(String(bill.taxPercent)) || 0;
+  const tipPercent = parseFloat(String(bill.tipPercent)) || 0;
+  const taxAmount = Math.round(subtotal * (taxPercent / 100) * 100) / 100;
+  const tipAmount = Math.round(subtotal * (tipPercent / 100) * 100) / 100;
   const grandTotal = subtotal + taxAmount + tipAmount;
 
   return (
@@ -263,11 +265,11 @@ export default function BillDetailScreen() {
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(subtotal)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax</Text>
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax ({taxPercent}%)</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(taxAmount)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip</Text>
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip ({tipPercent}%)</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(tipAmount)}</Text>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />

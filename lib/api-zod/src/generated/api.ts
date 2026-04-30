@@ -67,8 +67,8 @@ export const GetBillsResponseItem = zod.object({
   restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
-  taxAmount: zod.number(),
-  tipAmount: zod.number(),
+  taxPercent: zod.number(),
+  tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -82,8 +82,8 @@ export const CreateBillBody = zod.object({
   restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
-  taxAmount: zod.number(),
-  tipAmount: zod.number(),
+  taxPercent: zod.number(),
+  tipPercent: zod.number(),
 });
 
 /**
@@ -100,8 +100,8 @@ export const JoinBillResponse = zod.object({
   restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
-  taxAmount: zod.number(),
-  tipAmount: zod.number(),
+  taxPercent: zod.number(),
+  tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -121,8 +121,8 @@ export const GetBillResponse = zod.object({
     restaurantName: zod.string().nullish(),
     date: zod.string(),
     currency: zod.string().nullish(),
-    taxAmount: zod.number(),
-    tipAmount: zod.number(),
+    taxPercent: zod.number(),
+    tipPercent: zod.number(),
     joinCode: zod.string(),
     createdAt: zod.coerce.date(),
   }),
@@ -162,8 +162,8 @@ export const UpdateBillBody = zod.object({
   restaurantName: zod.string().nullish(),
   date: zod.string().optional(),
   currency: zod.string().nullish(),
-  taxAmount: zod.number().optional(),
-  tipAmount: zod.number().optional(),
+  taxPercent: zod.number().optional(),
+  tipPercent: zod.number().optional(),
 });
 
 export const UpdateBillResponse = zod.object({
@@ -173,8 +173,8 @@ export const UpdateBillResponse = zod.object({
   restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
-  taxAmount: zod.number(),
-  tipAmount: zod.number(),
+  taxPercent: zod.number(),
+  tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -356,7 +356,9 @@ export const GetBillTotalsParams = zod.object({
 
 export const GetBillTotalsResponse = zod.object({
   billSubtotal: zod.number(),
+  taxPercent: zod.number(),
   taxAmount: zod.number(),
+  tipPercent: zod.number(),
   tipAmount: zod.number(),
   grandTotal: zod.number(),
   perPerson: zod.array(

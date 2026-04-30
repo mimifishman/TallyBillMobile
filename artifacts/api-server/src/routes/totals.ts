@@ -21,8 +21,8 @@ router.get("/", async (req, res) => {
     ? await db.select().from(billLineUsersTable).where(inArray(billLineUsersTable.billLineId, lineIds))
     : [];
 
-  const taxAmount = parseFloat(String(bill.taxAmount)) || 0;
-  const tipAmount = parseFloat(String(bill.tipAmount)) || 0;
+  const taxPercent = parseFloat(String(bill.taxPercent)) || 0;
+  const tipPercent = parseFloat(String(bill.tipPercent)) || 0;
 
   const personSubtotals = new Map<number, number>();
   for (const user of billUsers) {
@@ -40,6 +40,9 @@ router.get("/", async (req, res) => {
   }
 
   const billSubtotal = Array.from(personSubtotals.values()).reduce((a, b) => a + b, 0);
+
+  const taxAmount = Math.round(billSubtotal * (taxPercent / 100) * 100) / 100;
+  const tipAmount = Math.round(billSubtotal * (tipPercent / 100) * 100) / 100;
 
   const customTipTotal = billUsers
     .filter((u) => u.tipOverride !== null)
@@ -80,7 +83,9 @@ router.get("/", async (req, res) => {
 
   res.json({
     billSubtotal: Math.round(billSubtotal * 100) / 100,
+    taxPercent,
     taxAmount,
+    tipPercent,
     tipAmount,
     grandTotal: Math.round((billSubtotal + taxAmount + tipAmount) * 100) / 100,
     perPerson,

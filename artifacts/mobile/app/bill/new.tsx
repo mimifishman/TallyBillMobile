@@ -27,8 +27,8 @@ export default function NewBillScreen() {
   const [restaurantName, setRestaurantName] = useState("");
   const [date, setDate] = useState(today);
   const [currency, setCurrency] = useState("");
-  const [taxAmount, setTaxAmount] = useState("0");
-  const [tipAmount, setTipAmount] = useState("0");
+  const [taxPercent, setTaxPercent] = useState("0");
+  const [tipPercent, setTipPercent] = useState("0");
 
   const { data: currencyData } = useDetectCurrency();
   useEffect(() => {
@@ -57,8 +57,8 @@ export default function NewBillScreen() {
         restaurantName: restaurantName.trim() || null,
         date,
         currency: currency || null,
-        taxAmount: parseFloat(taxAmount) || 0,
-        tipAmount: parseFloat(tipAmount) || 0,
+        taxPercent: parseFloat(taxPercent) || 0,
+        tipPercent: parseFloat(tipPercent) || 0,
       },
     });
   };
@@ -131,30 +131,30 @@ export default function NewBillScreen() {
 
         <View style={styles.row}>
           <View style={[styles.formGroup, styles.flex]}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>TAX AMOUNT</Text>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>TAX %</Text>
             <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
               <Feather name="percent" size={14} color={colors.mutedForeground} />
               <TextInput
                 style={[styles.inputInner, { color: colors.foreground }]}
-                placeholder="0.00"
+                placeholder="0"
                 placeholderTextColor={colors.mutedForeground}
-                value={taxAmount}
-                onChangeText={setTaxAmount}
+                value={taxPercent}
+                onChangeText={setTaxPercent}
                 keyboardType="numeric"
               />
             </View>
           </View>
 
           <View style={[styles.formGroup, styles.flex]}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>TIP AMOUNT</Text>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>TIP %</Text>
             <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
               <Feather name="heart" size={14} color={colors.mutedForeground} />
               <TextInput
                 style={[styles.inputInner, { color: colors.foreground }]}
-                placeholder="0.00"
+                placeholder="0"
                 placeholderTextColor={colors.mutedForeground}
-                value={tipAmount}
-                onChangeText={setTipAmount}
+                value={tipPercent}
+                onChangeText={setTipPercent}
                 keyboardType="numeric"
               />
             </View>
@@ -164,7 +164,7 @@ export default function NewBillScreen() {
         <View style={[styles.hintCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
           <Feather name="info" size={14} color={colors.mutedForeground} />
           <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-            Tip is split proportionally per person by default. You can adjust each person's tip on the totals screen.
+            Enter tax and tip as percentages (e.g. 8 for 8%). Amounts are calculated from the subtotal. You can adjust each person's tip on the totals screen.
           </Text>
         </View>
       </ScrollView>

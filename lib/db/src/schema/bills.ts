@@ -10,8 +10,8 @@ export const billsTable = pgTable("bills", {
   restaurantName: text("restaurant_name"),
   date: text("date").notNull(),
   currency: text("currency"),
-  taxAmount: numeric("tax_amount", { precision: 10, scale: 2 }).notNull().default("0"),
-  tipAmount: numeric("tip_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  taxPercent: numeric("tax_percent", { precision: 10, scale: 4 }).notNull().default("0"),
+  tipPercent: numeric("tip_percent", { precision: 10, scale: 4 }).notNull().default("0"),
   joinCode: text("join_code").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

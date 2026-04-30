@@ -13,8 +13,8 @@ export interface Bill {
   restaurantName?: string | null;
   date: string;
   currency?: string | null;
-  taxAmount: number;
-  tipAmount: number;
+  taxPercent: number;
+  tipPercent: number;
   joinCode: string;
   createdAt: Date;
 }

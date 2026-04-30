@@ -100,8 +100,8 @@ export default function TotalsScreen() {
           <Text style={styles.grandAmount}>{fmt(totals.grandTotal)}</Text>
           <View style={styles.grandBreakdown}>
             <Text style={styles.grandSub}>Subtotal: {fmt(totals.billSubtotal)}</Text>
-            <Text style={styles.grandSub}>Tax: {fmt(totals.taxAmount)}</Text>
-            <Text style={styles.grandSub}>Tip: {fmt(totals.tipAmount)}</Text>
+            <Text style={styles.grandSub}>Tax ({totals.taxPercent}%): {fmt(totals.taxAmount)}</Text>
+            <Text style={styles.grandSub}>Tip ({totals.tipPercent}%): {fmt(totals.tipAmount)}</Text>
           </View>
         </View>
 

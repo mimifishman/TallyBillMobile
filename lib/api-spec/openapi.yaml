@@ -698,9 +698,9 @@ components:
         currency:
           type: string
           nullable: true
-        taxAmount:
+        taxPercent:
           type: number
-        tipAmount:
+        tipPercent:
           type: number
         joinCode:
           type: string
@@ -711,8 +711,8 @@ components:
         - id
         - title
         - date
-        - taxAmount
-        - tipAmount
+        - taxPercent
+        - tipPercent
         - joinCode
         - createdAt
 
@@ -747,15 +747,15 @@ components:
         currency:
           type: string
           nullable: true
-        taxAmount:
+        taxPercent:
           type: number
-        tipAmount:
+        tipPercent:
           type: number
       required:
         - title
         - date
-        - taxAmount
-        - tipAmount
+        - taxPercent
+        - tipPercent
 
     UpdateBillRequest:
       type: object
@@ -770,9 +770,9 @@ components:
         currency:
           type: string
           nullable: true
-        taxAmount:
+        taxPercent:
           type: number
-        tipAmount:
+        tipPercent:
           type: number
 
     JoinBillRequest:
@@ -912,7 +912,11 @@ components:
       properties:
         billSubtotal:
           type: number
+        taxPercent:
+          type: number
         taxAmount:
+          type: number
+        tipPercent:
           type: number
         tipAmount:
           type: number
@@ -924,7 +928,9 @@ components:
             $ref: "#/components/schemas/PersonTotal"
       required:
         - billSubtotal
+        - taxPercent
         - taxAmount
+        - tipPercent
         - tipAmount
         - grandTotal
         - perPerson

@@ -9,7 +9,9 @@ import type { PersonTotal } from "./personTotal";
 
 export interface BillTotals {
   billSubtotal: number;
+  taxPercent: number;
   taxAmount: number;
+  tipPercent: number;
   tipAmount: number;
   grandTotal: number;
   perPerson: PersonTotal[];
