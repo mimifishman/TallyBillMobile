@@ -31,6 +31,7 @@ import {
   getGetBillQueryKey,
 } from "@workspace/api-client-react";
 import colors_data from "@/constants/colors";
+import { getCurrencySymbol } from "@/utils/currency";
 
 const PEOPLE_COLORS = colors_data.light.people;
 
@@ -150,8 +151,8 @@ export default function BillDetailScreen() {
   const { bill, lines, users } = data;
 
   const fmt = (n: number) => {
-    const currency = bill.currency ?? "";
-    return `${currency ? `${currency} ` : ""}${n.toFixed(2)}`;
+    const symbol = getCurrencySymbol(bill.currency);
+    return `${symbol ? `${symbol} ` : ""}${n.toFixed(2)}`;
   };
 
   const subtotal = lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0);

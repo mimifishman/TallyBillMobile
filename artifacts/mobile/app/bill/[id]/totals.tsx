@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "@/components/PersonBadge";
 import {
   useGetBillTotals,
@@ -73,8 +74,8 @@ export default function TotalsScreen() {
     });
   };
 
-  const currency = billData?.bill.currency ?? "";
-  const fmt = (n: number) => `${currency ? `${currency} ` : ""}${n.toFixed(2)}`;
+  const currencySymbol = getCurrencySymbol(billData?.bill.currency);
+  const fmt = (n: number) => `${currencySymbol ? `${currencySymbol} ` : ""}${n.toFixed(2)}`;
 
   if (isLoading || !totals) {
     return (

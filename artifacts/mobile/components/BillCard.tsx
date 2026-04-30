@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { getCurrencySymbol } from "@/utils/currency";
 
 interface BillCardProps {
   title: string;
@@ -34,7 +35,7 @@ export function BillCard({ title, restaurantName, date, currency, joinCode, onPr
           {currency ? (
             <>
               <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
-              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{currency}</Text>
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{getCurrencySymbol(currency)}</Text>
             </>
           ) : null}
         </View>

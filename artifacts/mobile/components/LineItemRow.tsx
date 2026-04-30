@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
 
 interface BillUser {
@@ -44,6 +45,7 @@ export function LineItemRow({
   onUpdate,
 }: LineItemRowProps) {
   const colors = useColors();
+  const currencySymbol = getCurrencySymbol(currency);
   const [editing, setEditing] = useState(false);
   const [editDesc, setEditDesc] = useState(description);
   const [editTotal, setEditTotal] = useState(String(total));
@@ -92,7 +94,7 @@ export function LineItemRow({
               {description}
             </Text>
             <Text style={[styles.itemTotal, { color: colors.mutedForeground }]}>
-              {currency ? `${currency} ` : ""}{Number(total).toFixed(2)}
+              {currencySymbol ? `${currencySymbol} ` : ""}{Number(total).toFixed(2)}
             </Text>
           </View>
           <TouchableOpacity onPress={() => setEditing(true)} style={styles.iconBtn}>
