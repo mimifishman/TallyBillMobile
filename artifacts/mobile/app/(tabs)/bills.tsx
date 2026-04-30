@@ -102,7 +102,7 @@ export default function BillsScreen() {
       />
 
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
+        style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === "web" ? 100 : insets.bottom + 65 }]}
         onPress={() => router.push("/bill/new")}
         activeOpacity={0.85}
       >
@@ -122,7 +122,6 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 100,
     width: 56,
     height: 56,
     borderRadius: 28,
