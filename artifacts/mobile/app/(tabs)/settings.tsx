@@ -53,7 +53,7 @@ export default function SettingsScreen() {
         styles.content,
         {
           paddingBottom: insets.bottom + 40,
-          ...(Platform.OS === "web" ? { paddingTop: 67 } : {}),
+          paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
         },
       ]}
     >

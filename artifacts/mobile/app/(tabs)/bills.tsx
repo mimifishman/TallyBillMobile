@@ -27,7 +27,7 @@ export default function BillsScreen() {
 
   if (!user) {
     return (
-      <View style={[styles.gateContainer, { backgroundColor: colors.background }]}>
+      <View style={[styles.gateContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <View style={[styles.gateIconWrap, { backgroundColor: "rgba(31,136,61,0.1)" }]}>
           <Feather name="lock" size={32} color={colors.primary} />
         </View>
@@ -67,7 +67,7 @@ export default function BillsScreen() {
           styles.list,
           {
             paddingBottom: insets.bottom + 100,
-            ...(Platform.OS === "web" ? { paddingTop: 67 } : {}),
+            paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
           },
         ]}
         refreshControl={
