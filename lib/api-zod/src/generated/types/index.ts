@@ -12,6 +12,7 @@ export * from "./billDetail";
 export * from "./billLine";
 export * from "./billTotals";
 export * from "./billUser";
+export * from "./billUsersItem";
 export * from "./bulkCreateBillLinesBody";
 export * from "./changePasswordRequest";
 export * from "./createBillLineRequest";

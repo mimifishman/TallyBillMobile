@@ -16,4 +16,6 @@ export interface BillTotals {
   averageTipPercent: number;
   grandTotal: number;
   perPerson: PersonTotal[];
+  /** True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person */
+  settled: boolean;
 }

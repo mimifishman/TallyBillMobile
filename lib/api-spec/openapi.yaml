@@ -707,6 +707,25 @@ components:
         createdAt:
           type: string
           format: date-time
+        settled:
+          type: boolean
+          description: True when every line item on the bill has been assigned to at least one person
+        users:
+          type: array
+          description: Lightweight participant summary for list rendering (id, name, color)
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              color:
+                type: string
+            required:
+              - id
+              - name
+              - color
       required:
         - id
         - title
@@ -931,6 +950,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PersonTotal"
+        settled:
+          type: boolean
+          description: True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person
       required:
         - billSubtotal
         - taxPercent
@@ -940,6 +962,7 @@ components:
         - averageTipPercent
         - grandTotal
         - perPerson
+        - settled
 
     OcrLineItem:
       type: object

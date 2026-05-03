@@ -12,3 +12,9 @@ id = "i2tnxJOzyp0BfoD9kvKfR"
 uri = "file://artifacts/mobile/assets/images/splash.png"
 type = "image"
 title = "tallybill splash"
+
+[[generated]]
+id = "CIJZ1mQWThEaK3sXZvEo2"
+uri = "file://attached_assets/generated_images/generated_image.png"
+type = "image"
+title = "generated_image"

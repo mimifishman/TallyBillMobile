@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -15,7 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Skeleton } from "@/components/Skeleton";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { PersonBadge } from "@/components/PersonBadge";
@@ -142,8 +143,22 @@ export default function BillDetailScreen() {
 
   if (isLoading || !data) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[styles.flex, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
+          <Skeleton height={20} width={140} />
+        </View>
+        <View style={[styles.content, { gap: 20 }]}>
+          <Skeleton height={14} width={70} />
+          <View style={{ flexDirection: "row", gap: 16 }}>
+            <Skeleton height={44} width={44} borderRadius={22} />
+            <Skeleton height={44} width={44} borderRadius={22} />
+            <Skeleton height={44} width={44} borderRadius={22} />
+          </View>
+          <Skeleton height={14} width={70} />
+          <Skeleton height={60} borderRadius={10} />
+          <Skeleton height={60} borderRadius={10} />
+          <Skeleton height={140} borderRadius={12} />
+        </View>
       </View>
     );
   }
@@ -200,15 +215,19 @@ export default function BillDetailScreen() {
             </Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peopleScroll}>
-              {users.map((u) => (
-                <PersonBadge
+              {users.map((u, i) => (
+                <Animated.View
                   key={u.id}
-                  name={u.name}
-                  color={u.color}
-                  size="lg"
-                  showName
-                  onPress={() => handleDeletePerson(u.id, u.name)}
-                />
+                  entering={FadeInDown.delay(i * 40).springify().damping(14).mass(0.6)}
+                >
+                  <PersonBadge
+                    name={u.name}
+                    color={u.color}
+                    size="lg"
+                    showName
+                    onPress={() => handleDeletePerson(u.id, u.name)}
+                  />
+                </Animated.View>
               ))}
             </ScrollView>
           )}

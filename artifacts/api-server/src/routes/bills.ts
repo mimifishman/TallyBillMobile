@@ -47,7 +47,45 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
   const allBillIds = new Set(ownedBills.map((b) => b.id));
   const combined = [...ownedBills, ...memberBills.filter((b) => !allBillIds.has(b.id))];
   combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  res.json(combined);
+
+  const billIds = combined.map((b) => b.id);
+  if (billIds.length === 0) {
+    res.json([]);
+    return;
+  }
+  const allLines = await db.select().from(billLinesTable).where(inArray(billLinesTable.billId, billIds));
+  const allLineIds = allLines.map((l) => l.id);
+  const allAssignments = allLineIds.length > 0
+    ? await db.select().from(billLineUsersTable).where(inArray(billLineUsersTable.billLineId, allLineIds))
+    : [];
+  const allUsers = await db.select().from(billUsersTable).where(inArray(billUsersTable.billId, billIds));
+
+  const assignedLineIds = new Set(allAssignments.map((a) => a.billLineId));
+  const linesByBill = new Map<number, typeof allLines>();
+  for (const line of allLines) {
+    const arr = linesByBill.get(line.billId);
+    if (arr) arr.push(line);
+    else linesByBill.set(line.billId, [line]);
+  }
+  const usersByBill = new Map<number, { id: number; name: string; color: string }[]>();
+  for (const u of allUsers) {
+    const entry = { id: u.id, name: u.name, color: u.color };
+    const arr = usersByBill.get(u.billId);
+    if (arr) arr.push(entry);
+    else usersByBill.set(u.billId, [entry]);
+  }
+
+  const enriched = combined.map((bill) => {
+    const billLines = linesByBill.get(bill.id) ?? [];
+    const users = usersByBill.get(bill.id) ?? [];
+    const settled =
+      users.length > 0 &&
+      billLines.length > 0 &&
+      billLines.every((l) => assignedLineIds.has(l.id));
+    return { ...bill, settled, users };
+  });
+
+  res.json(enriched);
 });
 
 router.post("/", optionalAuth, async (req: AuthRequest, res) => {

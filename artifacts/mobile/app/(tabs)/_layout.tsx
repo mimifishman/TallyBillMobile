@@ -3,7 +3,7 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
@@ -20,6 +20,14 @@ function NativeTabLayout() {
         <Label>Settings</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
+  );
+}
+
+function ActiveDot({ color }: { color: string }) {
+  return (
+    <View style={styles.dotWrap} pointerEvents="none">
+      <View style={[styles.dot, { backgroundColor: color }]} />
+    </View>
   );
 }
 
@@ -47,7 +55,7 @@ function ClassicTabLayout() {
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
+              intensity={80}
               tint={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
             />
@@ -62,29 +70,72 @@ function ClassicTabLayout() {
         name="bills"
         options={{
           title: "My Bills",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="doc.text" tintColor={color} size={22} />
-            ) : (
-              <Feather name="file-text" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={styles.iconWrap}>
+              {isIOS ? (
+                <SymbolView
+                  name={focused ? "doc.text.fill" : "doc.text"}
+                  tintColor={color}
+                  size={22}
+                />
+              ) : (
+                <Ionicons
+                  name={focused ? "document-text" : "document-text-outline"}
+                  size={22}
+                  color={color}
+                />
+              )}
+              {focused ? <ActiveDot color={colors.primary} /> : null}
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="gearshape" tintColor={color} size={22} />
-            ) : (
-              <Feather name="settings" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={styles.iconWrap}>
+              {isIOS ? (
+                <SymbolView
+                  name={focused ? "gearshape.fill" : "gearshape"}
+                  tintColor={color}
+                  size={22}
+                />
+              ) : (
+                <Ionicons
+                  name={focused ? "settings" : "settings-outline"}
+                  size={22}
+                  color={color}
+                />
+              )}
+              {focused ? <ActiveDot color={colors.primary} /> : null}
+            </View>
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dotWrap: {
+    position: "absolute",
+    bottom: -8,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+});
 
 export default function TabLayout() {
   if (isLiquidGlassAvailable()) {

@@ -1,8 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -11,11 +10,61 @@ import {
   View,
   Platform,
 } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  FadeInDown,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { BillCard } from "@/components/BillCard";
+import { BillCardSkeleton } from "@/components/Skeleton";
+import { EmptyBillsIllustration } from "@/components/EmptyBillsIllustration";
 import { useGetBills, getGetBillsQueryKey } from "@workspace/api-client-react";
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+function PulsingFab({
+  pulse,
+  bottom,
+  bg,
+  onPress,
+}: {
+  pulse: boolean;
+  bottom: number;
+  bg: string;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (pulse) {
+      scale.value = withRepeat(
+        withTiming(1.12, { duration: 850, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true,
+      );
+    } else {
+      scale.value = withTiming(1, { duration: 200 });
+    }
+  }, [pulse, scale]);
+
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <AnimatedTouchable
+      style={[styles.fab, { backgroundColor: bg, bottom }, animStyle]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <Feather name="plus" size={26} color="#fff" />
+    </AnimatedTouchable>
+  );
+}
 
 export default function BillsScreen() {
   const colors = useColors();
@@ -28,7 +77,7 @@ export default function BillsScreen() {
   if (!user) {
     return (
       <View style={[styles.gateContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <View style={[styles.gateIconWrap, { backgroundColor: "rgba(31,136,61,0.1)" }]}>
+        <View style={[styles.gateIconWrap, { backgroundColor: colors.primarySoft }]}>
           <Feather name="lock" size={32} color={colors.primary} />
         </View>
         <Text style={[styles.gateTitle, { color: colors.foreground }]}>Sign in to see history</Text>
@@ -58,6 +107,9 @@ export default function BillsScreen() {
     );
   }
 
+  const isEmpty = !isLoading && (!bills || bills.length === 0);
+  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
@@ -74,40 +126,45 @@ export default function BillsScreen() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }
         scrollEnabled={!!(bills && bills.length > 0)}
-        renderItem={({ item }) => (
-          <BillCard
-            title={item.title}
-            restaurantName={item.restaurantName}
-            date={item.date}
-            currency={item.currency}
-            joinCode={item.joinCode}
-            onPress={() => router.push(`/bill/${item.id}`)}
-          />
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
+            <BillCard
+              title={item.title}
+              restaurantName={item.restaurantName}
+              date={item.date}
+              currency={item.currency}
+              joinCode={item.joinCode}
+              participants={item.users}
+              status={item.settled ? "settled" : "open"}
+              onPress={() => router.push(`/bill/${item.id}`)}
+            />
+          </Animated.View>
         )}
         ListEmptyComponent={
           isLoading ? (
-            <View style={styles.center}>
-              <ActivityIndicator color={colors.primary} />
+            <View style={styles.skeletonWrap}>
+              <BillCardSkeleton />
+              <BillCardSkeleton />
+              <BillCardSkeleton />
             </View>
           ) : (
-            <View style={styles.empty}>
-              <Feather name="file-text" size={40} color={colors.mutedForeground} />
+            <Animated.View entering={FadeInDown.duration(400)} style={styles.empty}>
+              <EmptyBillsIllustration size={220} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No bills yet</Text>
               <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
-                Create your first bill to get started
+                Tap the + button to start your first bill and split it with friends
               </Text>
-            </View>
+            </Animated.View>
           )
         }
       />
 
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === "web" ? 100 : insets.bottom + 65 }]}
+      <PulsingFab
+        pulse={isEmpty}
+        bottom={fabBottom}
+        bg={colors.primary}
         onPress={() => router.push("/bill/new")}
-        activeOpacity={0.85}
-      >
-        <Feather name="plus" size={24} color="#fff" />
-      </TouchableOpacity>
+      />
     </View>
   );
 }
@@ -115,23 +172,23 @@ export default function BillsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { paddingHorizontal: 16, paddingTop: 12 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
-  empty: { alignItems: "center", paddingTop: 80, gap: 8 },
-  emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 40 },
+  skeletonWrap: { paddingTop: 8 },
+  empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32, gap: 10 },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 },
+  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   fab: {
     position: "absolute",
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowColor: "#16A34A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   gateContainer: {
     flex: 1,

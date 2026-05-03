@@ -47,6 +47,12 @@ export interface SuccessResponse {
   message: string;
 }
 
+export type BillUsersItem = {
+  id: number;
+  name: string;
+  color: string;
+};
+
 export interface Bill {
   id: number;
   ownerUserId?: number | null;
@@ -58,6 +64,10 @@ export interface Bill {
   tipPercent: number;
   joinCode: string;
   createdAt: string;
+  /** True when every line item on the bill has been assigned to at least one person */
+  settled?: boolean;
+  /** Lightweight participant summary for list rendering (id, name, color) */
+  users?: BillUsersItem[];
 }
 
 export interface BillLine {
@@ -147,6 +157,8 @@ export interface BillTotals {
   averageTipPercent: number;
   grandTotal: number;
   perPerson: PersonTotal[];
+  /** True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person */
+  settled: boolean;
 }
 
 export interface OcrLineItem {

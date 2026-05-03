@@ -71,6 +71,24 @@ export const GetBillsResponseItem = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  settled: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when every line item on the bill has been assigned to at least one person",
+    ),
+  users: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        color: zod.string(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Lightweight participant summary for list rendering (id, name, color)",
+    ),
 });
 export const GetBillsResponse = zod.array(GetBillsResponseItem);
 
@@ -104,6 +122,24 @@ export const JoinBillResponse = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  settled: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when every line item on the bill has been assigned to at least one person",
+    ),
+  users: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        color: zod.string(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Lightweight participant summary for list rendering (id, name, color)",
+    ),
 });
 
 /**
@@ -125,6 +161,24 @@ export const GetBillResponse = zod.object({
     tipPercent: zod.number(),
     joinCode: zod.string(),
     createdAt: zod.coerce.date(),
+    settled: zod
+      .boolean()
+      .optional()
+      .describe(
+        "True when every line item on the bill has been assigned to at least one person",
+      ),
+    users: zod
+      .array(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          color: zod.string(),
+        }),
+      )
+      .optional()
+      .describe(
+        "Lightweight participant summary for list rendering (id, name, color)",
+      ),
   }),
   lines: zod.array(
     zod.object({
@@ -177,6 +231,24 @@ export const UpdateBillResponse = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  settled: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when every line item on the bill has been assigned to at least one person",
+    ),
+  users: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        color: zod.string(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Lightweight participant summary for list rendering (id, name, color)",
+    ),
 });
 
 /**
@@ -375,6 +447,11 @@ export const GetBillTotalsResponse = zod.object({
       total: zod.number(),
     }),
   ),
+  settled: zod
+    .boolean()
+    .describe(
+      "True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person",
+    ),
 });
 
 /**

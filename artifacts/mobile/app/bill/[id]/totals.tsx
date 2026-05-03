@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
@@ -12,11 +12,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "@/components/PersonBadge";
+import { Skeleton } from "@/components/Skeleton";
+import { Confetti } from "@/components/Confetti";
 import {
   useGetBillTotals,
   useGetBill,
@@ -81,10 +91,42 @@ export default function TotalsScreen() {
     return Number.isInteger(rounded) ? `${rounded}` : `${rounded}`;
   };
 
+  const isSettled = totals?.settled === true;
+
+  const checkScale = useSharedValue(0);
+  const [confettiKey, setConfettiKey] = useState(0);
+
+  useEffect(() => {
+    if (isSettled) {
+      checkScale.value = 0;
+      checkScale.value = withSequence(
+        withTiming(0, { duration: 100 }),
+        withSpring(1.2, { damping: 6, stiffness: 140 }),
+        withSpring(1, { damping: 10, stiffness: 160 }),
+      );
+      setConfettiKey((k) => k + 1);
+    } else {
+      checkScale.value = withTiming(0, { duration: 200 });
+    }
+  }, [isSettled, checkScale]);
+
+  const checkAnim = useAnimatedStyle(() => ({
+    transform: [{ scale: checkScale.value }],
+    opacity: checkScale.value,
+  }));
+
   if (isLoading || !totals) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[styles.flex, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Bill Totals</Text>
+        </View>
+        <View style={[styles.content, { gap: 16 }]}>
+          <Skeleton height={140} borderRadius={16} />
+          <Skeleton height={14} width={100} />
+          <Skeleton height={90} borderRadius={14} />
+          <Skeleton height={90} borderRadius={14} />
+        </View>
       </View>
     );
   }
@@ -99,17 +141,34 @@ export default function TotalsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
-        <View style={[styles.grandCard, { backgroundColor: colors.primary }]}>
-          <Text style={styles.grandLabel}>Grand Total</Text>
-          <Text style={styles.grandAmount}>{fmt(totals.grandTotal)}</Text>
-          <View style={styles.grandBreakdown}>
-            <Text style={styles.grandSub}>Subtotal: {fmt(totals.billSubtotal)}</Text>
-            <Text style={styles.grandSub}>Tax ({fmtPct(totals.taxPercent)}%): {fmt(totals.taxAmount)}</Text>
-            <Text style={styles.grandSub}>
-              Tip (avg {fmtPct(totals.averageTipPercent)}%): {fmt(totals.tipAmount)}
-            </Text>
-          </View>
+        <View>
+          <LinearGradient
+            colors={colors.gradientPrimary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.grandCard}
+          >
+            <Text style={styles.grandLabel}>Grand Total</Text>
+            <Text style={styles.grandAmount}>{fmt(totals.grandTotal)}</Text>
+            <View style={styles.grandBreakdown}>
+              <Text style={styles.grandSub}>Subtotal: {fmt(totals.billSubtotal)}</Text>
+              <Text style={styles.grandSub}>Tax ({fmtPct(totals.taxPercent)}%): {fmt(totals.taxAmount)}</Text>
+              <Text style={styles.grandSub}>
+                Tip (avg {fmtPct(totals.averageTipPercent)}%): {fmt(totals.tipAmount)}
+              </Text>
+            </View>
+          </LinearGradient>
+          {isSettled ? <Confetti trigger={confettiKey} count={36} /> : null}
         </View>
+
+        {isSettled ? (
+          <Animated.View style={[styles.settledBanner, { backgroundColor: colors.primarySoft }, checkAnim]}>
+            <View style={[styles.checkCircle, { backgroundColor: colors.primary }]}>
+              <Feather name="check" size={16} color="#fff" />
+            </View>
+            <Text style={[styles.settledText, { color: colors.primary }]}>All settled — every item is split!</Text>
+          </Animated.View>
+        ) : null}
 
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PER PERSON</Text>
 
@@ -120,8 +179,12 @@ export default function TotalsScreen() {
             </Text>
           </View>
         ) : (
-          totals.perPerson.map((person) => (
-            <View key={person.billUserId} style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          totals.perPerson.map((person, idx) => (
+            <Animated.View
+              key={person.billUserId}
+              entering={FadeInDown.delay(idx * 50).springify().damping(14)}
+              style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
               <View style={styles.personHeader}>
                 <PersonBadge name={person.name} color={person.color} size="md" />
                 <View style={styles.personInfo}>
@@ -164,7 +227,7 @@ export default function TotalsScreen() {
                   </View>
                 </View>
               </View>
-            </View>
+            </Animated.View>
           ))
         )}
       </ScrollView>
@@ -215,10 +278,35 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   content: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
   grandCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 18,
+    padding: 22,
     alignItems: "center",
     gap: 6,
+    shadowColor: "#16A34A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  settledBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  checkCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settledText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
   },
   grandLabel: { color: "rgba(255,255,255,0.95)", fontSize: 13, fontFamily: "Inter_500Medium" },
   grandAmount: { color: "#fff", fontSize: 36, fontFamily: "Inter_700Bold" },

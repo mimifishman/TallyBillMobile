@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BillUsersItem } from "./billUsersItem";
 
 export interface Bill {
   id: number;
@@ -17,4 +18,8 @@ export interface Bill {
   tipPercent: number;
   joinCode: string;
   createdAt: Date;
+  /** True when every line item on the bill has been assigned to at least one person */
+  settled?: boolean;
+  /** Lightweight participant summary for list rendering (id, name, color) */
+  users?: BillUsersItem[];
 }

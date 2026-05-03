@@ -1,5 +1,8 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import colors_data from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 
 interface PersonBadgeProps {
   name: string;
@@ -10,6 +13,15 @@ interface PersonBadgeProps {
   showName?: boolean;
 }
 
+const PEOPLE = colors_data.light.people;
+const GRADIENTS = colors_data.light.peopleGradients;
+
+function gradientFor(color: string): [string, string] {
+  const idx = PEOPLE.findIndex((c) => c.toLowerCase() === color.toLowerCase());
+  if (idx >= 0 && GRADIENTS[idx]) return GRADIENTS[idx];
+  return [color, color];
+}
+
 export function PersonBadge({
   name,
   color,
@@ -18,11 +30,14 @@ export function PersonBadge({
   onPress,
   showName = false,
 }: PersonBadgeProps) {
+  const themeColors = useColors();
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
   const fontSize = size === "sm" ? 11 : size === "lg" ? 16 : 14;
   const initial = name.charAt(0).toUpperCase();
+  const [start, end] = gradientFor(color);
+  const isUnselected = selected === false;
 
-  const badge = (
+  const badge = isUnselected ? (
     <View
       style={[
         styles.badge,
@@ -30,24 +45,35 @@ export function PersonBadge({
           width: dim,
           height: dim,
           borderRadius: dim / 2,
-          backgroundColor: selected === false ? "transparent" : color,
-          borderWidth: selected === false ? 2 : 0,
+          backgroundColor: "transparent",
+          borderWidth: 2,
           borderColor: color,
-          opacity: selected === false ? 0.4 : 1,
+          opacity: 0.55,
         },
       ]}
     >
-      <Text style={[styles.initial, { fontSize, color: selected === false ? color : "#fff" }]}>
-        {initial}
-      </Text>
+      <Text style={[styles.initial, { fontSize, color }]}>{initial}</Text>
     </View>
+  ) : (
+    <LinearGradient
+      colors={[start, end]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[
+        styles.badge,
+        styles.shadow,
+        { width: dim, height: dim, borderRadius: dim / 2 },
+      ]}
+    >
+      <Text style={[styles.initial, { fontSize, color: "#fff" }]}>{initial}</Text>
+    </LinearGradient>
   );
 
   if (showName) {
     return (
       <TouchableOpacity style={styles.withName} onPress={onPress} activeOpacity={0.7}>
         {badge}
-        <Text style={[styles.name, { color: "#1F2328" }]} numberOfLines={1}>{name}</Text>
+        <Text style={[styles.name, { color: themeColors.text }]} numberOfLines={1}>{name}</Text>
       </TouchableOpacity>
     );
   }
@@ -67,6 +93,13 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  shadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   initial: {
     fontFamily: "Inter_700Bold",

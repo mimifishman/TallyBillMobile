@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
@@ -64,7 +65,10 @@ export function LineItemRow({
   };
 
   return (
-    <View style={[styles.container, { borderColor: colors.border }]}>
+    <Animated.View
+      entering={FadeInDown.springify().damping(16).mass(0.6)}
+      style={[styles.container, { borderColor: colors.border }]}
+    >
       {editing ? (
         <View style={styles.editRow}>
           <TextInput
@@ -120,7 +124,7 @@ export function LineItemRow({
           ))}
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

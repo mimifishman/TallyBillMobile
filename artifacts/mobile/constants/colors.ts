@@ -1,33 +1,40 @@
 const colors = {
   light: {
-    text: "#1F2328",
-    tint: "#1F883D",
+    text: "#1F2937",
+    tint: "#16A34A",
 
-    background: "#FFFFFF",
-    foreground: "#1F2328",
+    background: "#FAFAF9",
+    foreground: "#1F2937",
 
-    card: "#F6F8FA",
-    cardForeground: "#1F2328",
+    card: "#FFFFFF",
+    cardForeground: "#1F2937",
 
-    primary: "#1F883D",
+    primary: "#16A34A",
     primaryForeground: "#FFFFFF",
+    primarySoft: "#DCFCE7",
 
-    secondary: "#D1D9E0",
-    secondaryForeground: "#1F2328",
+    secondary: "#E5E7EB",
+    secondaryForeground: "#1F2937",
 
-    muted: "#F6F8FA",
-    mutedForeground: "#59636E",
+    muted: "#F3F4F6",
+    mutedForeground: "#6B7280",
 
-    accent: "#1F883D",
+    accent: "#F97316",
     accentForeground: "#FFFFFF",
+    accentSoft: "#FFEDD5",
 
-    destructive: "#CF222E",
+    destructive: "#DC2626",
     destructiveForeground: "#FFFFFF",
 
-    border: "#D1D9E0",
-    input: "#D1D9E0",
+    border: "#E5E7EB",
+    input: "#E5E7EB",
 
-    // People palette — 8 distinct vibrant colors for bill participants
+    settled: "#9CA3AF",
+
+    gradientPrimary: ["#16A34A", "#22C55E"] as [string, string],
+    gradientAccent: ["#F97316", "#FB923C"] as [string, string],
+    gradientHeader: ["#FAFAF9", "#F3F4F6"] as [string, string],
+
     people: [
       "#E84393",
       "#FF6B35",
@@ -38,9 +45,20 @@ const colors = {
       "#E74C3C",
       "#1ABC9C",
     ],
+
+    peopleGradients: [
+      ["#EC4899", "#F472B6"],
+      ["#F97316", "#FBBF24"],
+      ["#3B82F6", "#6366F1"],
+      ["#8B5CF6", "#C084FC"],
+      ["#10B981", "#34D399"],
+      ["#F59E0B", "#FCD34D"],
+      ["#EF4444", "#F87171"],
+      ["#06B6D4", "#22D3EE"],
+    ] as [string, string][],
   },
 
-  radius: 10,
+  radius: 12,
 };
 
 export default colors;

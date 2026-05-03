@@ -74,6 +74,12 @@ router.get("/", async (req, res) => {
     ? Math.round(perPerson.reduce((sum, p) => sum + p.tipPercent, 0) / billUsers.length * 100) / 100
     : billTipPercent;
 
+  const assignedLineIds = new Set(assignments.map((a) => a.billLineId));
+  const settled =
+    lines.length > 0 &&
+    billUsers.length > 0 &&
+    lines.every((l) => assignedLineIds.has(l.id));
+
   res.json({
     billSubtotal: Math.round(billSubtotal * 100) / 100,
     taxPercent,
@@ -83,6 +89,7 @@ router.get("/", async (req, res) => {
     averageTipPercent,
     grandTotal,
     perPerson,
+    settled,
   });
 });
 
