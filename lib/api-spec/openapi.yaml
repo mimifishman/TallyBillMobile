@@ -242,6 +242,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Bill"
+    patch:
+      operationId: patchBill
+      tags: [bills]
+      summary: Edit bill header (owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchBillRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Only the bill owner can edit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteBill
       tags: [bills]
@@ -748,10 +791,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BillUser"
+        isOwner:
+          type: boolean
       required:
         - bill
         - lines
         - users
+        - isOwner
 
     CreateBillRequest:
       type: object
@@ -793,6 +839,21 @@ components:
           type: number
         tipPercent:
           type: number
+
+    PatchBillRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        restaurantName:
+          type: string
+          nullable: true
+        date:
+          type: string
+        currency:
+          type: string
+          nullable: true
 
     JoinBillRequest:
       type: object

@@ -94,6 +94,7 @@ export interface BillDetail {
   bill: Bill;
   lines: BillLine[];
   users: BillUser[];
+  isOwner: boolean;
 }
 
 export interface CreateBillRequest {
@@ -112,6 +113,14 @@ export interface UpdateBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+}
+
+export interface PatchBillRequest {
+  /** @minLength 1 */
+  title?: string;
+  restaurantName?: string | null;
+  date?: string;
+  currency?: string | null;
 }
 
 export interface JoinBillRequest {

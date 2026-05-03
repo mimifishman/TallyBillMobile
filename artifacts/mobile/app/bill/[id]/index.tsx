@@ -29,6 +29,7 @@ import {
   useDeleteBillLine,
   useUpdateBillLine,
   useToggleBillLineUser,
+  usePatchBill,
   getGetBillQueryKey,
 } from "@workspace/api-client-react";
 import colors_data from "@/constants/colors";
@@ -48,6 +49,11 @@ export default function BillDetailScreen() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemTotal, setNewItemTotal] = useState("");
+  const [showEditHeader, setShowEditHeader] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editRestaurant, setEditRestaurant] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editCurrency, setEditCurrency] = useState("");
 
   const { data, isLoading } = useGetBill(billId, {
     query: {
@@ -88,6 +94,44 @@ export default function BillDetailScreen() {
       },
     },
   });
+
+  const patchBillMutation = usePatchBill({
+    mutation: {
+      onSuccess: () => {
+        invalidate();
+        setShowEditHeader(false);
+      },
+      onError: () => {
+        Alert.alert("Couldn't save", "We couldn't update the bill. Please try again.");
+      },
+    },
+  });
+
+  const openEditHeader = () => {
+    if (!data) return;
+    setEditTitle(data.bill.title ?? "");
+    setEditRestaurant(data.bill.restaurantName ?? "");
+    setEditDate(data.bill.date ?? "");
+    setEditCurrency(data.bill.currency ?? "");
+    setShowEditHeader(true);
+  };
+
+  const handleSaveHeader = () => {
+    const trimmedTitle = editTitle.trim();
+    if (!trimmedTitle) {
+      Alert.alert("Title required", "Please enter a bill title.");
+      return;
+    }
+    patchBillMutation.mutate({
+      billId,
+      data: {
+        title: trimmedTitle,
+        restaurantName: editRestaurant.trim() ? editRestaurant.trim() : null,
+        date: editDate.trim(),
+        currency: editCurrency.trim() ? editCurrency.trim().toUpperCase() : null,
+      },
+    });
+  };
 
   const handleAddPerson = () => {
     if (!newPersonName.trim()) return;
@@ -163,7 +207,7 @@ export default function BillDetailScreen() {
     );
   }
 
-  const { bill, lines, users } = data;
+  const { bill, lines, users, isOwner } = data;
 
   const fmt = (n: number) => {
     const symbol = getCurrencySymbol(bill.currency);
@@ -191,6 +235,11 @@ export default function BillDetailScreen() {
             </Text>
           ) : null}
         </View>
+        {isOwner ? (
+          <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details">
+            <Feather name="edit-2" size={18} color={colors.foreground} />
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn}>
           <Feather name="share-2" size={20} color={colors.foreground} />
         </TouchableOpacity>
@@ -324,6 +373,62 @@ export default function BillDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
+      <Modal visible={showEditHeader} transparent animationType="fade">
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowEditHeader(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Bill Details</Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title</Text>
+            <TextInput
+              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Bill title"
+              placeholderTextColor={colors.mutedForeground}
+              value={editTitle}
+              onChangeText={setEditTitle}
+              autoFocus
+            />
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Restaurant (optional)</Text>
+            <TextInput
+              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Restaurant name"
+              placeholderTextColor={colors.mutedForeground}
+              value={editRestaurant}
+              onChangeText={setEditRestaurant}
+            />
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
+            <TextInput
+              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.mutedForeground}
+              value={editDate}
+              onChangeText={setEditDate}
+              autoCapitalize="none"
+            />
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Currency</Text>
+            <TextInput
+              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+              placeholder="e.g. USD"
+              placeholderTextColor={colors.mutedForeground}
+              value={editCurrency}
+              onChangeText={setEditCurrency}
+              autoCapitalize="characters"
+              maxLength={3}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity onPress={() => setShowEditHeader(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveHeader}
+                disabled={patchBillMutation.isPending}
+                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary, opacity: patchBillMutation.isPending ? 0.6 : 1 }]}
+              >
+                <Text style={styles.modalConfirmText}>{patchBillMutation.isPending ? "Saving..." : "Save"}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <Modal visible={showAddItem} transparent animationType="fade">
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowAddItem(false)}>
           <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -422,6 +527,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4, marginTop: 2 },
   modalInput: {
     borderWidth: 1.5,
     borderRadius: 10,

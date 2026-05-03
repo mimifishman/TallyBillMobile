@@ -13,4 +13,5 @@ export interface BillDetail {
   bill: Bill;
   lines: BillLine[];
   users: BillUser[];
+  isOwner: boolean;
 }

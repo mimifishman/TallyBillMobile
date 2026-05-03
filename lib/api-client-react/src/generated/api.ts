@@ -35,6 +35,7 @@ import type {
   LoginRequest,
   OcrReceiptBody,
   OcrResult,
+  PatchBillRequest,
   RegisterRequest,
   SuccessResponse,
   ToggleBillLineUser200,
@@ -784,6 +785,93 @@ export const useUpdateBill = <
   TContext
 > => {
   return useMutation(getUpdateBillMutationOptions(options));
+};
+
+/**
+ * @summary Edit bill header (owner only)
+ */
+export const getPatchBillUrl = (billId: number) => {
+  return `/api/bills/${billId}`;
+};
+
+export const patchBill = async (
+  billId: number,
+  patchBillRequest: PatchBillRequest,
+  options?: RequestInit,
+): Promise<Bill> => {
+  return customFetch<Bill>(getPatchBillUrl(billId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchBillRequest),
+  });
+};
+
+export const getPatchBillMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchBill>>,
+    TError,
+    { billId: number; data: BodyType<PatchBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchBill>>,
+  TError,
+  { billId: number; data: BodyType<PatchBillRequest> },
+  TContext
+> => {
+  const mutationKey = ["patchBill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchBill>>,
+    { billId: number; data: BodyType<PatchBillRequest> }
+  > = (props) => {
+    const { billId, data } = props ?? {};
+
+    return patchBill(billId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchBillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchBill>>
+>;
+export type PatchBillMutationBody = BodyType<PatchBillRequest>;
+export type PatchBillMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Edit bill header (owner only)
+ */
+export const usePatchBill = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchBill>>,
+    TError,
+    { billId: number; data: BodyType<PatchBillRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchBill>>,
+  TError,
+  { billId: number; data: BodyType<PatchBillRequest> },
+  TContext
+> => {
+  return useMutation(getPatchBillMutationOptions(options));
 };
 
 /**

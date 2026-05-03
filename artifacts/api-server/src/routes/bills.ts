@@ -159,7 +159,8 @@ router.get("/:billId", optionalAuth, async (req: AuthRequest, res) => {
   }
   const lines = await getBillLines(billId);
   const users = await db.select().from(billUsersTable).where(eq(billUsersTable.billId, billId));
-  res.json({ bill, lines, users });
+  const isOwner = !!req.user && bill.ownerUserId === req.user.userId;
+  res.json({ bill, lines, users, isOwner });
 });
 
 router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
@@ -177,6 +178,31 @@ router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
     ...(currency !== undefined && { currency: currency || null }),
     ...(taxPercent !== undefined && { taxPercent: String(taxPercent) }),
     ...(tipPercent !== undefined && { tipPercent: String(tipPercent) }),
+  }).where(eq(billsTable.id, billId)).returning();
+  res.json(updated);
+});
+
+router.patch("/:billId", requireAuth, async (req: AuthRequest, res) => {
+  const billId = parseInt(String(req.params["billId"]));
+  const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
+  if (!bill) {
+    res.status(404).json({ error: "Bill not found" });
+    return;
+  }
+  if (bill.ownerUserId !== req.user!.userId) {
+    res.status(403).json({ error: "Only the bill owner can edit bill details" });
+    return;
+  }
+  const { title, restaurantName, date, currency } = req.body;
+  if (title !== undefined && (typeof title !== "string" || !title.trim())) {
+    res.status(400).json({ error: "title cannot be empty" });
+    return;
+  }
+  const [updated] = await db.update(billsTable).set({
+    ...(title !== undefined && { title: title.trim() }),
+    ...(restaurantName !== undefined && { restaurantName: restaurantName ? String(restaurantName).trim() : null }),
+    ...(date !== undefined && { date }),
+    ...(currency !== undefined && { currency: currency || null }),
   }).where(eq(billsTable.id, billId)).returning();
   res.json(updated);
 });

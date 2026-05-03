@@ -202,6 +202,7 @@ export const GetBillResponse = zod.object({
       createdAt: zod.coerce.date(),
     }),
   ),
+  isOwner: zod.boolean(),
 });
 
 /**
@@ -249,6 +250,33 @@ export const UpdateBillResponse = zod.object({
     .describe(
       "Lightweight participant summary for list rendering (id, name, color)",
     ),
+});
+
+/**
+ * @summary Edit bill header (owner only)
+ */
+export const PatchBillParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const PatchBillBody = zod.object({
+  title: zod.string().min(1).optional(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string().optional(),
+  currency: zod.string().nullish(),
+});
+
+export const PatchBillResponse = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number().nullish(),
+  title: zod.string(),
+  restaurantName: zod.string().nullish(),
+  date: zod.string(),
+  currency: zod.string().nullish(),
+  taxPercent: zod.number(),
+  tipPercent: zod.number(),
+  joinCode: zod.string(),
+  createdAt: zod.coerce.date(),
 });
 
 /**

@@ -26,6 +26,7 @@ export * from "./loginRequest";
 export * from "./ocrLineItem";
 export * from "./ocrReceiptBody";
 export * from "./ocrResult";
+export * from "./patchBillRequest";
 export * from "./personTotal";
 export * from "./registerRequest";
 export * from "./successResponse";
