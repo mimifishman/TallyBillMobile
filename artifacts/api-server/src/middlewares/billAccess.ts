@@ -73,6 +73,12 @@ export function requireBillAccess(
           .where(eq(usersTable.clerkId, auth.userId))
           .limit(1);
         if (user) {
+          req.user = {
+            userId: user.id,
+            email: user.email,
+            firstName: user.firstName ?? null,
+            lastName: user.lastName ?? null,
+          };
           if (bill.ownerUserId === user.id) {
             req.billAccess = { billId, joinCode: bill.joinCode, via: "owner" };
             next();
