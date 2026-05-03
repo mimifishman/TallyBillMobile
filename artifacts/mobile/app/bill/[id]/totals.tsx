@@ -43,6 +43,16 @@ export default function TotalsScreen() {
   const queryClient = useQueryClient();
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editTipValue, setEditTipValue] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const { data: billData } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
   const { data: totals, isLoading } = useGetBillTotals(billId, { query: { queryKey: getGetBillTotalsQueryKey(billId) } });
@@ -170,7 +180,30 @@ export default function TotalsScreen() {
           </Animated.View>
         ) : null}
 
-        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PER PERSON</Text>
+        <View style={styles.sectionRow}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PER PERSON</Text>
+          {totals.perPerson.some((p) => p.items.length > 0) && (
+            <TouchableOpacity
+              onPress={() => {
+                const allIds = totals.perPerson.filter((p) => p.items.length > 0).map((p) => p.billUserId);
+                const allExpanded = allIds.every((id) => expandedIds.has(id));
+                setExpandedIds(allExpanded ? new Set() : new Set(allIds));
+              }}
+              style={[styles.expandAllBtn, { borderColor: colors.border }]}
+            >
+              <Feather
+                name={totals.perPerson.filter((p) => p.items.length > 0).every((p) => expandedIds.has(p.billUserId)) ? "minimize-2" : "maximize-2"}
+                size={12}
+                color={colors.mutedForeground}
+              />
+              <Text style={[styles.expandAllText, { color: colors.mutedForeground }]}>
+                {totals.perPerson.filter((p) => p.items.length > 0).every((p) => expandedIds.has(p.billUserId))
+                  ? "Collapse all"
+                  : "Expand all"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {totals.perPerson.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -185,7 +218,11 @@ export default function TotalsScreen() {
               entering={FadeInDown.delay(idx * 50).springify().damping(14)}
               style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
-              <View style={styles.personHeader}>
+              <TouchableOpacity
+                style={styles.personHeader}
+                onPress={() => person.items.length > 0 && toggleExpanded(person.billUserId)}
+                activeOpacity={person.items.length > 0 ? 0.7 : 1}
+              >
                 <PersonBadge name={person.name} color={person.color} size="md" />
                 <View style={styles.personInfo}>
                   <Text style={[styles.personName, { color: colors.foreground }]}>{person.name}</Text>
@@ -193,7 +230,42 @@ export default function TotalsScreen() {
                     {fmt(person.total)}
                   </Text>
                 </View>
-              </View>
+                {person.items.length > 0 && (
+                  <View style={[styles.expandBtn, { backgroundColor: colors.primarySoft }]}>
+                    <Feather
+                      name={expandedIds.has(person.billUserId) ? "minus" : "plus"}
+                      size={14}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {person.items.length > 0 && expandedIds.has(person.billUserId) ? (
+                <View style={[styles.itemsList, { borderTopColor: colors.border }]}>
+                  {person.items.map((item) => {
+                    const splitLabel =
+                      item.splitWithNames.length === 0
+                        ? "not split"
+                        : `split with ${item.splitWithNames.join(", ")}`;
+                    return (
+                      <View key={item.billLineId} style={styles.itemRow}>
+                        <View style={styles.itemLeft}>
+                          <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                            {item.description}
+                          </Text>
+                          <Text style={[styles.itemSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {fmt(item.lineTotal)} · {splitLabel}
+                          </Text>
+                        </View>
+                        <Text style={[styles.itemShare, { color: colors.foreground }]}>
+                          {fmt(item.share)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
 
               <View style={[styles.breakdown, { borderTopColor: colors.border }]}>
                 <View style={styles.breakdownRow}>
@@ -312,14 +384,24 @@ const styles = StyleSheet.create({
   grandAmount: { color: "#fff", fontSize: 36, fontFamily: "Inter_700Bold" },
   grandBreakdown: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 4 },
   grandSub: { color: "rgba(255,255,255,0.95)", fontSize: 13, fontFamily: "Inter_500Medium" },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, paddingHorizontal: 4 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
+  expandAllBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  expandAllText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   emptyContainer: { alignItems: "center", paddingVertical: 32 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   personCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   personHeader: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
+  expandBtn: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   personInfo: { flex: 1 },
   personName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   personTotal: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  itemsList: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+  itemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  itemLeft: { flex: 1, gap: 2 },
+  itemName: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  itemSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  itemShare: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   breakdown: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10, gap: 6 },
   breakdownRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   breakdownLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },

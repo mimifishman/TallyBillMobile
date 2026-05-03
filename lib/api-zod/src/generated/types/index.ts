@@ -28,6 +28,7 @@ export * from "./ocrReceiptBody";
 export * from "./ocrResult";
 export * from "./patchBillRequest";
 export * from "./personTotal";
+export * from "./personTotalItem";
 export * from "./registerRequest";
 export * from "./successResponse";
 export * from "./toggleBillLineUser200";

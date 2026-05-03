@@ -473,6 +473,21 @@ export const GetBillTotalsResponse = zod.object({
       tipAmount: zod.number(),
       tipIsCustom: zod.boolean(),
       total: zod.number(),
+      items: zod.array(
+        zod.object({
+          billLineId: zod.number(),
+          description: zod.string(),
+          lineTotal: zod
+            .number()
+            .describe("The original (full) price of the line item"),
+          share: zod.number().describe("This person's share of the line item"),
+          splitWithNames: zod
+            .array(zod.string())
+            .describe(
+              "Names of other people the line was split with (excludes this person)",
+            ),
+        }),
+      ),
     }),
   ),
   settled: zod

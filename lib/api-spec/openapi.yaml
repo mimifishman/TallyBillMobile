@@ -958,6 +958,31 @@ components:
         - unitPrice
         - total
 
+    PersonTotalItem:
+      type: object
+      properties:
+        billLineId:
+          type: integer
+        description:
+          type: string
+        lineTotal:
+          type: number
+          description: The original (full) price of the line item
+        share:
+          type: number
+          description: This person's share of the line item
+        splitWithNames:
+          type: array
+          description: Names of other people the line was split with (excludes this person)
+          items:
+            type: string
+      required:
+        - billLineId
+        - description
+        - lineTotal
+        - share
+        - splitWithNames
+
     PersonTotal:
       type: object
       properties:
@@ -979,6 +1004,10 @@ components:
           type: boolean
         total:
           type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonTotalItem"
       required:
         - billUserId
         - name
@@ -989,6 +1018,7 @@ components:
         - tipAmount
         - tipIsCustom
         - total
+        - items
 
     BillTotals:
       type: object

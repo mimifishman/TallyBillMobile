@@ -145,6 +145,17 @@ export interface CreateBillLineRequest {
   total: number;
 }
 
+export interface PersonTotalItem {
+  billLineId: number;
+  description: string;
+  /** The original (full) price of the line item */
+  lineTotal: number;
+  /** This person's share of the line item */
+  share: number;
+  /** Names of other people the line was split with (excludes this person) */
+  splitWithNames: string[];
+}
+
 export interface PersonTotal {
   billUserId: number;
   name: string;
@@ -155,6 +166,7 @@ export interface PersonTotal {
   tipAmount: number;
   tipIsCustom: boolean;
   total: number;
+  items: PersonTotalItem[];
 }
 
 export interface BillTotals {

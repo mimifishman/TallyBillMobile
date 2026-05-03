@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PersonTotalItem } from "./personTotalItem";
 
 export interface PersonTotal {
   billUserId: number;
@@ -16,4 +17,5 @@ export interface PersonTotal {
   tipAmount: number;
   tipIsCustom: boolean;
   total: number;
+  items: PersonTotalItem[];
 }

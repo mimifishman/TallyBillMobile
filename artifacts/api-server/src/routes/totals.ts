@@ -25,8 +25,12 @@ router.get("/", async (req, res) => {
   const billTipPercent = parseFloat(String(bill.tipPercent)) || 0;
 
   const personSubtotals = new Map<number, number>();
+  const personItems = new Map<number, Array<{ billLineId: number; description: string; lineTotal: number; share: number; splitWithNames: string[] }>>();
+  const userNameById = new Map<number, string>();
   for (const user of billUsers) {
     personSubtotals.set(user.id, 0);
+    personItems.set(user.id, []);
+    userNameById.set(user.id, user.name);
   }
 
   for (const line of lines) {
@@ -34,8 +38,20 @@ router.get("/", async (req, res) => {
     const lineAssignments = assignments.filter((a) => a.billLineId === line.id);
     if (lineAssignments.length === 0) continue;
     const share = lineTotal / lineAssignments.length;
+    const assignedUserIds = lineAssignments.map((a) => a.billUserId);
     for (const assignment of lineAssignments) {
       personSubtotals.set(assignment.billUserId, (personSubtotals.get(assignment.billUserId) ?? 0) + share);
+      const splitWithNames = assignedUserIds
+        .filter((uid) => uid !== assignment.billUserId)
+        .map((uid) => userNameById.get(uid) ?? "")
+        .filter((n) => n.length > 0);
+      personItems.get(assignment.billUserId)!.push({
+        billLineId: line.id,
+        description: line.description,
+        lineTotal: Math.round(lineTotal * 100) / 100,
+        share: Math.round(share * 100) / 100,
+        splitWithNames,
+      });
     }
   }
 
@@ -64,6 +80,7 @@ router.get("/", async (req, res) => {
       tipAmount: personTipAmount,
       tipIsCustom: hasOverride,
       total: Math.round((subtotal + taxShare + personTipAmount) * 100) / 100,
+      items: personItems.get(user.id) ?? [],
     };
   });
 
