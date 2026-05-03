@@ -136,8 +136,8 @@ export default function BillDetailScreen() {
     setEditRestaurant(data.bill.restaurantName ?? "");
     setEditDate(data.bill.date ?? "");
     setEditCurrency(data.bill.currency ?? "");
-    setEditTaxPercent(String(data.bill.taxPercent ?? 0));
-    setEditTipPercent(String(data.bill.tipPercent ?? 0));
+    setEditTaxPercent(String(parseFloat(parseFloat(String(data.bill.taxPercent ?? 0)).toFixed(2))));
+    setEditTipPercent(String(parseFloat(parseFloat(String(data.bill.tipPercent ?? 0)).toFixed(2))));
     setShowEditHeader(true);
   };
 
