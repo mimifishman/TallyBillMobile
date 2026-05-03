@@ -48,8 +48,20 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [codeError, setCodeError] = useState("");
+  const [secondFactor, setSecondFactor] = useState<
+    "totp" | "phone_code" | "email_code" | null
+  >(null);
 
   const isPending = fetchStatus === "fetching";
+
+  const pickSecondFactor = (): "totp" | "phone_code" | "email_code" | null => {
+    const factors = signIn.supportedSecondFactors ?? [];
+    const has = (s: string) => factors.some((f) => f.strategy === s);
+    if (has("totp")) return "totp";
+    if (has("phone_code")) return "phone_code";
+    if (has("email_code")) return "email_code";
+    return null;
+  };
 
   const handleEmailLogin = async () => {
     setEmailError("");
@@ -106,6 +118,22 @@ export default function LoginScreen() {
       });
     } else if (signIn.status === "needs_client_trust") {
       await signIn.mfa.sendEmailCode();
+    } else if (signIn.status === "needs_second_factor") {
+      const strategy = pickSecondFactor();
+      if (!strategy) {
+        setPasswordError(
+          "Two-factor authentication is required, but no supported method was found.",
+        );
+        return;
+      }
+      setSecondFactor(strategy);
+      setVerificationCode("");
+      setCodeError("");
+      if (strategy === "phone_code") {
+        await signIn.mfa.sendPhoneCode();
+      } else if (strategy === "email_code") {
+        await signIn.mfa.sendEmailCode();
+      }
     } else {
       if (__DEV__) {
         console.warn("[signIn unexpected status]", signIn.status);
@@ -117,7 +145,27 @@ export default function LoginScreen() {
   const handleVerify = async () => {
     setCodeError("");
     try {
-      await signIn.mfa.verifyEmailCode({ code: verificationCode });
+      let result: { error: { message?: string } | null } | undefined;
+      if (signIn.status === "needs_second_factor") {
+        if (secondFactor === "totp") {
+          result = await signIn.mfa.verifyTOTP({ code: verificationCode });
+        } else if (secondFactor === "phone_code") {
+          result = await signIn.mfa.verifyPhoneCode({ code: verificationCode });
+        } else if (secondFactor === "email_code") {
+          result = await signIn.mfa.verifyEmailCode({ code: verificationCode });
+        } else {
+          setCodeError(
+            "Two-factor authentication is required, but no supported method was found.",
+          );
+          return;
+        }
+      } else {
+        result = await signIn.mfa.verifyEmailCode({ code: verificationCode });
+      }
+      if (result?.error) {
+        setCodeError("Incorrect code. Please try again.");
+        return;
+      }
       if (signIn.status === "complete") {
         await signIn.finalize({
           navigate: () => {},
@@ -128,6 +176,18 @@ export default function LoginScreen() {
       }
     } catch {
       setCodeError("Incorrect code. Please try again.");
+    }
+  };
+
+  const resendSecondFactorCode = async () => {
+    if (signIn.status === "needs_second_factor") {
+      if (secondFactor === "phone_code") {
+        await signIn.mfa.sendPhoneCode();
+      } else if (secondFactor === "email_code") {
+        await signIn.mfa.sendEmailCode();
+      }
+    } else if (signIn.status === "needs_client_trust") {
+      await signIn.mfa.sendEmailCode();
     }
   };
 
@@ -178,7 +238,21 @@ export default function LoginScreen() {
     return <Redirect href="/(tabs)/bills" />;
   }
 
-  if (signIn.status === "needs_client_trust") {
+  const isVerifying =
+    signIn.status === "needs_client_trust" ||
+    signIn.status === "needs_second_factor";
+
+  if (isVerifying) {
+    const isTOTP =
+      signIn.status === "needs_second_factor" && secondFactor === "totp";
+    const isPhoneCode =
+      signIn.status === "needs_second_factor" && secondFactor === "phone_code";
+    const tagline = isTOTP
+      ? "Enter the code from your authenticator app"
+      : isPhoneCode
+        ? "Enter the code sent to your phone"
+        : "Enter the code sent to your email";
+    const canResend = !isTOTP;
     return (
       <KeyboardAvoidingView
         style={[styles.flex, { backgroundColor: colors.background }]}
@@ -196,7 +270,7 @@ export default function LoginScreen() {
             </View>
             <Text style={[styles.appName, { color: colors.foreground }]}>Verify your identity</Text>
             <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
-              Enter the code sent to your email
+              {tagline}
             </Text>
           </View>
           <View style={styles.form}>
@@ -229,15 +303,20 @@ export default function LoginScreen() {
                 <Text style={styles.primaryBtnText}>Verify</Text>
               )}
             </TouchableOpacity>
+            {canResend && (
+              <TouchableOpacity
+                onPress={() => { void resendSecondFactorCode(); }}
+                style={styles.linkBtn}
+              >
+                <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
+                  Resend code
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              onPress={() => signIn.mfa.sendEmailCode()}
+              onPress={() => { setSecondFactor(null); signIn.reset(); }}
               style={styles.linkBtn}
             >
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-                Resend code
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => signIn.reset()} style={styles.linkBtn}>
               <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
                 Start over
               </Text>
