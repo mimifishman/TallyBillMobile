@@ -136,8 +136,8 @@ export default function BillDetailScreen() {
     setEditRestaurant(data.bill.restaurantName ?? "");
     setEditDate(data.bill.date ?? "");
     setEditCurrency(data.bill.currency ?? "");
-    setEditTaxPercent(String(parseFloat(parseFloat(String(data.bill.taxPercent ?? 0)).toFixed(2))));
-    setEditTipPercent(String(parseFloat(parseFloat(String(data.bill.tipPercent ?? 0)).toFixed(2))));
+    setEditTaxPercent(String(parseFloat(String(data.bill.taxPercent ?? 0))));
+    setEditTipPercent(String(parseFloat(String(data.bill.tipPercent ?? 0))));
     setShowEditHeader(true);
   };
 
@@ -450,12 +450,8 @@ export default function BillDetailScreen() {
                     placeholder="0"
                     placeholderTextColor={colors.mutedForeground}
                     value={editTaxPercent}
-                    onChangeText={(v) => {
-                      const clean = v.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                      const parts = clean.split(".");
-                      setEditTaxPercent(parts[1] !== undefined ? `${parts[0]}.${parts[1].slice(0, 2)}` : clean);
-                    }}
-                    keyboardType="decimal-pad"
+                    onChangeText={setEditTaxPercent}
+                    keyboardType="numeric"
                   />
                 </View>
                 <View style={styles.taxTipField}>
@@ -465,12 +461,8 @@ export default function BillDetailScreen() {
                     placeholder="0"
                     placeholderTextColor={colors.mutedForeground}
                     value={editTipPercent}
-                    onChangeText={(v) => {
-                      const clean = v.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
-                      const parts = clean.split(".");
-                      setEditTipPercent(parts[1] !== undefined ? `${parts[0]}.${parts[1].slice(0, 2)}` : clean);
-                    }}
-                    keyboardType="decimal-pad"
+                    onChangeText={setEditTipPercent}
+                    keyboardType="numeric"
                   />
                 </View>
               </View>
