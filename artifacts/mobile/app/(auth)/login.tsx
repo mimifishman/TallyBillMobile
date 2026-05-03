@@ -6,7 +6,6 @@ import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -36,7 +35,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { continueAsGuest } = useAuth();
-  const { signIn, fetchStatus, errors } = useSignIn();
+  const { signIn, fetchStatus } = useSignIn();
   const { startSSOFlow } = useSSO();
 
   useWarmUpBrowser();
@@ -45,22 +44,101 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [codeError, setCodeError] = useState("");
 
   const isPending = fetchStatus === "fetching";
 
   const handleEmailLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter your email and password");
+    setEmailError("");
+    setPasswordError("");
+    if (!email) { setEmailError("Please enter your email address"); return; }
+    if (!password) { setPasswordError("Please enter your password"); return; }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      const createResult = await signIn.create({ identifier: normalizedEmail });
+      const createError = (createResult as { error?: { code?: string; message?: string } })?.error;
+      if (createError) {
+        const code = (createError.code ?? "").toLowerCase();
+        const msg = (createError.message ?? "").toLowerCase();
+        if (
+          code.includes("not_found") ||
+          code.includes("identifier") ||
+          msg.includes("couldn't find") ||
+          msg.includes("not found")
+        ) {
+          setEmailError("No account found with this email address.");
+        } else {
+          setEmailError("Could not sign in. Please try again.");
+        }
+        return;
+      }
+    } catch (err: unknown) {
+      const e = err as { errors?: Array<{ code?: string; message?: string }>; message?: string };
+      const code = (e.errors?.[0]?.code ?? "").toLowerCase();
+      const msg = ((e.errors?.[0]?.message ?? e.message) ?? "").toLowerCase();
+      if (
+        code.includes("not_found") ||
+        code.includes("identifier") ||
+        msg.includes("couldn't find") ||
+        msg.includes("not found")
+      ) {
+        setEmailError("No account found with this email address.");
+      } else {
+        setEmailError("Could not sign in. Please try again.");
+      }
       return;
     }
-    const { error } = await signIn.password({
-      emailAddress: email.trim().toLowerCase(),
-      password,
-    });
-    if (error) {
-      Alert.alert("Login Failed", error.message || "Invalid email or password");
+
+    const factors = (signIn.supportedFirstFactors ?? []) as Array<{ strategy?: string }>;
+    const hasPassword = factors.some((f) => f.strategy === "password");
+    const oauthStrategies = factors
+      .map((f) => f.strategy ?? "")
+      .filter((s) => s.startsWith("oauth_"));
+
+    if (!hasPassword && oauthStrategies.length > 0) {
+      const provider = oauthStrategies[0]!.replace("oauth_", "");
+      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+      setPasswordError(
+        `This email was registered with ${providerName}. Tap "Continue with ${providerName}" above to sign in.`,
+      );
       return;
     }
+
+    if (!hasPassword) {
+      setPasswordError("This email cannot sign in with a password. Try a social sign-in option.");
+      return;
+    }
+
+    try {
+      const pwResult = await signIn.password({
+        emailAddress: normalizedEmail,
+        password,
+      });
+      const pwError = (pwResult as { error?: { code?: string; message?: string } })?.error;
+      if (pwError) {
+        const code = (pwError.code ?? "").toLowerCase();
+        if (code.includes("password")) {
+          setPasswordError("Incorrect password. Please try again.");
+        } else {
+          setPasswordError("Could not sign in. Please try again.");
+        }
+        return;
+      }
+    } catch (err: unknown) {
+      const e = err as { errors?: Array<{ code?: string; message?: string }>; message?: string };
+      const code = (e.errors?.[0]?.code ?? "").toLowerCase();
+      if (code.includes("password")) {
+        setPasswordError("Incorrect password. Please try again.");
+      } else {
+        setPasswordError("Could not sign in. Please try again.");
+      }
+      return;
+    }
+
     if (signIn.status === "complete") {
       await signIn.finalize({
         navigate: ({ session }) => {
@@ -74,12 +152,19 @@ export default function LoginScreen() {
   };
 
   const handleVerify = async () => {
-    await signIn.mfa.verifyEmailCode({ code: verificationCode });
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: () => {},
-      });
-      router.replace("/(tabs)/bills");
+    setCodeError("");
+    try {
+      await signIn.mfa.verifyEmailCode({ code: verificationCode });
+      if (signIn.status === "complete") {
+        await signIn.finalize({
+          navigate: () => {},
+        });
+        router.replace("/(tabs)/bills");
+      } else {
+        setCodeError("Incorrect code. Please try again.");
+      }
+    } catch {
+      setCodeError("Incorrect code. Please try again.");
     }
   };
 
@@ -88,20 +173,34 @@ export default function LoginScreen() {
       try {
         const { createdSessionId, setActive } = await startSSOFlow({
           strategy,
-          redirectUrl: AuthSession.makeRedirectUri(),
+          redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }),
         });
-        if (createdSessionId) {
-          await setActive!({
-            session: createdSessionId,
-            navigate: async ({ session }) => {
-              if (session?.currentTask) return;
-              router.replace("/(tabs)/bills");
-            },
-          });
+        if (!createdSessionId || !setActive) return;
+        await setActive({
+          session: createdSessionId,
+          navigate: async ({ session }) => {
+            if (session?.currentTask) return;
+            router.replace("/(tabs)/bills");
+          },
+        });
+      } catch (err: unknown) {
+        if (__DEV__) {
+          console.warn("[OAuth sign-in error]", err);
         }
-      } catch (err) {
-        Alert.alert("Error", "Sign-in failed. Please try again.");
-        console.error(err);
+        const msg = (() => {
+          if (err instanceof Error) return err.message.toLowerCase();
+          if (typeof err === "object" && err !== null) {
+            const e = err as Record<string, unknown>;
+            if (typeof e["message"] === "string") return e["message"].toLowerCase();
+          }
+          return "";
+        })();
+        const cancelled = msg.includes("cancel") || msg.includes("dismiss") || msg === "";
+        if (cancelled) return;
+        const provider = strategy === "oauth_google" ? "Google" : "Apple";
+        setPasswordError(
+          `Could not sign in with ${provider}. Check your internet connection and try again.`,
+        );
       }
     },
     [startSSOFlow],
@@ -146,9 +245,9 @@ export default function LoginScreen() {
                 autoFocus
               />
             </View>
-            {errors?.fields?.code && (
+            {!!codeError && (
               <Text style={[styles.errorText, { color: colors.destructive }]}>
-                {errors.fields.code.message}
+                {codeError}
               </Text>
             )}
             <TouchableOpacity
@@ -207,7 +306,7 @@ export default function LoginScreen() {
         <View style={styles.socialSection}>
           <TouchableOpacity
             style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
-            onPress={() => handleOAuth("oauth_google")}
+            onPress={() => { void handleOAuth("oauth_google"); }}
             activeOpacity={0.8}
           >
             <Text style={styles.googleG}>G</Text>
@@ -219,7 +318,7 @@ export default function LoginScreen() {
           {Platform.OS === "ios" && (
             <TouchableOpacity
               style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]}
-              onPress={() => handleOAuth("oauth_apple")}
+              onPress={() => { void handleOAuth("oauth_apple"); }}
               activeOpacity={0.8}
             >
               <Feather name="smartphone" size={18} color="#fff" />
@@ -239,33 +338,31 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
-          <View style={[styles.inputWrap, { borderColor: colors.border }]}>
+          <View style={[styles.inputWrap, { borderColor: emailError ? colors.destructive : colors.border }]}>
             <Feather name="mail" size={18} color={colors.mutedForeground} />
             <TextInput
               style={[styles.input, { color: colors.foreground }]}
               placeholder="Email"
               placeholderTextColor={colors.mutedForeground}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => { setEmail(t); setEmailError(""); }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
           </View>
-          {errors?.fields?.identifier && (
-            <Text style={[styles.errorText, { color: colors.destructive }]}>
-              {errors.fields.identifier.message}
-            </Text>
+          {!!emailError && (
+            <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text>
           )}
 
-          <View style={[styles.inputWrap, { borderColor: colors.border }]}>
+          <View style={[styles.inputWrap, { borderColor: passwordError ? colors.destructive : colors.border }]}>
             <Feather name="lock" size={18} color={colors.mutedForeground} />
             <TextInput
               style={[styles.input, { color: colors.foreground }]}
               placeholder="Password"
               placeholderTextColor={colors.mutedForeground}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => { setPassword(t); setPasswordError(""); }}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
@@ -276,10 +373,8 @@ export default function LoginScreen() {
               />
             </TouchableOpacity>
           </View>
-          {errors?.fields?.password && (
-            <Text style={[styles.errorText, { color: colors.destructive }]}>
-              {errors.fields.password.message}
-            </Text>
+          {!!passwordError && (
+            <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>
           )}
 
           <TouchableOpacity

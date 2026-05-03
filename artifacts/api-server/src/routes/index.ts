@@ -7,11 +7,13 @@ import billUsersRouter from "./bill-users.js";
 import totalsRouter from "./totals.js";
 import ocrRouter from "./ocr.js";
 import currencyRouter from "./currency.js";
+import meRouter from "./me.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
+router.use("/me", meRouter);
 router.use("/bills", billsRouter);
 router.use("/bills/:billId/lines", billLinesRouter);
 router.use("/bills/:billId/users", billUsersRouter);

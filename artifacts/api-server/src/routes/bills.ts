@@ -56,24 +56,36 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
     res.status(400).json({ error: "title and date are required" });
     return;
   }
-  let joinCode = generateJoinCode();
-  const [bill] = await db.insert(billsTable).values({
-    ownerUserId: req.user?.userId ?? null,
-    title,
-    restaurantName: restaurantName || null,
-    date,
-    currency: currency || null,
-    taxPercent: String(taxPercent ?? 0),
-    tipPercent: String(tipPercent ?? 0),
-    joinCode,
-  }).returning();
-  if (req.user && bill) {
-    await db.insert(billMembersTable).values({
-      billId: bill.id,
-      userId: req.user.userId,
-      role: "owner",
-    });
-  }
+  const joinCode = generateJoinCode();
+  const user = req.user;
+  const bill = await db.transaction(async (tx) => {
+    const [newBill] = await tx.insert(billsTable).values({
+      ownerUserId: user?.userId ?? null,
+      title,
+      restaurantName: restaurantName || null,
+      date,
+      currency: currency || null,
+      taxPercent: String(taxPercent ?? 0),
+      tipPercent: String(tipPercent ?? 0),
+      joinCode,
+    }).returning();
+    if (user && newBill) {
+      await tx.insert(billMembersTable).values({
+        billId: newBill.id,
+        userId: user.userId,
+        role: "owner",
+      });
+      const personName = user.firstName || user.email.split("@")[0] || "Me";
+      const peopleColors = ["#E84393", "#FF6B35", "#2D9CDB", "#9B59B6", "#27AE60", "#F39C12", "#E74C3C", "#1ABC9C"];
+      const color = peopleColors[Math.floor(Math.random() * peopleColors.length)]!;
+      await tx.insert(billUsersTable).values({
+        billId: newBill.id,
+        name: personName,
+        color,
+      });
+    }
+    return newBill;
+  });
   res.status(201).json(bill);
 });
 

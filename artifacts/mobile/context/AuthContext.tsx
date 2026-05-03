@@ -12,6 +12,8 @@ export interface UserInfo {
   id: string;
   email: string;
   displayName: string;
+  firstName: string | null;
+  lastName: string | null;
 }
 
 interface AuthContextType {
@@ -49,6 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clerkUser.firstName ||
             clerkUser.username ||
             "User",
+          firstName: clerkUser.firstName ?? null,
+          lastName: clerkUser.lastName ?? null,
         }
       : null;
 
