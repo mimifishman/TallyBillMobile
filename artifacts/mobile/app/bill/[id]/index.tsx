@@ -32,9 +32,11 @@ import {
   usePatchBill,
   getGetBillQueryKey,
   getGetBillsQueryKey,
+  getGetBillTotalsQueryKey,
 } from "@workspace/api-client-react";
 import colors_data from "@/constants/colors";
 import { getCurrencySymbol } from "@/utils/currency";
+import { CurrencyPicker } from "@/components/CurrencyPicker";
 
 const PEOPLE_COLORS = colors_data.light.people;
 
@@ -55,6 +57,8 @@ export default function BillDetailScreen() {
   const [editRestaurant, setEditRestaurant] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editCurrency, setEditCurrency] = useState("");
+  const [editTaxPercent, setEditTaxPercent] = useState("");
+  const [editTipPercent, setEditTipPercent] = useState("");
 
   const { data, isLoading } = useGetBill(billId, {
     query: {
@@ -117,6 +121,7 @@ export default function BillDetailScreen() {
       onSuccess: () => {
         invalidate();
         queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetBillTotalsQueryKey(billId) });
         setShowEditHeader(false);
       },
       onError: () => {
@@ -131,6 +136,8 @@ export default function BillDetailScreen() {
     setEditRestaurant(data.bill.restaurantName ?? "");
     setEditDate(data.bill.date ?? "");
     setEditCurrency(data.bill.currency ?? "");
+    setEditTaxPercent(String(data.bill.taxPercent ?? 0));
+    setEditTipPercent(String(data.bill.tipPercent ?? 0));
     setShowEditHeader(true);
   };
 
@@ -147,6 +154,8 @@ export default function BillDetailScreen() {
         restaurantName: editRestaurant.trim() ? editRestaurant.trim() : null,
         date: editDate.trim(),
         currency: editCurrency.trim() ? editCurrency.trim().toUpperCase() : null,
+        taxPercent: parseFloat(editTaxPercent) || 0,
+        tipPercent: parseFloat(editTipPercent) || 0,
       },
     });
   };
@@ -404,42 +413,60 @@ export default function BillDetailScreen() {
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowEditHeader(false)}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Bill Details</Text>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Bill title"
-              placeholderTextColor={colors.mutedForeground}
-              value={editTitle}
-              onChangeText={setEditTitle}
-              autoFocus
-            />
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Restaurant (optional)</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Restaurant name"
-              placeholderTextColor={colors.mutedForeground}
-              value={editRestaurant}
-              onChangeText={setEditRestaurant}
-            />
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.mutedForeground}
-              value={editDate}
-              onChangeText={setEditDate}
-              autoCapitalize="none"
-            />
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Currency</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="e.g. USD"
-              placeholderTextColor={colors.mutedForeground}
-              value={editCurrency}
-              onChangeText={setEditCurrency}
-              autoCapitalize="characters"
-              maxLength={3}
-            />
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.editModalScroll}>
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title</Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder="Bill title"
+                placeholderTextColor={colors.mutedForeground}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                autoFocus
+              />
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Restaurant (optional)</Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder="Restaurant name"
+                placeholderTextColor={colors.mutedForeground}
+                value={editRestaurant}
+                onChangeText={setEditRestaurant}
+              />
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.mutedForeground}
+                value={editDate}
+                onChangeText={setEditDate}
+                autoCapitalize="none"
+              />
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Currency</Text>
+              <CurrencyPicker value={editCurrency} onChange={setEditCurrency} />
+              <View style={styles.taxTipRow}>
+                <View style={styles.taxTipField}>
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tax %</Text>
+                  <TextInput
+                    style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                    placeholder="0"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={editTaxPercent}
+                    onChangeText={setEditTaxPercent}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={styles.taxTipField}>
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tip %</Text>
+                  <TextInput
+                    style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                    placeholder="0"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={editTipPercent}
+                    onChangeText={setEditTipPercent}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+            </ScrollView>
             <View style={styles.modalButtons}>
               <TouchableOpacity onPress={() => setShowEditHeader(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
@@ -574,4 +601,7 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: 15, fontFamily: "Inter_500Medium" },
   modalConfirmBtn: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
   modalConfirmText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  editModalScroll: { maxHeight: 400 },
+  taxTipRow: { flexDirection: "row", gap: 12, marginTop: 2 },
+  taxTipField: { flex: 1 },
 });
