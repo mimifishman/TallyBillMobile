@@ -450,7 +450,11 @@ export default function BillDetailScreen() {
                     placeholder="0"
                     placeholderTextColor={colors.mutedForeground}
                     value={editTaxPercent}
-                    onChangeText={setEditTaxPercent}
+                    onChangeText={(v) => {
+                      const clean = v.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                      const parts = clean.split(".");
+                      setEditTaxPercent(parts[1] !== undefined ? `${parts[0]}.${parts[1].slice(0, 2)}` : clean);
+                    }}
                     keyboardType="decimal-pad"
                   />
                 </View>
@@ -461,7 +465,11 @@ export default function BillDetailScreen() {
                     placeholder="0"
                     placeholderTextColor={colors.mutedForeground}
                     value={editTipPercent}
-                    onChangeText={setEditTipPercent}
+                    onChangeText={(v) => {
+                      const clean = v.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                      const parts = clean.split(".");
+                      setEditTipPercent(parts[1] !== undefined ? `${parts[0]}.${parts[1].slice(0, 2)}` : clean);
+                    }}
                     keyboardType="decimal-pad"
                   />
                 </View>

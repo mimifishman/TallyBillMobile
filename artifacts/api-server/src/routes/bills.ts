@@ -196,7 +196,7 @@ router.patch("/:billId", requireAuth, async (req: AuthRequest, res) => {
     res.status(403).json({ error: "Only the bill owner can edit bill details" });
     return;
   }
-  const { title, restaurantName, date, currency } = req.body;
+  const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {
     res.status(400).json({ error: "title cannot be empty" });
     return;
@@ -206,6 +206,8 @@ router.patch("/:billId", requireAuth, async (req: AuthRequest, res) => {
     ...(restaurantName !== undefined && { restaurantName: restaurantName ? String(restaurantName).trim() : null }),
     ...(date !== undefined && { date }),
     ...(currency !== undefined && { currency: currency || null }),
+    ...(taxPercent !== undefined && { taxPercent: String(parseFloat(taxPercent) || 0) }),
+    ...(tipPercent !== undefined && { tipPercent: String(parseFloat(tipPercent) || 0) }),
   }).where(eq(billsTable.id, billId)).returning();
   res.json(updated);
 });
