@@ -143,6 +143,68 @@ export const JoinBillResponse = zod.object({
 });
 
 /**
+ * @summary Get a bill by its join code (no auth required — capability via code)
+ */
+export const GetBillByCodeParams = zod.object({
+  joinCode: zod.coerce.string(),
+});
+
+export const GetBillByCodeResponse = zod.object({
+  bill: zod.object({
+    id: zod.number(),
+    ownerUserId: zod.number().nullish(),
+    title: zod.string(),
+    restaurantName: zod.string().nullish(),
+    date: zod.string(),
+    currency: zod.string().nullish(),
+    taxPercent: zod.number(),
+    tipPercent: zod.number(),
+    joinCode: zod.string(),
+    createdAt: zod.coerce.date(),
+    settled: zod
+      .boolean()
+      .optional()
+      .describe(
+        "True when every line item on the bill has been assigned to at least one person",
+      ),
+    users: zod
+      .array(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          color: zod.string(),
+        }),
+      )
+      .optional()
+      .describe(
+        "Lightweight participant summary for list rendering (id, name, color)",
+      ),
+  }),
+  lines: zod.array(
+    zod.object({
+      id: zod.number(),
+      billId: zod.number(),
+      description: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      total: zod.number(),
+      assignedUserIds: zod.array(zod.number()),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  users: zod.array(
+    zod.object({
+      id: zod.number(),
+      billId: zod.number(),
+      name: zod.string(),
+      color: zod.string(),
+      tipPercentOverride: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
  * @summary Get a bill by ID
  */
 export const GetBillParams = zod.object({

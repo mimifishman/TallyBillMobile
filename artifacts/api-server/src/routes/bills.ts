@@ -9,20 +9,10 @@ import {
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth.js";
+import { requireBillAccess } from "../middlewares/billAccess.js";
 import { generateJoinCode } from "../lib/auth.js";
 
 const router = Router();
-
-async function getBillWithAccess(billId: number, userId?: number): Promise<boolean> {
-  const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
-  if (!bill) return false;
-  if (!userId) return true;
-  if (bill.ownerUserId === userId) return true;
-  const [member] = await db.select().from(billMembersTable)
-    .where(and(eq(billMembersTable.billId, billId), eq(billMembersTable.userId, userId)))
-    .limit(1);
-  return !!member;
-}
 
 async function getBillLines(billId: number) {
   const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId));
@@ -150,7 +140,25 @@ router.post("/join", requireAuth, async (req: AuthRequest, res) => {
   res.json(bill);
 });
 
-router.get("/:billId", optionalAuth, async (req: AuthRequest, res) => {
+router.get("/by-code/:joinCode", async (req, res) => {
+  const joinCode = String(req.params["joinCode"] ?? "").toUpperCase();
+  if (!joinCode) {
+    res.status(404).json({ error: "Bill not found" });
+    return;
+  }
+  const [bill] = await db.select().from(billsTable)
+    .where(eq(billsTable.joinCode, joinCode))
+    .limit(1);
+  if (!bill) {
+    res.status(404).json({ error: "Bill not found" });
+    return;
+  }
+  const lines = await getBillLines(bill.id);
+  const users = await db.select().from(billUsersTable).where(eq(billUsersTable.billId, bill.id));
+  res.json({ bill, lines, users });
+});
+
+router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
   const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
   if (!bill) {
@@ -163,13 +171,8 @@ router.get("/:billId", optionalAuth, async (req: AuthRequest, res) => {
   res.json({ bill, lines, users, isOwner });
 });
 
-router.put("/:billId", optionalAuth, async (req: AuthRequest, res) => {
+router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
-  const hasAccess = await getBillWithAccess(billId, req.user?.userId);
-  if (!hasAccess) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
   const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
   const [updated] = await db.update(billsTable).set({
     ...(title && { title }),

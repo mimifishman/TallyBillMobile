@@ -195,6 +195,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /bills/by-code/{joinCode}:
+    get:
+      operationId: getBillByCode
+      tags: [bills]
+      summary: Get a bill by its join code (no auth required — capability via code)
+      parameters:
+        - name: joinCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /bills/{billId}:
     get:
       operationId: getBill

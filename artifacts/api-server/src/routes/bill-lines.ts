@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { billLinesTable, billLineUsersTable } from "@workspace/db";
+import { billLinesTable, billLineUsersTable, billUsersTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 
 const router = Router({ mergeParams: true });
+
+function parseBillId(req: { params: Record<string, unknown> }): number {
+  return parseInt(String(req.params["billId"] ?? ""), 10);
+}
 
 async function getBillLinesWithAssignments(billId: number) {
   const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId));
@@ -18,13 +22,13 @@ async function getBillLinesWithAssignments(billId: number) {
 }
 
 router.get("/", async (req, res) => {
-  const billId = parseInt((req.params as Record<string, string>)["billId"]);
+  const billId = parseBillId(req);
   const lines = await getBillLinesWithAssignments(billId);
   res.json(lines);
 });
 
 router.post("/", async (req, res) => {
-  const billId = parseInt((req.params as Record<string, string>)["billId"]);
+  const billId = parseBillId(req);
   const { description, quantity, unitPrice, total } = req.body;
   if (!description) {
     res.status(400).json({ error: "description is required" });
@@ -41,7 +45,7 @@ router.post("/", async (req, res) => {
 });
 
 router.post("/bulk", async (req, res) => {
-  const billId = parseInt((req.params as Record<string, string>)["billId"]);
+  const billId = parseBillId(req);
   const { lines } = req.body;
   if (!Array.isArray(lines) || lines.length === 0) {
     res.status(400).json({ error: "lines array is required" });
@@ -60,29 +64,54 @@ router.post("/bulk", async (req, res) => {
 });
 
 router.put("/:lineId", async (req, res) => {
-  const lineId = parseInt((req.params as Record<string, string>)["lineId"]);
+  const billId = parseBillId(req);
+  const lineId = parseInt(String(req.params["lineId"]), 10);
   const { description, quantity, unitPrice, total } = req.body;
   const [updated] = await db.update(billLinesTable).set({
     ...(description && { description }),
     ...(quantity !== undefined && { quantity: String(quantity) }),
     ...(unitPrice !== undefined && { unitPrice: String(unitPrice) }),
     ...(total !== undefined && { total: String(total) }),
-  }).where(eq(billLinesTable.id, lineId)).returning();
+  })
+    .where(and(eq(billLinesTable.id, lineId), eq(billLinesTable.billId, billId)))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Line not found" });
+    return;
+  }
   const assignments = await db.select().from(billLineUsersTable).where(eq(billLineUsersTable.billLineId, lineId));
   res.json({ ...updated, assignedUserIds: assignments.map((a) => a.billUserId) });
 });
 
 router.delete("/:lineId", async (req, res) => {
-  const lineId = parseInt((req.params as Record<string, string>)["lineId"]);
-  await db.delete(billLinesTable).where(eq(billLinesTable.id, lineId));
+  const billId = parseBillId(req);
+  const lineId = parseInt(String(req.params["lineId"]), 10);
+  await db.delete(billLinesTable)
+    .where(and(eq(billLinesTable.id, lineId), eq(billLinesTable.billId, billId)));
   res.status(204).send();
 });
 
 router.post("/:lineId/users", async (req, res) => {
-  const lineId = parseInt((req.params as Record<string, string>)["lineId"]);
+  const billId = parseBillId(req);
+  const lineId = parseInt(String(req.params["lineId"]), 10);
   const { billUserId } = req.body;
   if (!billUserId) {
     res.status(400).json({ error: "billUserId is required" });
+    return;
+  }
+  // Verify the line belongs to the bill, and the bill user belongs to the bill.
+  const [line] = await db.select().from(billLinesTable)
+    .where(and(eq(billLinesTable.id, lineId), eq(billLinesTable.billId, billId)))
+    .limit(1);
+  if (!line) {
+    res.status(404).json({ error: "Line not found" });
+    return;
+  }
+  const [billUser] = await db.select().from(billUsersTable)
+    .where(and(eq(billUsersTable.id, billUserId), eq(billUsersTable.billId, billId)))
+    .limit(1);
+  if (!billUser) {
+    res.status(400).json({ error: "billUserId does not belong to this bill" });
     return;
   }
   const [existing] = await db.select().from(billLineUsersTable)

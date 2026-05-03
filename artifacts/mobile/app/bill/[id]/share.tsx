@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +17,7 @@ import { useColors } from "@/hooks/useColors";
 import { useGetBill, useJoinBill, getGetBillQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
+import { rememberBillCode } from "@/lib/billCodeStore";
 
 export default function ShareScreen() {
   const colors = useColors();
@@ -26,9 +28,25 @@ export default function ShareScreen() {
   const nav = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { data } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
   const bill = data?.bill;
+
+  // Remember the join code so per-bill requests automatically attach the
+  // X-Join-Code capability header from this point on (covers the case
+  // where a signed-in user opens the share screen and we want subsequent
+  // background calls to carry the capability too).
+  useEffect(() => {
+    if (bill?.id && bill?.joinCode) rememberBillCode(bill.id, bill.joinCode);
+  }, [bill?.id, bill?.joinCode]);
+
+  // Build the public share URL. EXPO_PUBLIC_DOMAIN is set in dev to the
+  // Replit dev domain and in prod to the deploy domain; if it's somehow
+  // missing we still surface the link with a placeholder host so users
+  // can copy/share it (rather than silently hiding the affordance).
+  const domain = process.env.EXPO_PUBLIC_DOMAIN || "tallybill.app";
+  const shareUrl = bill?.joinCode ? `https://${domain}/b/${bill.joinCode}` : null;
 
   const joinMutation = useJoinBill({
     mutation: {
@@ -46,6 +64,26 @@ export default function ShareScreen() {
     await Clipboard.setStringAsync(bill.joinCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) return;
+    await Clipboard.setStringAsync(shareUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleShareLink = async () => {
+    if (!shareUrl || !bill) return;
+    try {
+      await Share.share({
+        message: `Join me on "${bill.title}" — split the bill: ${shareUrl}`,
+        url: shareUrl,
+        title: bill.title,
+      });
+    } catch {
+      // user cancelled
+    }
   };
 
   const handleJoin = () => {
@@ -92,6 +130,40 @@ export default function ShareScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {shareUrl && (
+              <View style={[styles.linkCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.linkLabel, { color: colors.mutedForeground }]}>Share link</Text>
+                <Text style={[styles.linkUrl, { color: colors.foreground }]} numberOfLines={1}>
+                  {shareUrl}
+                </Text>
+                <Text style={[styles.linkSub, { color: colors.mutedForeground }]}>
+                  Opens in a browser — no app or sign-in needed.
+                </Text>
+                <View style={styles.linkBtnRow}>
+                  <TouchableOpacity
+                    style={[styles.linkBtn, { backgroundColor: colors.primary }]}
+                    onPress={handleShareLink}
+                  >
+                    <Feather name="share-2" size={16} color="#fff" />
+                    <Text style={[styles.linkBtnText, { color: "#fff" }]}>Share</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.linkBtn, { backgroundColor: linkCopied ? colors.primary : colors.muted }]}
+                    onPress={handleCopyLink}
+                  >
+                    <Feather
+                      name={linkCopied ? "check" : "link"}
+                      size={16}
+                      color={linkCopied ? "#fff" : colors.foreground}
+                    />
+                    <Text style={[styles.linkBtnText, { color: linkCopied ? "#fff" : colors.foreground }]}>
+                      {linkCopied ? "Copied!" : "Copy Link"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -159,6 +231,21 @@ const styles = StyleSheet.create({
   codeSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
   copyBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   copyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  linkCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 6, marginTop: 12 },
+  linkLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
+  linkUrl: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  linkSub: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
+  linkBtnRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  linkBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    paddingVertical: 11,
+  },
+  linkBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   divider: { borderTopWidth: 1 },
   joinCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
   joinLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },

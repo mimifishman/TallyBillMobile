@@ -15,8 +15,22 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 // Module-level configuration
 // ---------------------------------------------------------------------------
 
+export interface ExtraHeadersRequestInfo {
+  url: string;
+  method: string;
+}
+
+export type ExtraHeadersGetter = (
+  request: ExtraHeadersRequestInfo,
+) =>
+  | Promise<Record<string, string> | null | undefined>
+  | Record<string, string>
+  | null
+  | undefined;
+
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _extraHeadersGetter: ExtraHeadersGetter | null = null;
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -42,6 +56,19 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
+}
+
+/**
+ * Register a getter that supplies additional HTTP headers to attach to every
+ * request. Headers returned by the getter are merged AFTER any explicit
+ * headers passed to the request, so the caller's explicit headers always win.
+ *
+ * Useful for capability-style auth (e.g. an `X-Join-Code` header that
+ * authorizes anonymous access to a specific bill).
+ * Pass `null` to clear the getter.
+ */
+export function setExtraHeadersGetter(getter: ExtraHeadersGetter | null): void {
+  _extraHeadersGetter = getter;
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {
@@ -360,8 +387,20 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  // Attach any extra headers (e.g. capability tokens like X-Join-Code).
+  // Existing headers always win; this only fills in missing ones. The
+  // getter receives the request info so it can decide what to send based
+  // on the URL (e.g. inject a token only for a specific bill).
+  if (_extraHeadersGetter) {
+    const extra = await _extraHeadersGetter(requestInfo);
+    if (extra) {
+      for (const [key, value] of Object.entries(extra)) {
+        if (!headers.has(key)) headers.set(key, value);
+      }
+    }
+  }
 
+  const response = await fetch(input, { ...init, method, headers });
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
     throw new ApiError(response, errorData, requestInfo);

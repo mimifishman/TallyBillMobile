@@ -624,6 +624,93 @@ export const useJoinBill = <
 };
 
 /**
+ * @summary Get a bill by its join code (no auth required — capability via code)
+ */
+export const getGetBillByCodeUrl = (joinCode: string) => {
+  return `/api/bills/by-code/${joinCode}`;
+};
+
+export const getBillByCode = async (
+  joinCode: string,
+  options?: RequestInit,
+): Promise<BillDetail> => {
+  return customFetch<BillDetail>(getGetBillByCodeUrl(joinCode), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillByCodeQueryKey = (joinCode: string) => {
+  return [`/api/bills/by-code/${joinCode}`] as const;
+};
+
+export const getGetBillByCodeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillByCode>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  joinCode: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillByCode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillByCodeQueryKey(joinCode);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillByCode>>> = ({
+    signal,
+  }) => getBillByCode(joinCode, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!joinCode,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillByCode>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillByCodeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillByCode>>
+>;
+export type GetBillByCodeQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a bill by its join code (no auth required — capability via code)
+ */
+
+export function useGetBillByCode<
+  TData = Awaited<ReturnType<typeof getBillByCode>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  joinCode: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBillByCode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillByCodeQueryOptions(joinCode, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get a bill by ID
  */
 export const getGetBillUrl = (billId: number) => {

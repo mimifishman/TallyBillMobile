@@ -14,11 +14,22 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { setBaseUrl } from "@workspace/api-client-react";
+import { setBaseUrl, setExtraHeadersGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/context/AuthContext";
+import { billIdFromUrl, getBillCode } from "@/lib/billCodeStore";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+
+// When a request targets a specific bill (`/api/bills/<id>/...`), attach
+// the cached join-code capability header. This lets signed-out users who
+// arrived via a share link continue to read/edit that bill in-app.
+setExtraHeadersGetter(({ url }) => {
+  const billId = billIdFromUrl(url);
+  if (!billId) return null;
+  const code = getBillCode(billId);
+  return code ? { "X-Join-Code": code } : null;
+});
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
