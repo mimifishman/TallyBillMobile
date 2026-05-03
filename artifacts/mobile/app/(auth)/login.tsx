@@ -58,84 +58,41 @@ export default function LoginScreen() {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    try {
-      const createResult = await signIn.create({ identifier: normalizedEmail });
-      const createError = (createResult as { error?: { code?: string; message?: string } })?.error;
-      if (createError) {
-        const code = (createError.code ?? "").toLowerCase();
-        const msg = (createError.message ?? "").toLowerCase();
-        if (
-          code.includes("not_found") ||
-          code.includes("identifier") ||
-          msg.includes("couldn't find") ||
-          msg.includes("not found")
-        ) {
-          setEmailError("No account found with this email address.");
-        } else {
-          setEmailError("Could not sign in. Please try again.");
-        }
-        return;
-      }
-    } catch (err: unknown) {
-      const e = err as { errors?: Array<{ code?: string; message?: string }>; message?: string };
-      const code = (e.errors?.[0]?.code ?? "").toLowerCase();
-      const msg = ((e.errors?.[0]?.message ?? e.message) ?? "").toLowerCase();
+    const routeError = (e: { code?: string; message?: string } | undefined) => {
+      const code = (e?.code ?? "").toLowerCase();
+      const msg = (e?.message ?? "").toLowerCase();
       if (
         code.includes("not_found") ||
         code.includes("identifier") ||
         msg.includes("couldn't find") ||
-        msg.includes("not found")
+        msg.includes("not found") ||
+        msg.includes("no account")
       ) {
         setEmailError("No account found with this email address.");
-      } else {
-        setEmailError("Could not sign in. Please try again.");
-      }
-      return;
-    }
-
-    const factors = (signIn.supportedFirstFactors ?? []) as Array<{ strategy?: string }>;
-    const hasPassword = factors.some((f) => f.strategy === "password");
-    const oauthStrategies = factors
-      .map((f) => f.strategy ?? "")
-      .filter((s) => s.startsWith("oauth_"));
-
-    if (!hasPassword && oauthStrategies.length > 0) {
-      const provider = oauthStrategies[0]!.replace("oauth_", "");
-      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-      setPasswordError(
-        `This email was registered with ${providerName}. Tap "Continue with ${providerName}" above to sign in.`,
-      );
-      return;
-    }
-
-    if (!hasPassword) {
-      setPasswordError("This email cannot sign in with a password. Try a social sign-in option.");
-      return;
-    }
-
-    try {
-      const pwResult = await signIn.password({
-        emailAddress: normalizedEmail,
-        password,
-      });
-      const pwError = (pwResult as { error?: { code?: string; message?: string } })?.error;
-      if (pwError) {
-        const code = (pwError.code ?? "").toLowerCase();
-        if (code.includes("password")) {
-          setPasswordError("Incorrect password. Please try again.");
-        } else {
-          setPasswordError("Could not sign in. Please try again.");
-        }
-        return;
-      }
-    } catch (err: unknown) {
-      const e = err as { errors?: Array<{ code?: string; message?: string }>; message?: string };
-      const code = (e.errors?.[0]?.code ?? "").toLowerCase();
-      if (code.includes("password")) {
+      } else if (
+        code.includes("password") ||
+        code.includes("incorrect") ||
+        msg.includes("password") ||
+        msg.includes("incorrect")
+      ) {
         setPasswordError("Incorrect password. Please try again.");
       } else {
         setPasswordError("Could not sign in. Please try again.");
       }
+    };
+
+    try {
+      const { error } = await signIn.password({
+        emailAddress: normalizedEmail,
+        password,
+      });
+      if (error) {
+        routeError(error);
+        return;
+      }
+    } catch (err: unknown) {
+      const e = err as { errors?: Array<{ code?: string; message?: string }>; message?: string };
+      routeError(e.errors?.[0] ?? { message: e.message });
       return;
     }
 
