@@ -16,7 +16,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
-import { useCreateBill, useDetectCurrency } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useCreateBill,
+  useDetectCurrency,
+  getGetBillsQueryKey,
+} from "@workspace/api-client-react";
 
 const today = new Date().toISOString().split("T")[0]!;
 
@@ -35,9 +40,12 @@ export default function NewBillScreen() {
     if (currencyData?.currency) setCurrency(currencyData.currency);
   }, [currencyData]);
 
+  const queryClient = useQueryClient();
+
   const createMutation = useCreateBill({
     mutation: {
       onSuccess: (bill) => {
+        queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
         router.replace(`/bill/${bill.id}`);
       },
       onError: (err: Error) => {

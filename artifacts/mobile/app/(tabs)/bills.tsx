@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useEffect } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -73,6 +73,14 @@ export default function BillsScreen() {
   const { data: bills, isLoading, refetch, isRefetching } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        refetch();
+      }
+    }, [user, refetch]),
+  );
 
   if (!user) {
     return (

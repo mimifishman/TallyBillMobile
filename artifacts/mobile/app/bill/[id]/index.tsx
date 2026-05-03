@@ -31,6 +31,7 @@ import {
   useToggleBillLineUser,
   usePatchBill,
   getGetBillQueryKey,
+  getGetBillsQueryKey,
 } from "@workspace/api-client-react";
 import colors_data from "@/constants/colors";
 import { getCurrencySymbol } from "@/utils/currency";
@@ -115,6 +116,7 @@ export default function BillDetailScreen() {
     mutation: {
       onSuccess: () => {
         invalidate();
+        queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
         setShowEditHeader(false);
       },
       onError: () => {
