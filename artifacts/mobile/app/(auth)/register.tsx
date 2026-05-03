@@ -88,9 +88,13 @@ export default function RegisterScreen() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [codeError, setCodeError] = useState("");
 
   const isPending = fetchStatus === "fetching";
@@ -98,6 +102,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setEmailError("");
     setPasswordError("");
+    setConfirmPasswordError("");
     if (!email) {
       setEmailError("Please enter your email address");
       return;
@@ -108,6 +113,14 @@ export default function RegisterScreen() {
     }
     if (password.length < 8) {
       setPasswordError("Password must be at least 8 characters");
+      return;
+    }
+    if (!confirmPassword) {
+      setConfirmPasswordError("Please confirm your password");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
       return;
     }
     try {
@@ -432,12 +445,45 @@ export default function RegisterScreen() {
               placeholder="Password (min. 8 characters)"
               placeholderTextColor={colors.mutedForeground}
               value={password}
-              onChangeText={(t) => { setPassword(t); setPasswordError(""); }}
-              secureTextEntry
+              onChangeText={(t) => { setPassword(t); setPasswordError(""); setConfirmPasswordError(""); }}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+            <TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
+              <Feather
+                name={showPassword ? "eye-off" : "eye"}
+                size={18}
+                color={colors.mutedForeground}
+              />
+            </TouchableOpacity>
           </View>
           {!!passwordError && (
             <Text style={[styles.errorText, { color: "#DC2626" }]}>{passwordError}</Text>
+          )}
+
+          <View style={[styles.inputWrap, { borderColor: confirmPasswordError ? "#DC2626" : colors.border }]}>
+            <Feather name="lock" size={18} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.input, { color: colors.foreground }]}
+              placeholder="Confirm password"
+              placeholderTextColor={colors.mutedForeground}
+              value={confirmPassword}
+              onChangeText={(t) => { setConfirmPassword(t); setConfirmPasswordError(""); }}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity onPress={() => setShowConfirmPassword((v) => !v)}>
+              <Feather
+                name={showConfirmPassword ? "eye-off" : "eye"}
+                size={18}
+                color={colors.mutedForeground}
+              />
+            </TouchableOpacity>
+          </View>
+          {!!confirmPasswordError && (
+            <Text style={[styles.errorText, { color: "#DC2626" }]}>{confirmPasswordError}</Text>
           )}
 
           <TouchableOpacity
