@@ -49,6 +49,10 @@ export default function SettingsScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim() || "",
       });
+    } catch (err) {
+      if (__DEV__) console.warn("[settings.update Clerk error - ignored]", err);
+    }
+    try {
       await customFetch("/api/me", {
         method: "PATCH",
         body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim() || null }),
