@@ -72,7 +72,8 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
       users.length > 0 &&
       billLines.length > 0 &&
       billLines.every((l) => assignedLineIds.has(l.id));
-    return { ...bill, settled, users };
+    const isOwner = bill.ownerUserId === userId;
+    return { ...bill, settled, users, isOwner };
   });
 
   res.json(enriched);
@@ -155,7 +156,7 @@ router.get("/by-code/:joinCode", async (req, res) => {
   }
   const lines = await getBillLines(bill.id);
   const users = await db.select().from(billUsersTable).where(eq(billUsersTable.billId, bill.id));
-  res.json({ bill, lines, users });
+  res.json({ bill, lines, users, isOwner: false });
 });
 
 router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {

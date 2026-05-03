@@ -66,6 +66,8 @@ export interface Bill {
   createdAt: string;
   /** True when every line item on the bill has been assigned to at least one person */
   settled?: boolean;
+  /** True when the authenticated user is the owner of this bill */
+  isOwner?: boolean;
   /** Lightweight participant summary for list rendering (id, name, color) */
   users?: BillUsersItem[];
 }
@@ -121,6 +123,8 @@ export interface PatchBillRequest {
   restaurantName?: string | null;
   date?: string;
   currency?: string | null;
+  taxPercent?: number;
+  tipPercent?: number;
 }
 
 export interface JoinBillRequest {

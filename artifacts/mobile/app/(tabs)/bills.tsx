@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import {
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -24,7 +25,9 @@ import { useAuth } from "@/context/AuthContext";
 import { BillCard } from "@/components/BillCard";
 import { BillCardSkeleton } from "@/components/Skeleton";
 import { EmptyBillsIllustration } from "@/components/EmptyBillsIllustration";
-import { useGetBills, getGetBillsQueryKey } from "@workspace/api-client-react";
+import { useGetBills, useDeleteBill, getGetBillsQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -70,9 +73,25 @@ export default function BillsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: bills, isLoading, refetch, isRefetching } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
   });
+
+  const deleteBillMutation = useDeleteBill({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+      },
+      onError: () => {
+        Alert.alert("Couldn't delete", "We couldn't delete this bill. Please try again.");
+      },
+    },
+  });
+
+  const handleDeleteBill = useCallback((billId: number) => {
+    confirmDeleteBill(() => deleteBillMutation.mutate({ billId }));
+  }, [deleteBillMutation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -144,7 +163,9 @@ export default function BillsScreen() {
               joinCode={item.joinCode}
               participants={item.users}
               status={item.settled ? "settled" : "open"}
+              isOwner={item.isOwner === true}
               onPress={() => router.push(`/bill/${item.id}`)}
+              onDelete={() => handleDeleteBill(item.id)}
             />
           </Animated.View>
         )}

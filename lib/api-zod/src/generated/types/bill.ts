@@ -20,6 +20,8 @@ export interface Bill {
   createdAt: Date;
   /** True when every line item on the bill has been assigned to at least one person */
   settled?: boolean;
+  /** True when the authenticated user is the owner of this bill */
+  isOwner?: boolean;
   /** Lightweight participant summary for list rendering (id, name, color) */
   users?: BillUsersItem[];
 }

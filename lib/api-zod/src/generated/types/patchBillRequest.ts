@@ -12,4 +12,6 @@ export interface PatchBillRequest {
   restaurantName?: string | null;
   date?: string;
   currency?: string | null;
+  taxPercent?: number;
+  tipPercent?: number;
 }

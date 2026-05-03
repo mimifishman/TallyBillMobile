@@ -30,6 +30,7 @@ import {
   useUpdateBillLine,
   useToggleBillLineUser,
   usePatchBill,
+  useDeleteBill,
   getGetBillQueryKey,
   getGetBillsQueryKey,
   getGetBillTotalsQueryKey,
@@ -37,6 +38,7 @@ import {
 import colors_data from "@/constants/colors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
+import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 
 const PEOPLE_COLORS = colors_data.light.people;
 
@@ -129,6 +131,22 @@ export default function BillDetailScreen() {
       },
     },
   });
+
+  const deleteBillMutation = useDeleteBill({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+        router.replace("/(tabs)/bills");
+      },
+      onError: () => {
+        Alert.alert("Couldn't delete", "We couldn't delete this bill. Please try again.");
+      },
+    },
+  });
+
+  const handleDeleteBill = () => {
+    confirmDeleteBill(() => deleteBillMutation.mutate({ billId }));
+  };
 
   const openEditHeader = () => {
     if (!data) return;
@@ -271,9 +289,19 @@ export default function BillDetailScreen() {
           ) : null}
         </View>
         {isOwner ? (
-          <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details">
-            <Feather name="edit-2" size={18} color={colors.foreground} />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              onPress={handleDeleteBill}
+              style={styles.headerBtn}
+              accessibilityLabel="Delete bill"
+              disabled={deleteBillMutation.isPending}
+            >
+              <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details">
+              <Feather name="edit-2" size={18} color={colors.foreground} />
+            </TouchableOpacity>
+          </>
         ) : null}
         <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn}>
           <Feather name="share-2" size={20} color={colors.foreground} />

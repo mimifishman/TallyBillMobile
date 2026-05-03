@@ -77,6 +77,10 @@ export const GetBillsResponseItem = zod.object({
     .describe(
       "True when every line item on the bill has been assigned to at least one person",
     ),
+  isOwner: zod
+    .boolean()
+    .optional()
+    .describe("True when the authenticated user is the owner of this bill"),
   users: zod
     .array(
       zod.object({
@@ -128,6 +132,10 @@ export const JoinBillResponse = zod.object({
     .describe(
       "True when every line item on the bill has been assigned to at least one person",
     ),
+  isOwner: zod
+    .boolean()
+    .optional()
+    .describe("True when the authenticated user is the owner of this bill"),
   users: zod
     .array(
       zod.object({
@@ -167,6 +175,10 @@ export const GetBillByCodeResponse = zod.object({
       .describe(
         "True when every line item on the bill has been assigned to at least one person",
       ),
+    isOwner: zod
+      .boolean()
+      .optional()
+      .describe("True when the authenticated user is the owner of this bill"),
     users: zod
       .array(
         zod.object({
@@ -202,6 +214,7 @@ export const GetBillByCodeResponse = zod.object({
       createdAt: zod.coerce.date(),
     }),
   ),
+  isOwner: zod.boolean(),
 });
 
 /**
@@ -229,6 +242,10 @@ export const GetBillResponse = zod.object({
       .describe(
         "True when every line item on the bill has been assigned to at least one person",
       ),
+    isOwner: zod
+      .boolean()
+      .optional()
+      .describe("True when the authenticated user is the owner of this bill"),
     users: zod
       .array(
         zod.object({
@@ -300,6 +317,10 @@ export const UpdateBillResponse = zod.object({
     .describe(
       "True when every line item on the bill has been assigned to at least one person",
     ),
+  isOwner: zod
+    .boolean()
+    .optional()
+    .describe("True when the authenticated user is the owner of this bill"),
   users: zod
     .array(
       zod.object({
@@ -326,6 +347,8 @@ export const PatchBillBody = zod.object({
   restaurantName: zod.string().nullish(),
   date: zod.string().optional(),
   currency: zod.string().nullish(),
+  taxPercent: zod.number().optional(),
+  tipPercent: zod.number().optional(),
 });
 
 export const PatchBillResponse = zod.object({
@@ -339,6 +362,28 @@ export const PatchBillResponse = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  settled: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when every line item on the bill has been assigned to at least one person",
+    ),
+  isOwner: zod
+    .boolean()
+    .optional()
+    .describe("True when the authenticated user is the owner of this bill"),
+  users: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        color: zod.string(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Lightweight participant summary for list rendering (id, name, color)",
+    ),
 });
 
 /**
