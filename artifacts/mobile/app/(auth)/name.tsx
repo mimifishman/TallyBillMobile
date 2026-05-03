@@ -42,6 +42,7 @@ export default function NameScreen() {
     setSaving(true);
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
+
     try {
       await user.update({
         firstName: trimmedFirst,
@@ -49,17 +50,10 @@ export default function NameScreen() {
       });
     } catch (err) {
       if (__DEV__) {
-        console.warn("[name.update Clerk error]", err);
+        console.warn("[name.update Clerk error - ignored]", err);
       }
-      const errors = (err as { errors?: Array<{ message?: string }> })?.errors;
-      const detail = errors?.[0]?.message;
-      Alert.alert(
-        "Couldn't save your name",
-        detail ?? "Please check your connection and try again.",
-      );
-      setSaving(false);
-      return;
     }
+
     try {
       await customFetch("/api/me", {
         method: "PATCH",
@@ -70,7 +64,14 @@ export default function NameScreen() {
       if (__DEV__) {
         console.warn("[name.update API sync error]", err);
       }
+      Alert.alert(
+        "Couldn't save your name",
+        "Please check your connection and try again.",
+      );
+      setSaving(false);
+      return;
     }
+
     setSaving(false);
     router.replace("/(tabs)/bills");
   };
