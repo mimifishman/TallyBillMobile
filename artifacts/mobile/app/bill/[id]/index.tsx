@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -86,11 +86,27 @@ export default function BillDetailScreen() {
     mutation: { onSuccess: invalidate },
   });
 
+  const bulkPendingRef = useRef(0);
   const toggleLineMutation = useToggleBillLineUser({
     mutation: {
       onSuccess: () => {
+        if (bulkPendingRef.current > 0) {
+          bulkPendingRef.current -= 1;
+          if (bulkPendingRef.current === 0) {
+            invalidate();
+          }
+          return;
+        }
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         invalidate();
+      },
+      onError: () => {
+        if (bulkPendingRef.current > 0) {
+          bulkPendingRef.current -= 1;
+          if (bulkPendingRef.current === 0) {
+            invalidate();
+          }
+        }
       },
     },
   });
@@ -166,6 +182,14 @@ export default function BillDetailScreen() {
 
   const handleToggleUser = (lineId: number, billUserId: number) => {
     toggleLineMutation.mutate({ billId, lineId, data: { billUserId } });
+  };
+
+  const handleBulkToggleUsers = (lineId: number, billUserIds: number[]) => {
+    if (billUserIds.length === 0) return;
+    bulkPendingRef.current += billUserIds.length;
+    billUserIds.forEach((billUserId) => {
+      toggleLineMutation.mutate({ billId, lineId, data: { billUserId } });
+    });
   };
 
   const handleDeleteLine = (lineId: number) => {
@@ -320,6 +344,7 @@ export default function BillDetailScreen() {
                 billUsers={users}
                 currency={bill.currency}
                 onToggleUser={handleToggleUser}
+                onBulkToggleUsers={handleBulkToggleUsers}
                 onDelete={handleDeleteLine}
                 onUpdate={handleUpdateLine}
               />

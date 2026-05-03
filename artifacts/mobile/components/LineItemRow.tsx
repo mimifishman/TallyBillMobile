@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
   Alert,
@@ -29,6 +30,7 @@ interface LineItemRowProps {
   billUsers: BillUser[];
   currency?: string | null;
   onToggleUser: (lineId: number, billUserId: number) => void;
+  onBulkToggleUsers: (lineId: number, billUserIds: number[]) => void;
   onDelete: (lineId: number) => void;
   onUpdate: (lineId: number, data: { description: string; quantity: number; total: number }) => void;
 }
@@ -42,6 +44,7 @@ export function LineItemRow({
   billUsers,
   currency,
   onToggleUser,
+  onBulkToggleUsers,
   onDelete,
   onUpdate,
 }: LineItemRowProps) {
@@ -122,6 +125,27 @@ export function LineItemRow({
               onPress={() => onToggleUser(id, user.id)}
             />
           ))}
+          {(() => {
+            const allSelected = billUsers.every((u) => assignedUserIds.includes(u.id));
+            const idsToToggle = allSelected
+              ? billUsers.filter((u) => assignedUserIds.includes(u.id)).map((u) => u.id)
+              : billUsers.filter((u) => !assignedUserIds.includes(u.id)).map((u) => u.id);
+            return (
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onBulkToggleUsers(id, idsToToggle);
+                }}
+                style={[styles.bulkBtn, { borderColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel={allSelected ? "Deselect all people" : "Select all people"}
+              >
+                <Text style={[styles.bulkBtnText, { color: colors.mutedForeground }]}>
+                  {allSelected ? "Deselect all" : "Select all"}
+                </Text>
+              </TouchableOpacity>
+            );
+          })()}
         </View>
       )}
     </Animated.View>
@@ -195,5 +219,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  bulkBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    justifyContent: "center",
+  },
+  bulkBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
   },
 });
