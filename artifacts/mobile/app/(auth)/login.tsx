@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { useSSO, useSignIn } from "@clerk/expo";
+import { useAuth as useClerkAuth, useSSO, useSignIn } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,6 +35,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { continueAsGuest } = useAuth();
+  const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth();
   const { signIn, fetchStatus } = useSignIn();
   const { startSSOFlow } = useSSO();
 
@@ -105,6 +106,11 @@ export default function LoginScreen() {
       });
     } else if (signIn.status === "needs_client_trust") {
       await signIn.mfa.sendEmailCode();
+    } else {
+      if (__DEV__) {
+        console.warn("[signIn unexpected status]", signIn.status);
+      }
+      setPasswordError("Could not sign in. Please try again.");
     }
   };
 
@@ -167,6 +173,10 @@ export default function LoginScreen() {
     continueAsGuest();
     router.replace("/bill/new");
   };
+
+  if (clerkLoaded && isSignedIn) {
+    return <Redirect href="/(tabs)/bills" />;
+  }
 
   if (signIn.status === "needs_client_trust") {
     return (

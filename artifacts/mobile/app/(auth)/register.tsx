@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { useSSO, useSignUp } from "@clerk/expo";
+import { useAuth as useClerkAuth, useSSO, useSignUp } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -80,6 +80,7 @@ export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { continueAsGuest } = useAuth();
+  const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth();
   const { signUp, fetchStatus } = useSignUp();
   const { startSSOFlow } = useSSO();
 
@@ -276,11 +277,16 @@ export default function RegisterScreen() {
     router.replace("/bill/new");
   };
 
-  if (
+  const isPostSignupVerification =
     signUp.status === "missing_requirements" &&
     signUp.unverifiedFields.includes("email_address") &&
-    signUp.missingFields.length === 0
-  ) {
+    signUp.missingFields.length === 0;
+
+  if (clerkLoaded && isSignedIn && !isPostSignupVerification) {
+    return <Redirect href="/(tabs)/bills" />;
+  }
+
+  if (isPostSignupVerification) {
     return (
       <KeyboardAvoidingView
         style={[styles.flex, { backgroundColor: colors.background }]}
