@@ -19,9 +19,7 @@ interface BillCardProps {
   joinCode: string;
   participants?: BillCardParticipant[] | null;
   status?: "open" | "settled";
-  isOwner?: boolean;
   onPress: () => void;
-  onDelete?: () => void;
 }
 
 export function BillCard({
@@ -32,9 +30,7 @@ export function BillCard({
   joinCode,
   participants,
   status = "open",
-  isOwner,
   onPress,
-  onDelete,
 }: BillCardProps) {
   const colors = useColors();
   const accentColor = status === "settled" ? colors.settled : colors.accent;
@@ -78,17 +74,7 @@ export function BillCard({
           <View style={[styles.codeBadge, { backgroundColor: colors.muted }]}>
             <Text style={[styles.codeText, { color: colors.mutedForeground }]}>{joinCode}</Text>
           </View>
-          {isOwner && onDelete ? (
-            <TouchableOpacity
-              onPress={onDelete}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.deleteBtn}
-            >
-              <Feather name="trash-2" size={15} color={colors.destructive} />
-            </TouchableOpacity>
-          ) : (
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          )}
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </View>
 
         {participants && participants.length > 0 ? (
@@ -153,7 +139,6 @@ const styles = StyleSheet.create({
   metaDot: { fontSize: 12 },
   codeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   codeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  deleteBtn: { padding: 4 },
   peopleRow: { flexDirection: "row", alignItems: "center", paddingLeft: 52 },
   overlapBadge: { marginLeft: -10 },
   moreBadge: {

@@ -11,6 +11,7 @@ import {
   View,
   Platform,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -30,6 +31,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+function DeleteAction({ onDelete }: { onDelete: () => void }) {
+  const colors = useColors();
+  return (
+    <TouchableOpacity
+      style={[styles.deleteAction, { backgroundColor: colors.destructive }]}
+      onPress={onDelete}
+      activeOpacity={0.85}
+    >
+      <Feather name="trash-2" size={22} color="#fff" />
+      <Text style={styles.deleteActionText}>Delete</Text>
+    </TouchableOpacity>
+  );
+}
 
 function PulsingFab({
   pulse,
@@ -153,8 +168,9 @@ export default function BillsScreen() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }
         scrollEnabled={!!(bills && bills.length > 0)}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
+        renderItem={({ item, index }) => {
+          const isOwner = item.isOwner === true;
+          const card = (
             <BillCard
               title={item.title}
               restaurantName={item.restaurantName}
@@ -163,12 +179,26 @@ export default function BillsScreen() {
               joinCode={item.joinCode}
               participants={item.users}
               status={item.settled ? "settled" : "open"}
-              isOwner={item.isOwner === true}
               onPress={() => router.push(`/bill/${item.id}`)}
-              onDelete={() => handleDeleteBill(item.id)}
             />
-          </Animated.View>
-        )}
+          );
+          return (
+            <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
+              {isOwner ? (
+                <Swipeable
+                  renderRightActions={() => (
+                    <DeleteAction onDelete={() => handleDeleteBill(item.id)} />
+                  )}
+                  overshootRight={false}
+                  rightThreshold={72}
+                  friction={2}
+                >
+                  {card}
+                </Swipeable>
+              ) : card}
+            </Animated.View>
+          );
+        }}
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.skeletonWrap}>
@@ -201,6 +231,19 @@ export default function BillsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { paddingHorizontal: 16, paddingTop: 12 },
+  deleteAction: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    borderRadius: 14,
+    marginBottom: 12,
+    gap: 4,
+  },
+  deleteActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
   skeletonWrap: { paddingTop: 8 },
   empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32, gap: 10 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 },
