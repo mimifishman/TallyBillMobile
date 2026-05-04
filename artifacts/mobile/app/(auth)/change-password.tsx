@@ -27,6 +27,7 @@ export default function ChangePasswordScreen() {
       router.replace("/(tabs)/settings");
     }
   }, [isLoaded, clerkUser]);
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,6 +48,8 @@ export default function ChangePasswordScreen() {
       },
     },
   });
+
+  if (!isLoaded || (clerkUser && !clerkUser.passwordEnabled)) return null;
 
   const handleSubmit = () => {
     setError(null);
