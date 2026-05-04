@@ -207,7 +207,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
           <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {clerkUser?.passwordEnabled ? (
+            {clerkUser?.externalAccounts && clerkUser.externalAccounts.length === 0 ? (
               <TouchableOpacity
                 style={[styles.menuItem, { borderBottomColor: colors.border }]}
                 onPress={() => router.push("/(auth)/change-password")}

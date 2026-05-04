@@ -22,11 +22,13 @@ export default function ChangePasswordScreen() {
   const insets = useSafeAreaInsets();
   const { user: clerkUser, isLoaded } = useUser();
 
+  const isOAuthUser = isLoaded && clerkUser != null && clerkUser.externalAccounts.length > 0;
+
   useEffect(() => {
-    if (isLoaded && clerkUser && !clerkUser.passwordEnabled) {
+    if (isOAuthUser) {
       router.replace("/(tabs)/settings");
     }
-  }, [isLoaded, clerkUser]);
+  }, [isOAuthUser]);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -49,7 +51,7 @@ export default function ChangePasswordScreen() {
     },
   });
 
-  if (!isLoaded || (clerkUser && !clerkUser.passwordEnabled)) return null;
+  if (!isLoaded || isOAuthUser) return null;
 
   const handleSubmit = () => {
     setError(null);
