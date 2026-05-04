@@ -25,6 +25,8 @@ export default function ForgotPasswordScreen() {
   const [emailError, setEmailError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
+  const isReady = isLoaded && !!signIn;
+
   const handleSendCode = async () => {
     setEmailError("");
     const normalizedEmail = email.trim().toLowerCase();
@@ -32,14 +34,7 @@ export default function ForgotPasswordScreen() {
       setEmailError("Please enter your email address");
       return;
     }
-    if (!isLoaded) {
-      setEmailError("Still loading — please try again in a moment.");
-      return;
-    }
-    if (!signIn) {
-      setEmailError("Sign-in is unavailable. Please restart the app.");
-      return;
-    }
+    if (!isReady) return;
 
     setIsPending(true);
     try {
@@ -124,12 +119,12 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isPending ? 0.7 : 1 }]}
+          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: (!isReady || isPending) ? 0.7 : 1 }]}
           onPress={handleSendCode}
-          disabled={isPending}
+          disabled={!isReady || isPending}
           activeOpacity={0.8}
         >
-          {isPending ? (
+          {(!isReady || isPending) ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.primaryBtnText}>Send Reset Code</Text>
