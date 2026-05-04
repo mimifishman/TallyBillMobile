@@ -32,7 +32,14 @@ export default function ForgotPasswordScreen() {
       setEmailError("Please enter your email address");
       return;
     }
-    if (!isLoaded || !signIn) return;
+    if (!isLoaded) {
+      setEmailError("Still loading — please try again in a moment.");
+      return;
+    }
+    if (!signIn) {
+      setEmailError("Sign-in is unavailable. Please restart the app.");
+      return;
+    }
 
     setIsPending(true);
     try {
@@ -42,14 +49,17 @@ export default function ForgotPasswordScreen() {
       });
       router.push({ pathname: "/(auth)/reset-password", params: { email: normalizedEmail } });
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string }[] };
+      console.log("[forgot-password] error:", JSON.stringify(err));
+      const e = err as { errors?: { code?: string; message?: string; longMessage?: string }[] };
       const first = e?.errors?.[0];
       const code = (first?.code ?? "").toLowerCase();
       const msg = (first?.message ?? "").toLowerCase();
       if (code.includes("not_found") || msg.includes("couldn't find") || msg.includes("no user")) {
-        setEmailError("No account found with that email address");
+        setEmailError("No account found with that email address.");
+      } else if (code.includes("strategy_not_supported") || code.includes("not_supported")) {
+        setEmailError("Password reset is not enabled. Please contact support.");
       } else {
-        setEmailError(first?.message || "Something went wrong. Please try again.");
+        setEmailError(first?.longMessage || first?.message || `Unexpected error (${code || "unknown"}). Please try again.`);
       }
     } finally {
       setIsPending(false);
