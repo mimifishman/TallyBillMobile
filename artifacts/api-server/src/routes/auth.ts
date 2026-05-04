@@ -75,6 +75,25 @@ router.post("/forgot-password", async (req, res) => {
       return;
     }
 
+    if (user.clerkId) {
+      const clerkRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
+        headers: { Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}` },
+      });
+      if (clerkRes.ok) {
+        const clerkUser = await clerkRes.json();
+        if (clerkUser.external_accounts?.length > 0) {
+          const provider = clerkUser.external_accounts.some((a: { provider: string }) =>
+            a.provider === "oauth_apple"
+          ) ? "Apple" : "Google";
+          res.status(400).json({
+            error: `This account uses ${provider} sign-in. Please use the "Continue with ${provider}" button on the login screen instead.`,
+            code: "OAUTH_ACCOUNT",
+          });
+          return;
+        }
+      }
+    }
+
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const tokenHash = await bcrypt.hash(code, 10);
     const expiry = new Date(Date.now() + 15 * 60 * 1000);
