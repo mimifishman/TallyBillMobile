@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { useSignIn } from "@clerk/expo";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -16,11 +15,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
+const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
 export default function ResetPasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { email } = useLocalSearchParams<{ email: string }>();
-  const { signIn, setActive, isLoaded } = useSignIn();
 
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -40,33 +40,29 @@ export default function ResetPasswordScreen() {
     if (!newPassword) { setPasswordError("Please enter a new password"); return; }
     if (newPassword.length < 8) { setPasswordError("Password must be at least 8 characters"); return; }
     if (newPassword !== confirmPassword) { setPasswordError("Passwords don't match"); return; }
-    if (!isLoaded || !signIn) return;
 
     setIsPending(true);
     try {
-      const result = await signIn.attemptFirstFactor({
-        strategy: "reset_password_email_code",
-        code: code.trim(),
-        password: newPassword,
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: code.trim(), newPassword }),
       });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        setSuccess(true);
-      } else {
-        setCodeError("Reset did not complete. Please try again.");
+      const data = await res.json();
+      if (!res.ok) {
+        const msg: string = data.error || "Something went wrong. Please try again.";
+        if (msg.toLowerCase().includes("code") || msg.toLowerCase().includes("expired")) {
+          setCodeError(msg);
+        } else if (msg.toLowerCase().includes("password")) {
+          setPasswordError(msg);
+        } else {
+          setCodeError(msg);
+        }
+        return;
       }
-    } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string }[] };
-      const first = e?.errors?.[0];
-      const code_ = (first?.code ?? "").toLowerCase();
-      const msg = (first?.message ?? "").toLowerCase();
-      if (code_.includes("incorrect_code") || code_.includes("verification_failed") || msg.includes("code")) {
-        setCodeError("Incorrect or expired code. Please check your email.");
-      } else if (code_.includes("password") || msg.includes("password")) {
-        setPasswordError(first?.message || "Password does not meet requirements.");
-      } else {
-        setCodeError(first?.message || "Something went wrong. Please try again.");
-      }
+      setSuccess(true);
+    } catch {
+      setCodeError("Network error. Please check your connection and try again.");
     } finally {
       setIsPending(false);
     }
@@ -81,14 +77,14 @@ export default function ResetPasswordScreen() {
           </View>
           <Text style={[styles.successTitle, { color: colors.foreground }]}>Password Reset!</Text>
           <Text style={[styles.successSub, { color: colors.mutedForeground }]}>
-            Your password has been reset. You're now signed in.
+            Your password has been updated. Sign in with your new password.
           </Text>
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.replace("/(tabs)/bills")}
+            onPress={() => router.replace("/(auth)/login")}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryBtnText}>Go to My Bills</Text>
+            <Text style={styles.primaryBtnText}>Sign In</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -123,7 +119,7 @@ export default function ResetPasswordScreen() {
           <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
             {email ?? "your email"}
           </Text>
-          . Enter it below with your new password.
+          . Enter it below along with your new password.
         </Text>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -240,16 +236,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  sub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 21,
-  },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-  },
+  sub: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  card: { borderRadius: 16, borderWidth: 1, padding: 20 },
   fieldLabel: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
@@ -266,11 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 10,
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -280,22 +264,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 12,
   },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#dc2626",
-  },
-  primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
+  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#dc2626" },
+  primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   linkBtn: { alignItems: "center", paddingVertical: 4 },
   linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   successContainer: {

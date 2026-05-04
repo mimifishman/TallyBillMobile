@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { useSignIn } from "@clerk/expo";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -16,16 +15,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
+const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
 export default function ForgotPasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { signIn, isLoaded } = useSignIn();
 
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isPending, setIsPending] = useState(false);
-
-  const isReady = isLoaded && !!signIn;
 
   const handleSendCode = async () => {
     setEmailError("");
@@ -34,28 +32,22 @@ export default function ForgotPasswordScreen() {
       setEmailError("Please enter your email address");
       return;
     }
-    if (!isReady) return;
 
     setIsPending(true);
     try {
-      await signIn.create({
-        strategy: "reset_password_email_code",
-        identifier: normalizedEmail,
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
       });
-      router.push({ pathname: "/(auth)/reset-password", params: { email: normalizedEmail } });
-    } catch (err: unknown) {
-      console.log("[forgot-password] error:", JSON.stringify(err));
-      const e = err as { errors?: { code?: string; message?: string; longMessage?: string }[] };
-      const first = e?.errors?.[0];
-      const code = (first?.code ?? "").toLowerCase();
-      const msg = (first?.message ?? "").toLowerCase();
-      if (code.includes("not_found") || msg.includes("couldn't find") || msg.includes("no user")) {
-        setEmailError("No account found with that email address.");
-      } else if (code.includes("strategy_not_supported") || code.includes("not_supported")) {
-        setEmailError("Password reset is not enabled. Please contact support.");
-      } else {
-        setEmailError(first?.longMessage || first?.message || `Unexpected error (${code || "unknown"}). Please try again.`);
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailError(data.error || "Something went wrong. Please try again.");
+        return;
       }
+      router.push({ pathname: "/(auth)/reset-password", params: { email: normalizedEmail } });
+    } catch {
+      setEmailError("Network error. Please check your connection and try again.");
     } finally {
       setIsPending(false);
     }
@@ -89,7 +81,7 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Enter your email address and we'll send you a code to reset your password.
+          Enter your email address and we'll send you a 6-digit code to reset your password.
         </Text>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -119,12 +111,12 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: (!isReady || isPending) ? 0.7 : 1 }]}
+          style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isPending ? 0.7 : 1 }]}
           onPress={handleSendCode}
-          disabled={!isReady || isPending}
+          disabled={isPending}
           activeOpacity={0.8}
         >
-          {(!isReady || isPending) ? (
+          {isPending ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.primaryBtnText}>Send Reset Code</Text>
@@ -175,11 +167,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     paddingHorizontal: 8,
   },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-  },
+  card: { borderRadius: 16, borderWidth: 1, padding: 20 },
   fieldLabel: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
@@ -196,11 +184,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 10,
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -210,22 +194,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 12,
   },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#dc2626",
-  },
-  primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
+  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#dc2626" },
+  primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   linkBtn: { alignItems: "center", paddingVertical: 4 },
   linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
 });

@@ -10,6 +10,8 @@ export const usersTable = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   clerkId: text("clerk_id").unique(),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
