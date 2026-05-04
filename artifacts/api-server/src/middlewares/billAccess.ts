@@ -1,7 +1,7 @@
 import type { Response, NextFunction } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { billsTable, billMembersTable, usersTable } from "@workspace/db";
+import { billsTable, billUsersTable, usersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import type { AuthRequest } from "./auth.js";
 
@@ -19,7 +19,7 @@ export interface BillAccessRequest extends AuthRequest {
  * Authorize access to a bill identified by `:billId` in the route. Access is
  * granted when EITHER:
  *   - the request is authenticated and the user is the bill's owner or a
- *     member, OR
+ *     member (in bill_users), OR
  *   - the request carries an `X-Join-Code` header whose value (case
  *     insensitive) matches the bill's `joinCode`.
  *
@@ -51,11 +51,6 @@ export function requireBillAccess(
 
       const headerCode = String(req.headers[JOIN_CODE_HEADER] ?? "").trim().toUpperCase();
       if (headerCode) {
-        // The caller is presenting a join-code capability. Treat it as
-        // authoritative for this request: if it matches we let them in;
-        // if it doesn't, we 404 (rather than 403 or falling through to
-        // session-auth) so callers get the same "not found" signal whether
-        // the bill doesn't exist or their code is wrong.
         if (headerCode === bill.joinCode.toUpperCase()) {
           req.billAccess = { billId, joinCode: bill.joinCode, via: "joinCode" };
           next();
@@ -86,11 +81,11 @@ export function requireBillAccess(
           }
           const [member] = await db
             .select()
-            .from(billMembersTable)
+            .from(billUsersTable)
             .where(
               and(
-                eq(billMembersTable.billId, billId),
-                eq(billMembersTable.userId, user.id),
+                eq(billUsersTable.billId, billId),
+                eq(billUsersTable.userId, user.id),
               ),
             )
             .limit(1);

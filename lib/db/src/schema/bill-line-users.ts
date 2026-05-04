@@ -1,11 +1,11 @@
 import { pgTable, serial, integer } from "drizzle-orm/pg-core";
 import { billLinesTable } from "./bill-lines";
-import { billUsersTable } from "./bill-users";
+import { billMembersTable } from "./bill-members";
 
-export const billLineUsersTable = pgTable("bill_line_users", {
+export const billLineMembersTable = pgTable("bill_line_members", {
   id: serial("id").primaryKey(),
   billLineId: integer("bill_line_id").notNull().references(() => billLinesTable.id, { onDelete: "cascade" }),
-  billUserId: integer("bill_user_id").notNull().references(() => billUsersTable.id, { onDelete: "cascade" }),
+  billMemberId: integer("bill_member_id").notNull().references(() => billMembersTable.id, { onDelete: "cascade" }),
 });
 
-export type BillLineUser = typeof billLineUsersTable.$inferSelect;
+export type BillLineMember = typeof billLineMembersTable.$inferSelect;

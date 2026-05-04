@@ -14,7 +14,7 @@ tags:
     description: Authentication
   - name: bills
     description: Bill management
-  - name: bill-users
+  - name: bill-members
     description: Bill participants
   - name: bill-lines
     description: Bill line items
@@ -493,7 +493,7 @@ paths:
   /bills/{billId}/users:
     get:
       operationId: getBillUsers
-      tags: [bill-users]
+      tags: [bill-members]
       summary: Get bill participants
       parameters:
         - name: billId
@@ -509,10 +509,10 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/BillUser"
+                  $ref: "#/components/schemas/BillMember"
     post:
       operationId: createBillUser
-      tags: [bill-users]
+      tags: [bill-members]
       summary: Add a participant
       parameters:
         - name: billId
@@ -525,19 +525,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateBillUserRequest"
+              $ref: "#/components/schemas/CreateBillMemberRequest"
       responses:
         "201":
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BillUser"
+                $ref: "#/components/schemas/BillMember"
 
   /bills/{billId}/users/{userId}:
     put:
       operationId: updateBillUser
-      tags: [bill-users]
+      tags: [bill-members]
       summary: Update a participant (e.g. tipPercentOverride)
       parameters:
         - name: billId
@@ -555,17 +555,17 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateBillUserRequest"
+              $ref: "#/components/schemas/UpdateBillMemberRequest"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BillUser"
+                $ref: "#/components/schemas/BillMember"
     delete:
       operationId: deleteBillUser
-      tags: [bill-users]
+      tags: [bill-members]
       summary: Remove a participant
       parameters:
         - name: billId
@@ -818,7 +818,7 @@ components:
         users:
           type: array
           items:
-            $ref: "#/components/schemas/BillUser"
+            $ref: "#/components/schemas/BillMember"
         isOwner:
           type: boolean
       required:
@@ -895,7 +895,7 @@ components:
       required:
         - joinCode
 
-    BillUser:
+    BillMember:
       type: object
       properties:
         id:
@@ -919,7 +919,7 @@ components:
         - color
         - createdAt
 
-    CreateBillUserRequest:
+    CreateBillMemberRequest:
       type: object
       properties:
         name:
@@ -930,7 +930,7 @@ components:
         - name
         - color
 
-    UpdateBillUserRequest:
+    UpdateBillMemberRequest:
       type: object
       properties:
         name:

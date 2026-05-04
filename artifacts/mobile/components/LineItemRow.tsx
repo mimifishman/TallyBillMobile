@@ -14,7 +14,7 @@ import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
 
-interface BillUser {
+interface BillMember {
   id: number;
   name: string;
   color: string;
@@ -27,7 +27,7 @@ interface LineItemRowProps {
   unitPrice: number;
   total: number;
   assignedUserIds: number[];
-  billUsers: BillUser[];
+  billUsers: BillMember[];
   currency?: string | null;
   onToggleUser: (lineId: number, billUserId: number) => void;
   onBulkToggleUsers: (lineId: number, billUserIds: number[]) => void;

@@ -21,13 +21,13 @@ import type {
   Bill,
   BillDetail,
   BillLine,
+  BillMember,
   BillTotals,
-  BillUser,
   BulkCreateBillLinesBody,
   ChangePasswordRequest,
   CreateBillLineRequest,
+  CreateBillMemberRequest,
   CreateBillRequest,
-  CreateBillUserRequest,
   CurrencyResponse,
   ErrorResponse,
   HealthStatus,
@@ -40,8 +40,8 @@ import type {
   SuccessResponse,
   ToggleBillLineUser200,
   ToggleBillLineUserBody,
+  UpdateBillMemberRequest,
   UpdateBillRequest,
-  UpdateBillUserRequest,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1580,8 +1580,8 @@ export const getGetBillUsersUrl = (billId: number) => {
 export const getBillUsers = async (
   billId: number,
   options?: RequestInit,
-): Promise<BillUser[]> => {
-  return customFetch<BillUser[]>(getGetBillUsersUrl(billId), {
+): Promise<BillMember[]> => {
+  return customFetch<BillMember[]>(getGetBillUsersUrl(billId), {
     ...options,
     method: "GET",
   });
@@ -1666,14 +1666,14 @@ export const getCreateBillUserUrl = (billId: number) => {
 
 export const createBillUser = async (
   billId: number,
-  createBillUserRequest: CreateBillUserRequest,
+  createBillMemberRequest: CreateBillMemberRequest,
   options?: RequestInit,
-): Promise<BillUser> => {
-  return customFetch<BillUser>(getCreateBillUserUrl(billId), {
+): Promise<BillMember> => {
+  return customFetch<BillMember>(getCreateBillUserUrl(billId), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createBillUserRequest),
+    body: JSON.stringify(createBillMemberRequest),
   });
 };
 
@@ -1684,14 +1684,14 @@ export const getCreateBillUserMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createBillUser>>,
     TError,
-    { billId: number; data: BodyType<CreateBillUserRequest> },
+    { billId: number; data: BodyType<CreateBillMemberRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof createBillUser>>,
   TError,
-  { billId: number; data: BodyType<CreateBillUserRequest> },
+  { billId: number; data: BodyType<CreateBillMemberRequest> },
   TContext
 > => {
   const mutationKey = ["createBillUser"];
@@ -1705,7 +1705,7 @@ export const getCreateBillUserMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof createBillUser>>,
-    { billId: number; data: BodyType<CreateBillUserRequest> }
+    { billId: number; data: BodyType<CreateBillMemberRequest> }
   > = (props) => {
     const { billId, data } = props ?? {};
 
@@ -1718,7 +1718,7 @@ export const getCreateBillUserMutationOptions = <
 export type CreateBillUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof createBillUser>>
 >;
-export type CreateBillUserMutationBody = BodyType<CreateBillUserRequest>;
+export type CreateBillUserMutationBody = BodyType<CreateBillMemberRequest>;
 export type CreateBillUserMutationError = ErrorType<unknown>;
 
 /**
@@ -1731,14 +1731,14 @@ export const useCreateBillUser = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof createBillUser>>,
     TError,
-    { billId: number; data: BodyType<CreateBillUserRequest> },
+    { billId: number; data: BodyType<CreateBillMemberRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof createBillUser>>,
   TError,
-  { billId: number; data: BodyType<CreateBillUserRequest> },
+  { billId: number; data: BodyType<CreateBillMemberRequest> },
   TContext
 > => {
   return useMutation(getCreateBillUserMutationOptions(options));
@@ -1754,14 +1754,14 @@ export const getUpdateBillUserUrl = (billId: number, userId: number) => {
 export const updateBillUser = async (
   billId: number,
   userId: number,
-  updateBillUserRequest: UpdateBillUserRequest,
+  updateBillMemberRequest: UpdateBillMemberRequest,
   options?: RequestInit,
-): Promise<BillUser> => {
-  return customFetch<BillUser>(getUpdateBillUserUrl(billId, userId), {
+): Promise<BillMember> => {
+  return customFetch<BillMember>(getUpdateBillUserUrl(billId, userId), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(updateBillUserRequest),
+    body: JSON.stringify(updateBillMemberRequest),
   });
 };
 
@@ -1772,14 +1772,14 @@ export const getUpdateBillUserMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateBillUser>>,
     TError,
-    { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+    { billId: number; userId: number; data: BodyType<UpdateBillMemberRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof updateBillUser>>,
   TError,
-  { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+  { billId: number; userId: number; data: BodyType<UpdateBillMemberRequest> },
   TContext
 > => {
   const mutationKey = ["updateBillUser"];
@@ -1793,7 +1793,7 @@ export const getUpdateBillUserMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateBillUser>>,
-    { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> }
+    { billId: number; userId: number; data: BodyType<UpdateBillMemberRequest> }
   > = (props) => {
     const { billId, userId, data } = props ?? {};
 
@@ -1806,7 +1806,7 @@ export const getUpdateBillUserMutationOptions = <
 export type UpdateBillUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateBillUser>>
 >;
-export type UpdateBillUserMutationBody = BodyType<UpdateBillUserRequest>;
+export type UpdateBillUserMutationBody = BodyType<UpdateBillMemberRequest>;
 export type UpdateBillUserMutationError = ErrorType<unknown>;
 
 /**
@@ -1819,14 +1819,14 @@ export const useUpdateBillUser = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateBillUser>>,
     TError,
-    { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+    { billId: number; userId: number; data: BodyType<UpdateBillMemberRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof updateBillUser>>,
   TError,
-  { billId: number; userId: number; data: BodyType<UpdateBillUserRequest> },
+  { billId: number; userId: number; data: BodyType<UpdateBillMemberRequest> },
   TContext
 > => {
   return useMutation(getUpdateBillUserMutationOptions(options));

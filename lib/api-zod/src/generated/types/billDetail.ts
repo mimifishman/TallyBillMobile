@@ -7,11 +7,11 @@
  */
 import type { Bill } from "./bill";
 import type { BillLine } from "./billLine";
-import type { BillUser } from "./billUser";
+import type { BillMember } from "./billMember";
 
 export interface BillDetail {
   bill: Bill;
   lines: BillLine[];
-  users: BillUser[];
+  users: BillMember[];
   isOwner: boolean;
 }

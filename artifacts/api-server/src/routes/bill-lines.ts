@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { billLinesTable, billLineUsersTable, billUsersTable } from "@workspace/db";
+import { billLinesTable, billLineMembersTable, billMembersTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 
 const router = Router({ mergeParams: true });
@@ -13,11 +13,11 @@ async function getBillLinesWithAssignments(billId: number) {
   const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId));
   const lineIds = lines.map((l) => l.id);
   const assignments = lineIds.length > 0
-    ? await db.select().from(billLineUsersTable).where(inArray(billLineUsersTable.billLineId, lineIds))
+    ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, lineIds))
     : [];
   return lines.map((line) => ({
     ...line,
-    assignedUserIds: assignments.filter((a) => a.billLineId === line.id).map((a) => a.billUserId),
+    assignedUserIds: assignments.filter((a) => a.billLineId === line.id).map((a) => a.billMemberId),
   }));
 }
 
@@ -79,8 +79,8 @@ router.put("/:lineId", async (req, res) => {
     res.status(404).json({ error: "Line not found" });
     return;
   }
-  const assignments = await db.select().from(billLineUsersTable).where(eq(billLineUsersTable.billLineId, lineId));
-  res.json({ ...updated, assignedUserIds: assignments.map((a) => a.billUserId) });
+  const assignments = await db.select().from(billLineMembersTable).where(eq(billLineMembersTable.billLineId, lineId));
+  res.json({ ...updated, assignedUserIds: assignments.map((a) => a.billMemberId) });
 });
 
 router.delete("/:lineId", async (req, res) => {
@@ -99,7 +99,6 @@ router.post("/:lineId/users", async (req, res) => {
     res.status(400).json({ error: "billUserId is required" });
     return;
   }
-  // Verify the line belongs to the bill, and the bill user belongs to the bill.
   const [line] = await db.select().from(billLinesTable)
     .where(and(eq(billLinesTable.id, lineId), eq(billLinesTable.billId, billId)))
     .limit(1);
@@ -107,22 +106,22 @@ router.post("/:lineId/users", async (req, res) => {
     res.status(404).json({ error: "Line not found" });
     return;
   }
-  const [billUser] = await db.select().from(billUsersTable)
-    .where(and(eq(billUsersTable.id, billUserId), eq(billUsersTable.billId, billId)))
+  const [billMember] = await db.select().from(billMembersTable)
+    .where(and(eq(billMembersTable.id, billUserId), eq(billMembersTable.billId, billId)))
     .limit(1);
-  if (!billUser) {
+  if (!billMember) {
     res.status(400).json({ error: "billUserId does not belong to this bill" });
     return;
   }
-  const [existing] = await db.select().from(billLineUsersTable)
-    .where(and(eq(billLineUsersTable.billLineId, lineId), eq(billLineUsersTable.billUserId, billUserId)))
+  const [existing] = await db.select().from(billLineMembersTable)
+    .where(and(eq(billLineMembersTable.billLineId, lineId), eq(billLineMembersTable.billMemberId, billUserId)))
     .limit(1);
   if (existing) {
-    await db.delete(billLineUsersTable)
-      .where(and(eq(billLineUsersTable.billLineId, lineId), eq(billLineUsersTable.billUserId, billUserId)));
+    await db.delete(billLineMembersTable)
+      .where(and(eq(billLineMembersTable.billLineId, lineId), eq(billLineMembersTable.billMemberId, billUserId)));
     res.json({ assigned: false });
   } else {
-    await db.insert(billLineUsersTable).values({ billLineId: lineId, billUserId });
+    await db.insert(billLineMembersTable).values({ billLineId: lineId, billMemberId: billUserId });
     res.json({ assigned: true });
   }
 });

@@ -83,7 +83,7 @@ export interface BillLine {
   createdAt: string;
 }
 
-export interface BillUser {
+export interface BillMember {
   id: number;
   billId: number;
   name: string;
@@ -95,7 +95,7 @@ export interface BillUser {
 export interface BillDetail {
   bill: Bill;
   lines: BillLine[];
-  users: BillUser[];
+  users: BillMember[];
   isOwner: boolean;
 }
 
@@ -131,12 +131,12 @@ export interface JoinBillRequest {
   joinCode: string;
 }
 
-export interface CreateBillUserRequest {
+export interface CreateBillMemberRequest {
   name: string;
   color: string;
 }
 
-export interface UpdateBillUserRequest {
+export interface UpdateBillMemberRequest {
   name?: string;
   color?: string;
   tipPercentOverride?: number | null;

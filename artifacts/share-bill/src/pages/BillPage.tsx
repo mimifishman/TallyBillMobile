@@ -16,7 +16,7 @@ import {
   type Bill,
   type BillDetail,
   type BillLine,
-  type BillUser,
+  type BillMember,
   type PersonTotal,
   type UpdateBillRequest,
 } from "@workspace/api-client-react";
@@ -403,7 +403,7 @@ function SectionHeader({
   );
 }
 
-function PersonChip({ user, onRemove }: { user: BillUser; onRemove: () => void }) {
+function PersonChip({ user, onRemove }: { user: BillMember; onRemove: () => void }) {
   const initials = user.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -436,7 +436,7 @@ function LineRow({
   onUpdate,
 }: {
   line: BillLine;
-  users: BillUser[];
+  users: BillMember[];
   currency: string | null;
   onToggle: (billUserId: number) => void;
   onDelete: () => void;

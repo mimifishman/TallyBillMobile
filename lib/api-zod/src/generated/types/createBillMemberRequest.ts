@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpdateBillUserRequest {
-  name?: string;
-  color?: string;
-  tipPercentOverride?: number | null;
+export interface CreateBillMemberRequest {
+  name: string;
+  color: string;
 }
