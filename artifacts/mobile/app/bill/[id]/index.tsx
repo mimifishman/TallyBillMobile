@@ -71,6 +71,7 @@ export default function BillDetailScreen() {
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: getGetBillQueryKey(billId) });
+    queryClient.invalidateQueries({ queryKey: getGetBillTotalsQueryKey(billId) });
   }, [billId, queryClient]);
 
   const addPersonMutation = useCreateBillUser({

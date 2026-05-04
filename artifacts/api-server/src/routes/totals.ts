@@ -97,6 +97,14 @@ router.get("/", async (req, res) => {
     billMembers.length > 0 &&
     lines.every((l) => assignedLineIds.has(l.id));
 
+  const unsplitLines = lines
+    .filter((l) => !assignedLineIds.has(l.id))
+    .map((l) => ({
+      id: l.id,
+      description: l.description,
+      total: Math.round((parseFloat(String(l.total)) || 0) * 100) / 100,
+    }));
+
   res.json({
     billSubtotal: Math.round(billSubtotal * 100) / 100,
     taxPercent,
@@ -107,6 +115,7 @@ router.get("/", async (req, res) => {
     grandTotal,
     perPerson,
     settled,
+    unsplitLines,
   });
 });
 

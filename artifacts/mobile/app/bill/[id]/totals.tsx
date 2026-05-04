@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Modal,
@@ -53,6 +53,12 @@ export default function TotalsScreen() {
       return next;
     });
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: getGetBillTotalsQueryKey(billId) });
+    }, [billId, queryClient])
+  );
 
   const { data: billData } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
   const { data: totals, isLoading } = useGetBillTotals(billId, { query: { queryKey: getGetBillTotalsQueryKey(billId) } });
@@ -178,6 +184,39 @@ export default function TotalsScreen() {
             </View>
             <Text style={[styles.settledText, { color: colors.primary }]}>All settled — every item is split!</Text>
           </Animated.View>
+        ) : null}
+
+        {totals.unsplitLines.length > 0 ? (
+          <>
+            <View style={styles.warningBanner}>
+              <Feather name="alert-circle" size={18} color="#B45309" />
+              <Text style={styles.warningText}>
+                {totals.unsplitLines.length === 1
+                  ? "1 item hasn't been split yet"
+                  : `${totals.unsplitLines.length} items haven't been split yet`}
+              </Text>
+            </View>
+
+            <View style={[styles.unsplitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.unsplitHeader, { color: colors.mutedForeground }]}>UNASSIGNED ITEMS</Text>
+              {totals.unsplitLines.map((line, idx) => (
+                <View
+                  key={line.id}
+                  style={[
+                    styles.itemRow,
+                    idx < totals.unsplitLines.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, marginBottom: 2 },
+                  ]}
+                >
+                  <View style={styles.itemLeft}>
+                    <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                      {line.description}
+                    </Text>
+                  </View>
+                  <Text style={[styles.itemShare, { color: colors.foreground }]}>{fmt(line.total)}</Text>
+                </View>
+              ))}
+            </View>
+          </>
         ) : null}
 
         <View style={styles.sectionRow}>
@@ -408,6 +447,34 @@ const styles = StyleSheet.create({
   breakdownValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   editTipBtn: { padding: 4 },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: "#FEF3C7",
+  },
+  warningText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#B45309",
+    flex: 1,
+  },
+  unsplitCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  unsplitHeader: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center", padding: 24 },
   modalCard: { width: "100%", borderRadius: 16, borderWidth: 1, padding: 20, gap: 12 },
   modalTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },

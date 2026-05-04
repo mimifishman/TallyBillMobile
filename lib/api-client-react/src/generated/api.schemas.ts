@@ -173,6 +173,12 @@ export interface PersonTotal {
   items: PersonTotalItem[];
 }
 
+export interface UnsplitLine {
+  id: number;
+  description: string;
+  total: number;
+}
+
 export interface BillTotals {
   billSubtotal: number;
   taxPercent: number;
@@ -184,6 +190,8 @@ export interface BillTotals {
   perPerson: PersonTotal[];
   /** True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person */
   settled: boolean;
+  /** Line items that have not been assigned to anyone */
+  unsplitLines: UnsplitLine[];
 }
 
 export interface OcrLineItem {
