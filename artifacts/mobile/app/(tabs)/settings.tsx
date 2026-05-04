@@ -207,14 +207,25 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
           <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <TouchableOpacity
-              style={[styles.menuItem, { borderBottomColor: colors.border }]}
-              onPress={() => router.push("/(auth)/change-password")}
-            >
-              <Feather name="lock" size={18} color={colors.foreground} />
-              <Text style={[styles.menuItemText, { color: colors.foreground }]}>Change Password</Text>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            {clerkUser?.passwordEnabled ? (
+              <TouchableOpacity
+                style={[styles.menuItem, { borderBottomColor: colors.border }]}
+                onPress={() => router.push("/(auth)/change-password")}
+              >
+                <Feather name="lock" size={18} color={colors.foreground} />
+                <Text style={[styles.menuItemText, { color: colors.foreground }]}>Change Password</Text>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : clerkUser ? (
+              <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+                <Feather name="shield" size={18} color={colors.mutedForeground} />
+                <Text style={[styles.menuItemText, { color: colors.mutedForeground }]}>
+                  {clerkUser.externalAccounts.some((a) => a.provider === "oauth_apple")
+                    ? "Signed in with Apple"
+                    : "Signed in with Google"}
+                </Text>
+              </View>
+            ) : null}
             <TouchableOpacity
               style={[styles.menuItem, { borderBottomColor: colors.border }]}
               onPress={handleLogout}

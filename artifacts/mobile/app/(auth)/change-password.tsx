@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
+import { useUser } from "@clerk/expo";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -19,6 +20,13 @@ import { useChangePassword } from "@workspace/api-client-react";
 export default function ChangePasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user: clerkUser, isLoaded } = useUser();
+
+  useEffect(() => {
+    if (isLoaded && clerkUser && !clerkUser.passwordEnabled) {
+      router.replace("/(tabs)/settings");
+    }
+  }, [isLoaded, clerkUser]);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
