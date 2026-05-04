@@ -5,6 +5,7 @@ import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.js";
 import type { AuthRequest } from "../middlewares/auth.js";
+import { sendEmail } from "../lib/resend.js";
 
 const router = Router();
 
@@ -54,41 +55,6 @@ router.put("/password", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-async function sendResetEmail(to: string, code: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
-
-  const html = `
-    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-      <h2 style="color:#1F2937;margin-bottom:8px">Reset your TallyBill password</h2>
-      <p style="color:#6B7280;margin-bottom:24px">Use the code below to reset your password. It expires in 15 minutes.</p>
-      <div style="background:#F3F4F6;border-radius:12px;padding:24px;text-align:center;letter-spacing:8px;font-size:32px;font-weight:bold;color:#1F2937">
-        ${code}
-      </div>
-      <p style="color:#6B7280;margin-top:24px;font-size:13px">If you didn't request this, you can safely ignore this email.</p>
-    </div>
-  `;
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "TallyBill <onboarding@resend.dev>",
-      to: [to],
-      subject: "Your TallyBill password reset code",
-      html,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Resend error ${res.status}: ${body}`);
-  }
-}
-
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   if (!email || typeof email !== "string") {
@@ -118,7 +84,20 @@ router.post("/forgot-password", async (req, res) => {
       .set({ resetToken: tokenHash, resetTokenExpiry: expiry })
       .where(eq(usersTable.id, user.id));
 
-    await sendResetEmail(normalizedEmail, code);
+    await sendEmail({
+      to: normalizedEmail,
+      subject: "Your TallyBill password reset code",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+          <h2 style="color:#1F2937;margin-bottom:8px">Reset your TallyBill password</h2>
+          <p style="color:#6B7280;margin-bottom:24px">Use the code below to reset your password. It expires in 15 minutes.</p>
+          <div style="background:#F3F4F6;border-radius:12px;padding:24px;text-align:center;letter-spacing:8px;font-size:32px;font-weight:bold;color:#1F2937">
+            ${code}
+          </div>
+          <p style="color:#6B7280;margin-top:24px;font-size:13px">If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
 
     res.json({ message: "If that email is registered, a reset code has been sent." });
   } catch (err) {

@@ -22,7 +22,8 @@
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.3",
     "pino": "^9",
-    "pino-http": "^10"
+    "pino-http": "^10",
+    "resend": "4.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
