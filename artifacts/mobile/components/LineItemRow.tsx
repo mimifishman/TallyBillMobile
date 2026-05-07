@@ -33,12 +33,14 @@ interface LineItemRowProps {
   onBulkToggleUsers: (lineId: number, billUserIds: number[]) => void;
   onDelete: (lineId: number) => void;
   onUpdate: (lineId: number, data: { description: string; quantity: number; total: number }) => void;
+  onSplit: (lineId: number) => void;
 }
 
 export function LineItemRow({
   id,
   description,
   quantity,
+  unitPrice,
   total,
   assignedUserIds,
   billUsers,
@@ -47,16 +49,26 @@ export function LineItemRow({
   onBulkToggleUsers,
   onDelete,
   onUpdate,
+  onSplit,
 }: LineItemRowProps) {
   const colors = useColors();
   const currencySymbol = getCurrencySymbol(currency);
   const [editing, setEditing] = useState(false);
   const [editDesc, setEditDesc] = useState(description);
   const [editTotal, setEditTotal] = useState(String(total));
+  const [editQty, setEditQty] = useState(String(quantity));
+
+  const handleEdit = () => {
+    setEditDesc(description);
+    setEditTotal(String(total));
+    setEditQty(String(quantity));
+    setEditing(true);
+  };
 
   const handleSave = () => {
     const newTotal = parseFloat(editTotal) || 0;
-    onUpdate(id, { description: editDesc, quantity, total: newTotal });
+    const newQty = Math.max(1, parseInt(editQty) || 1);
+    onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal });
     setEditing(false);
   };
 
@@ -73,38 +85,82 @@ export function LineItemRow({
       style={[styles.container, { borderColor: colors.border }]}
     >
       {editing ? (
-        <View style={styles.editRow}>
-          <TextInput
-            style={[styles.editInput, { color: colors.foreground, borderColor: colors.border }]}
-            value={editDesc}
-            onChangeText={setEditDesc}
-            placeholder="Item name"
-            placeholderTextColor={colors.mutedForeground}
-            autoFocus
-          />
-          <TextInput
-            style={[styles.editInputSmall, { color: colors.foreground, borderColor: colors.border }]}
-            value={editTotal}
-            onChangeText={setEditTotal}
-            keyboardType="numeric"
-            placeholder="0.00"
-            placeholderTextColor={colors.mutedForeground}
-          />
-          <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-            <Text style={styles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
+        <View style={styles.editBlock}>
+          <View style={styles.editRow}>
+            <TextInput
+              style={[styles.editInput, { color: colors.foreground, borderColor: colors.border }]}
+              value={editDesc}
+              onChangeText={setEditDesc}
+              placeholder="Item name"
+              placeholderTextColor={colors.mutedForeground}
+              autoFocus
+            />
+          </View>
+          <View style={styles.editRow}>
+            <View style={styles.editQtyWrap}>
+              <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Qty</Text>
+              <TextInput
+                style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border }]}
+                value={editQty}
+                onChangeText={setEditQty}
+                keyboardType="number-pad"
+                placeholder="1"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+            <TextInput
+              style={[styles.editInputSmall, { color: colors.foreground, borderColor: colors.border }]}
+              value={editTotal}
+              onChangeText={setEditTotal}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor={colors.mutedForeground}
+            />
+            {quantity > 1 && (
+              <TouchableOpacity
+                onPress={() => onSplit(id)}
+                style={[styles.splitBtn, { borderColor: colors.primary }]}
+                accessibilityLabel="Split item quantity"
+              >
+                <Feather name="scissors" size={13} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
+              <Text style={styles.saveBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <View style={styles.mainRow}>
           <View style={styles.desc}>
-            <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={2}>
-              {description}
-            </Text>
+            <View style={styles.nameRow}>
+              <View style={[styles.qtyBadge, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.qtyBadgeText, { color: colors.mutedForeground }]}>×{quantity}</Text>
+              </View>
+              <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={2}>
+                {description}
+              </Text>
+            </View>
             <Text style={[styles.itemTotal, { color: colors.mutedForeground }]}>
               {currencySymbol ? `${currencySymbol} ` : ""}{Number(total).toFixed(2)}
+              {quantity > 1 ? (
+                <Text style={[styles.unitPrice, { color: colors.mutedForeground }]}>
+                  {" "}({currencySymbol ? `${currencySymbol} ` : ""}{Number(unitPrice).toFixed(2)} each)
+                </Text>
+              ) : null}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setEditing(true)} style={styles.iconBtn}>
+          {quantity > 1 && (
+            <TouchableOpacity
+              onPress={() => onSplit(id)}
+              style={[styles.splitBtn, { borderColor: colors.primary }]}
+              accessibilityLabel="Split item quantity"
+            >
+              <Feather name="scissors" size={13} color={colors.primary} />
+              <Text style={[styles.splitBtnText, { color: colors.primary }]}>Split</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleEdit} style={styles.iconBtn}>
             <Feather name="edit-2" size={15} color={colors.mutedForeground} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete} style={styles.iconBtn}>
@@ -164,6 +220,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  qtyBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  qtyBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
   desc: {
     flex: 1,
     gap: 2,
@@ -172,10 +243,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_500Medium",
     lineHeight: 20,
+    flexShrink: 1,
   },
   itemTotal: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  unitPrice: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  splitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  splitBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   iconBtn: {
     padding: 6,
@@ -185,6 +274,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
     paddingLeft: 2,
+  },
+  editBlock: {
+    gap: 8,
   },
   editRow: {
     flexDirection: "row",
@@ -200,8 +292,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
+  editQtyWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  editQtyLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  editInputQty: {
+    width: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
   editInputSmall: {
-    width: 70,
+    flex: 1,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 8,

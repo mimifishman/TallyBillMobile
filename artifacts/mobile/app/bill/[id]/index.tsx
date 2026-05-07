@@ -4,9 +4,7 @@ import * as Haptics from "expo-haptics";
 import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
-  FlatList,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -54,6 +52,7 @@ export default function BillDetailScreen() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemTotal, setNewItemTotal] = useState("");
+  const [newItemQty, setNewItemQty] = useState("1");
   const [showEditHeader, setShowEditHeader] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editRestaurant, setEditRestaurant] = useState("");
@@ -61,6 +60,10 @@ export default function BillDetailScreen() {
   const [editCurrency, setEditCurrency] = useState("");
   const [editTaxPercent, setEditTaxPercent] = useState("");
   const [editTipPercent, setEditTipPercent] = useState("");
+
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [splitLineId, setSplitLineId] = useState<number | null>(null);
+  const [splitQtyInput, setSplitQtyInput] = useState("");
 
   const { data, isLoading } = useGetBill(billId, {
     query: {
@@ -82,8 +85,29 @@ export default function BillDetailScreen() {
     mutation: { onSuccess: invalidate },
   });
 
+  const splitPendingUsersRef = useRef<number[] | null>(null);
+
   const addLineMutation = useCreateBillLine({
-    mutation: { onSuccess: invalidate },
+    mutation: {
+      onSuccess: (result) => {
+        if (splitPendingUsersRef.current !== null && result?.id) {
+          const usersToAssign = splitPendingUsersRef.current;
+          splitPendingUsersRef.current = null;
+          if (usersToAssign.length > 0) {
+            bulkPendingRef.current += usersToAssign.length;
+            usersToAssign.forEach((billUserId) => {
+              toggleLineMutation.mutate({ billId, lineId: result.id, data: { billUserId } });
+            });
+            return;
+          }
+        }
+        invalidate();
+      },
+      onError: () => {
+        splitPendingUsersRef.current = null;
+        invalidate();
+      },
+    },
   });
 
   const deleteLineMutation = useDeleteBillLine({
@@ -200,13 +224,16 @@ export default function BillDetailScreen() {
 
   const handleAddItem = () => {
     if (!newItemDesc.trim()) return;
+    const qty = Math.max(1, parseInt(newItemQty) || 1);
     const total = parseFloat(newItemTotal) || 0;
+    const unitPrice = total / qty;
     addLineMutation.mutate({
       billId,
-      data: { description: newItemDesc.trim(), quantity: 1, unitPrice: total, total },
+      data: { description: newItemDesc.trim(), quantity: qty, unitPrice, total },
     });
     setNewItemDesc("");
     setNewItemTotal("");
+    setNewItemQty("1");
     setShowAddItem(false);
   };
 
@@ -235,6 +262,62 @@ export default function BillDetailScreen() {
         quantity: lineData.quantity,
         unitPrice: lineData.total / (lineData.quantity || 1),
         total: lineData.total,
+      },
+    });
+  };
+
+  const openSplitModal = (lineId: number) => {
+    setSplitLineId(lineId);
+    setSplitQtyInput("");
+    setShowSplitModal(true);
+  };
+
+  const handleConfirmSplit = () => {
+    if (!data || splitLineId === null) return;
+    const line = data.lines.find((l) => l.id === splitLineId);
+    if (!line) return;
+
+    const currentQty = parseFloat(String(line.quantity));
+    const splitQty = parseInt(splitQtyInput);
+
+    if (isNaN(splitQty) || splitQty < 1 || splitQty >= currentQty) {
+      Alert.alert(
+        "Invalid quantity",
+        `Enter a number between 1 and ${Math.floor(currentQty) - 1}.`
+      );
+      return;
+    }
+
+    const lineTotal = parseFloat(String(line.total));
+    const lineUnitPrice = parseFloat(String(line.unitPrice));
+
+    const splitTotal = Math.round(splitQty * lineUnitPrice * 100) / 100;
+    const remainderTotal = Math.round((lineTotal - splitTotal) * 100) / 100;
+    const remainderQty = currentQty - splitQty;
+
+    setShowSplitModal(false);
+    setSplitLineId(null);
+
+    splitPendingUsersRef.current = line.assignedUserIds ? [...line.assignedUserIds] : [];
+
+    updateLineMutation.mutate({
+      billId,
+      lineId: splitLineId,
+      data: {
+        description: line.description,
+        quantity: remainderQty,
+        unitPrice: lineUnitPrice,
+        total: remainderTotal,
+      },
+    });
+
+    addLineMutation.mutate({
+      billId,
+      data: {
+        description: line.description,
+        quantity: splitQty,
+        unitPrice: lineUnitPrice,
+        total: splitTotal,
       },
     });
   };
@@ -274,6 +357,9 @@ export default function BillDetailScreen() {
   const taxAmount = Math.round(subtotal * (taxPercent / 100) * 100) / 100;
   const tipAmount = Math.round(subtotal * (tipPercent / 100) * 100) / 100;
   const grandTotal = subtotal + taxAmount + tipAmount;
+
+  const splitLine = splitLineId !== null ? lines.find((l) => l.id === splitLineId) : null;
+  const splitLineMaxQty = splitLine ? Math.floor(parseFloat(String(splitLine.quantity))) - 1 : 0;
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
@@ -387,6 +473,7 @@ export default function BillDetailScreen() {
                 onBulkToggleUsers={handleBulkToggleUsers}
                 onDelete={handleDeleteLine}
                 onUpdate={handleUpdateLine}
+                onSplit={openSplitModal}
               />
             ))
           )}
@@ -514,7 +601,7 @@ export default function BillDetailScreen() {
 
       <Modal visible={showAddItem} transparent animationType="fade">
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowAddItem(false)}>
-          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Item</Text>
             <TextInput
               style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
@@ -524,14 +611,30 @@ export default function BillDetailScreen() {
               onChangeText={setNewItemDesc}
               autoFocus
             />
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Amount (e.g. 12.50)"
-              placeholderTextColor={colors.mutedForeground}
-              value={newItemTotal}
-              onChangeText={setNewItemTotal}
-              keyboardType="numeric"
-            />
+            <View style={styles.addItemAmountRow}>
+              <View style={styles.addItemQtyWrap}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Qty</Text>
+                <TextInput
+                  style={[styles.modalInput, styles.addItemQtyInput, { borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="1"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={newItemQty}
+                  onChangeText={setNewItemQty}
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View style={styles.addItemTotalWrap}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Total amount</Text>
+                <TextInput
+                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={newItemTotal}
+                  onChangeText={setNewItemTotal}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
             <View style={styles.modalButtons}>
               <TouchableOpacity onPress={() => setShowAddItem(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
@@ -540,7 +643,37 @@ export default function BillDetailScreen() {
                 <Text style={styles.modalConfirmText}>Add</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showSplitModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowSplitModal(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Split Quantity</Text>
+            {splitLine && (
+              <Text style={[styles.splitHint, { color: colors.mutedForeground }]}>
+                "{splitLine.description}" has ×{parseFloat(String(splitLine.quantity))} units. How many to split off into a new row?
+              </Text>
+            )}
+            <TextInput
+              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+              placeholder={splitLineMaxQty > 0 ? `1 – ${splitLineMaxQty}` : ""}
+              placeholderTextColor={colors.mutedForeground}
+              value={splitQtyInput}
+              onChangeText={setSplitQtyInput}
+              keyboardType="number-pad"
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity onPress={() => setShowSplitModal(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleConfirmSplit} style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}>
+                <Text style={styles.modalConfirmText}>Split</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </View>
@@ -610,7 +743,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4, marginTop: 2 },
+  fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4, marginBottom: 4 },
   modalInput: {
     borderWidth: 1.5,
     borderRadius: 10,
@@ -633,4 +766,9 @@ const styles = StyleSheet.create({
   editModalScroll: { maxHeight: 400 },
   taxTipRow: { flexDirection: "row", gap: 12, marginTop: 2 },
   taxTipField: { flex: 1 },
+  addItemAmountRow: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
+  addItemQtyWrap: { width: 72 },
+  addItemQtyInput: { textAlign: "center" },
+  addItemTotalWrap: { flex: 1 },
+  splitHint: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
