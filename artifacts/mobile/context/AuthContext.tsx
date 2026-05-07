@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Platform } from "react-native";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 export interface UserInfo {
@@ -35,6 +36,23 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   continueAsGuest: () => {},
 });
+
+function clearWebStorage() {
+  if (Platform.OS !== "web") return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("__clerk") || key.startsWith("clerk"))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    sessionStorage.clear();
+  } catch {
+    // storage may be unavailable in some contexts
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, signOut, getToken } = useClerkAuth();
@@ -72,7 +90,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setIsGuest(false);
     setAuthTokenGetter(() => null);
-    await signOut();
+    try {
+      await signOut();
+    } catch {
+      // non-fatal — clear storage anyway
+    }
+    if (Platform.OS === "web") {
+      clearWebStorage();
+      window.location.href = "/";
+      return;
+    }
   }, [signOut]);
 
   const continueAsGuest = useCallback(() => {
