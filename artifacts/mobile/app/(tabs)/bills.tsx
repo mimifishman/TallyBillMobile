@@ -128,11 +128,11 @@ export default function BillsScreen() {
         </Text>
         <TouchableOpacity
           style={[styles.gateBtn, { backgroundColor: colors.primary }]}
-          onPress={() => router.navigate("/(auth)/login")}
+          onPress={() => router.push("/(auth)/login")}
         >
           <Text style={styles.gateBtnText}>Sign In</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.navigate("/(auth)/register")}>
+        <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
           <Text style={[styles.gateLink, { color: colors.mutedForeground }]}>
             Create account
           </Text>
