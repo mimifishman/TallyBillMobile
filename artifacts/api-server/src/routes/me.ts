@@ -74,33 +74,36 @@ router.post("/claim-guest-bills", requireAuth, async (req: AuthRequest, res) => 
     return;
   }
 
-  let claimed = 0;
-  for (const bill of guestBills) {
-    await db
-      .update(billsTable)
-      .set({
-        ownerUserId: userId,
-        isGuestBill: false,
-        guestOwnerId: null,
-      })
-      .where(eq(billsTable.id, bill.id));
+  const claimed = await db.transaction(async (tx) => {
+    let count = 0;
+    for (const bill of guestBills) {
+      await tx
+        .update(billsTable)
+        .set({
+          ownerUserId: userId,
+          isGuestBill: false,
+          guestOwnerId: null,
+        })
+        .where(eq(billsTable.id, bill.id));
 
-    const [existingMember] = await db
-      .select()
-      .from(billUsersTable)
-      .where(and(eq(billUsersTable.billId, bill.id), eq(billUsersTable.userId, userId)))
-      .limit(1);
+      const [existingMember] = await tx
+        .select()
+        .from(billUsersTable)
+        .where(and(eq(billUsersTable.billId, bill.id), eq(billUsersTable.userId, userId)))
+        .limit(1);
 
-    if (!existingMember) {
-      await db.insert(billUsersTable).values({
-        billId: bill.id,
-        userId,
-        role: "owner",
-      });
+      if (!existingMember) {
+        await tx.insert(billUsersTable).values({
+          billId: bill.id,
+          userId,
+          role: "owner",
+        });
+      }
+
+      count++;
     }
-
-    claimed++;
-  }
+    return count;
+  });
 
   res.json({ claimed });
 });

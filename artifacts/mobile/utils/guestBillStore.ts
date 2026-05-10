@@ -15,18 +15,22 @@ export function registerJoinCode(billId: number, joinCode: string): void {
   rememberBillCode(billId, joinCode);
 }
 
+function generateGuestId(): string {
+  const ts = Date.now().toString(36);
+  const r1 = Math.random().toString(36).slice(2, 10);
+  const r2 = Math.random().toString(36).slice(2, 10);
+  return `guest_${ts}_${r1}${r2}`;
+}
+
 export async function getOrCreateGuestOwnerId(): Promise<string> {
   try {
     const existing = await AsyncStorage.getItem(GUEST_OWNER_ID_KEY);
     if (existing) return existing;
-    const id =
-      "guest_" +
-      Math.random().toString(36).slice(2, 10) +
-      Math.random().toString(36).slice(2, 10);
+    const id = generateGuestId();
     await AsyncStorage.setItem(GUEST_OWNER_ID_KEY, id);
     return id;
   } catch {
-    return "guest_fallback";
+    return generateGuestId();
   }
 }
 
