@@ -22,12 +22,15 @@ import {
   useDetectCurrency,
   getGetBillsQueryKey,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/context/AuthContext";
+import { appendGuestBill, registerJoinCode } from "@/utils/guestBillStore";
 
 const today = new Date().toISOString().split("T")[0]!;
 
 export default function NewBillScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user, guestOwnerId } = useAuth();
   const [title, setTitle] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [date, setDate] = useState(today);
@@ -44,7 +47,16 @@ export default function NewBillScreen() {
 
   const createMutation = useCreateBill({
     mutation: {
-      onSuccess: (bill) => {
+      onSuccess: async (bill) => {
+        if (!user && guestOwnerId && bill.id && bill.joinCode) {
+          registerJoinCode(bill.id, bill.joinCode);
+          await appendGuestBill({
+            id: bill.id,
+            joinCode: bill.joinCode,
+            title: bill.title,
+            date: bill.date,
+          });
+        }
         queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
         router.replace(`/bill/${bill.id}`);
       },
@@ -67,7 +79,8 @@ export default function NewBillScreen() {
         currency: currency || null,
         taxPercent: parseFloat(taxPercent) || 0,
         tipPercent: parseFloat(tipPercent) || 0,
-      },
+        ...(!user && guestOwnerId ? { guestOwnerId } : {}),
+      } as Parameters<typeof createMutation.mutate>[0]["data"],
     });
   };
 

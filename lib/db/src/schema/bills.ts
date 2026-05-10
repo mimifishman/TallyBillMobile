@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, numeric, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, numeric, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -14,6 +14,9 @@ export const billsTable = pgTable("bills", {
   tipPercent: numeric("tip_percent", { precision: 10, scale: 4 }).notNull().default("0"),
   joinCode: text("join_code").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  guestOwnerId: text("guest_owner_id"),
+  isGuestBill: boolean("is_guest_bill").notNull().default(false),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
 });
 
 export const insertBillSchema = createInsertSchema(billsTable).omit({ id: true, createdAt: true });

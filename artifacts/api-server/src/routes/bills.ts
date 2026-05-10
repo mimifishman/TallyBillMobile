@@ -79,14 +79,76 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
   res.json(enriched);
 });
 
+router.get("/guest", async (req, res) => {
+  const idsParam = String(req.query["ids"] ?? "").trim();
+  if (!idsParam) {
+    res.json([]);
+    return;
+  }
+  const ids = idsParam.split(",").map((s) => parseInt(s.trim())).filter((n) => !isNaN(n));
+  if (ids.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  const bills = await db.select().from(billsTable).where(
+    and(
+      inArray(billsTable.id, ids),
+      eq(billsTable.isGuestBill, true),
+    ),
+  );
+
+  if (bills.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  const billIds = bills.map((b) => b.id);
+  const allLines = await db.select().from(billLinesTable).where(inArray(billLinesTable.billId, billIds));
+  const allLineIds = allLines.map((l) => l.id);
+  const allAssignments = allLineIds.length > 0
+    ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, allLineIds))
+    : [];
+  const allMembers = await db.select().from(billMembersTable).where(inArray(billMembersTable.billId, billIds));
+
+  const assignedLineIds = new Set(allAssignments.map((a) => a.billLineId));
+  const linesByBill = new Map<number, typeof allLines>();
+  for (const line of allLines) {
+    const arr = linesByBill.get(line.billId);
+    if (arr) arr.push(line);
+    else linesByBill.set(line.billId, [line]);
+  }
+  const membersByBill = new Map<number, { id: number; name: string; color: string }[]>();
+  for (const m of allMembers) {
+    const entry = { id: m.id, name: m.name, color: m.color };
+    const arr = membersByBill.get(m.billId);
+    if (arr) arr.push(entry);
+    else membersByBill.set(m.billId, [entry]);
+  }
+
+  const enriched = bills.map((bill) => {
+    const billLines = linesByBill.get(bill.id) ?? [];
+    const users = membersByBill.get(bill.id) ?? [];
+    const settled =
+      users.length > 0 &&
+      billLines.length > 0 &&
+      billLines.every((l) => assignedLineIds.has(l.id));
+    return { ...bill, settled, users, isOwner: true };
+  });
+
+  res.json(enriched);
+});
+
 router.post("/", optionalAuth, async (req: AuthRequest, res) => {
-  const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
+  const { title, restaurantName, date, currency, taxPercent, tipPercent, guestOwnerId } = req.body;
   if (!title || !date) {
     res.status(400).json({ error: "title and date are required" });
     return;
   }
   const joinCode = generateJoinCode();
   const user = req.user;
+  const isGuest = !user && typeof guestOwnerId === "string" && guestOwnerId.trim().length > 0;
+
   const bill = await db.transaction(async (tx) => {
     const [newBill] = await tx.insert(billsTable).values({
       ownerUserId: user?.userId ?? null,
@@ -97,6 +159,8 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
       taxPercent: String(taxPercent ?? 0),
       tipPercent: String(tipPercent ?? 0),
       joinCode,
+      guestOwnerId: isGuest ? guestOwnerId.trim() : null,
+      isGuestBill: isGuest,
     }).returning();
     if (user && newBill) {
       await tx.insert(billUsersTable).values({
@@ -168,7 +232,7 @@ router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   }
   const lines = await getBillLines(billId);
   const users = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
-  const isOwner = !!req.user && bill.ownerUserId === req.user.userId;
+  const isOwner = bill.isGuestBill ? true : (!!req.user && bill.ownerUserId === req.user.userId);
   res.json({ bill, lines, users, isOwner });
 });
 
@@ -186,14 +250,14 @@ router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   res.json(updated);
 });
 
-router.patch("/:billId", requireAuth, async (req: AuthRequest, res) => {
+router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
   const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
   if (!bill) {
     res.status(404).json({ error: "Bill not found" });
     return;
   }
-  if (bill.ownerUserId !== req.user!.userId) {
+  if (!bill.isGuestBill && bill.ownerUserId !== req.user?.userId) {
     res.status(403).json({ error: "Only the bill owner can edit bill details" });
     return;
   }
@@ -213,10 +277,14 @@ router.patch("/:billId", requireAuth, async (req: AuthRequest, res) => {
   res.json(updated);
 });
 
-router.delete("/:billId", requireAuth, async (req: AuthRequest, res) => {
+router.delete("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
   const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
-  if (!bill || bill.ownerUserId !== req.user!.userId) {
+  if (!bill) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (!bill.isGuestBill && bill.ownerUserId !== req.user?.userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }

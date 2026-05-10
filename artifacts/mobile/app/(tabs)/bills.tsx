@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -26,11 +26,22 @@ import { useAuth } from "@/context/AuthContext";
 import { BillCard } from "@/components/BillCard";
 import { BillCardSkeleton } from "@/components/Skeleton";
 import { EmptyBillsIllustration } from "@/components/EmptyBillsIllustration";
-import { useGetBills, useDeleteBill, getGetBillsQueryKey } from "@workspace/api-client-react";
+import { useGetBills, useDeleteBill, getGetBillsQueryKey, customFetch } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
+import {
+  listGuestBills,
+  removeGuestBill,
+  type GuestBillRef,
+} from "@/utils/guestBillStore";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+interface GuestBillItem extends GuestBillRef {
+  settled?: boolean;
+  currency?: string | null;
+  restaurantName?: string | null;
+}
 
 function DeleteAction({ onDelete }: { onDelete: () => void }) {
   const colors = useColors();
@@ -84,10 +95,133 @@ function PulsingFab({
   );
 }
 
+function GuestBillsSection({
+  onNewBill,
+}: {
+  onNewBill: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [guestBills, setGuestBills] = useState<GuestBillItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const refs = await listGuestBills();
+    if (refs.length === 0) {
+      setGuestBills([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      const ids = refs.map((r) => r.id).join(",");
+      const fresh = await customFetch<GuestBillItem[]>(`/api/bills/guest?ids=${ids}`);
+      const enriched = fresh.map((b) => ({
+        ...b,
+        joinCode: refs.find((r) => r.id === b.id)?.joinCode ?? b.joinCode ?? "",
+      }));
+      setGuestBills(enriched);
+    } catch {
+      setGuestBills(refs.map((r) => ({ ...r, settled: false })));
+    }
+    setLoading(false);
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const handleDelete = (billId: number, title: string) => {
+    Alert.alert("Remove Bill", `Remove "${title}" from your guest bills?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove", style: "destructive", onPress: async () => {
+          await removeGuestBill(billId);
+          setGuestBills((prev) => prev.filter((b) => b.id !== billId));
+        }
+      },
+    ]);
+  };
+
+  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
+  const isEmpty = !loading && guestBills.length === 0;
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
+        data={guestBills}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={[
+          styles.list,
+          {
+            paddingBottom: insets.bottom + 100,
+            paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
+          },
+        ]}
+        ListHeaderComponent={
+          <View style={[styles.guestBanner, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "30" }]}>
+            <Feather name="user" size={14} color={colors.primary} />
+            <Text style={[styles.guestBannerText, { color: colors.primary }]}>
+              Guest bills — sign in to save permanently
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+              <Text style={[styles.guestBannerLink, { color: colors.primary }]}>Sign in</Text>
+            </TouchableOpacity>
+          </View>
+        }
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
+            <Swipeable
+              renderRightActions={() => (
+                <DeleteAction onDelete={() => handleDelete(item.id, item.title)} />
+              )}
+              overshootRight={false}
+              rightThreshold={72}
+              friction={2}
+            >
+              <BillCard
+                title={item.title}
+                restaurantName={item.restaurantName ?? null}
+                date={item.date}
+                currency={item.currency ?? null}
+                joinCode={item.joinCode}
+                participants={[]}
+                status={item.settled ? "settled" : "open"}
+                onPress={() => router.push(`/bill/${item.id}`)}
+              />
+            </Swipeable>
+          </Animated.View>
+        )}
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.skeletonWrap}>
+              <BillCardSkeleton />
+              <BillCardSkeleton />
+            </View>
+          ) : (
+            <Animated.View entering={FadeInDown.duration(400)} style={styles.empty}>
+              <EmptyBillsIllustration size={180} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No bills yet</Text>
+              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+                Tap the + button to start your first bill
+              </Text>
+            </Animated.View>
+          )
+        }
+      />
+
+      <PulsingFab
+        pulse={isEmpty}
+        bottom={fabBottom}
+        bg={colors.primary}
+        onPress={onNewBill}
+      />
+    </View>
+  );
+}
+
 export default function BillsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const queryClient = useQueryClient();
   const { data: bills, isLoading, refetch, isRefetching } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
@@ -117,6 +251,12 @@ export default function BillsScreen() {
   );
 
   if (!user) {
+    if (isGuest) {
+      return (
+        <GuestBillsSection onNewBill={() => router.push("/bill/new")} />
+      );
+    }
+
     return (
       <View style={[styles.gateContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <View style={[styles.gateIconWrap, { backgroundColor: colors.primarySoft }]}>
@@ -299,4 +439,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   newBillGhostText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  guestBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 12,
+  },
+  guestBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  guestBannerLink: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
 });

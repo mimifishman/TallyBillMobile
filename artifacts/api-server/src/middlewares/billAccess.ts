@@ -11,17 +11,16 @@ export interface BillAccessRequest extends AuthRequest {
   billAccess?: {
     billId: number;
     joinCode: string;
-    via: "owner" | "member" | "joinCode";
+    via: "owner" | "member" | "joinCode" | "guestBill";
   };
 }
 
 /**
  * Authorize access to a bill identified by `:billId` in the route. Access is
- * granted when EITHER:
- *   - the request is authenticated and the user is the bill's owner or a
- *     member (in bill_users), OR
- *   - the request carries an `X-Join-Code` header whose value (case
- *     insensitive) matches the bill's `joinCode`.
+ * granted when ANY of the following is true:
+ *   - the bill is a guest bill (isGuestBill = true, ownerUserId IS NULL)
+ *   - the request carries an `X-Join-Code` header matching the bill's joinCode
+ *   - the request is authenticated and the user is the bill's owner or member
  *
  * The route MUST include a `:billId` parameter.
  */
@@ -46,6 +45,12 @@ export function requireBillAccess(
         .limit(1);
       if (!bill) {
         res.status(404).json({ error: "Bill not found" });
+        return;
+      }
+
+      if (bill.isGuestBill && !bill.ownerUserId) {
+        req.billAccess = { billId, joinCode: bill.joinCode, via: "guestBill" };
+        next();
         return;
       }
 

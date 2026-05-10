@@ -4,9 +4,18 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import {
+  setAuthTokenGetter,
+  customFetch,
+} from "@workspace/api-client-react";
+import {
+  getOrCreateGuestOwnerId,
+  loadJoinCodesIntoMemory,
+  clearGuestBills,
+} from "@/utils/guestBillStore";
 
 export interface UserInfo {
   id: string;
@@ -21,6 +30,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isGuest: boolean;
+  guestOwnerId: string | null;
   login: (token: string, user: UserInfo) => Promise<void>;
   logout: () => Promise<void>;
   continueAsGuest: () => void;
@@ -31,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isLoading: true,
   isGuest: false,
+  guestOwnerId: null,
   login: async () => {},
   logout: async () => {},
   continueAsGuest: () => {},
@@ -40,6 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, signOut, getToken } = useClerkAuth();
   const { user: clerkUser } = useUser();
   const [isGuest, setIsGuest] = useState(false);
+  const [guestOwnerId, setGuestOwnerId] = useState<string | null>(null);
+  const hasClaimed = useRef(false);
 
   const user: UserInfo | null =
     isSignedIn && clerkUser
@@ -57,14 +70,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : null;
 
   useEffect(() => {
+    getOrCreateGuestOwnerId().then(setGuestOwnerId);
+    loadJoinCodesIntoMemory();
+  }, []);
+
+  useEffect(() => {
     if (!isLoaded) return;
     if (isSignedIn) {
       setIsGuest(false);
       setAuthTokenGetter(() => getToken());
+
+      if (!hasClaimed.current && guestOwnerId) {
+        hasClaimed.current = true;
+        customFetch("/api/me/claim-guest-bills", {
+          method: "POST",
+          body: JSON.stringify({ guestOwnerId }),
+          headers: { "Content-Type": "application/json" },
+        })
+          .then(() => clearGuestBills())
+          .catch(() => {
+            hasClaimed.current = false;
+          });
+      }
     } else {
       setAuthTokenGetter(() => null);
+      hasClaimed.current = false;
     }
-  }, [isLoaded, isSignedIn, getToken]);
+  }, [isLoaded, isSignedIn, getToken, guestOwnerId]);
 
   const login = useCallback(async (_token: string, _user: UserInfo) => {
   }, []);
@@ -72,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setIsGuest(false);
     setAuthTokenGetter(() => null);
+    hasClaimed.current = false;
     await signOut();
   }, [signOut]);
 
@@ -87,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: null,
         isLoading: !isLoaded,
         isGuest,
+        guestOwnerId,
         login,
         logout,
         continueAsGuest,
