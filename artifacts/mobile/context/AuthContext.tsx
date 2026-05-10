@@ -1,4 +1,5 @@
 import { useAuth as useClerkAuth, useUser } from "@clerk/expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useCallback,
@@ -16,6 +17,8 @@ import {
   loadJoinCodesIntoMemory,
   clearGuestBills,
 } from "@/utils/guestBillStore";
+
+const GUEST_MODE_KEY = "is_guest_mode";
 
 export interface UserInfo {
   id: string;
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser } = useUser();
   const [isGuest, setIsGuest] = useState(false);
   const [guestOwnerId, setGuestOwnerId] = useState<string | null>(null);
+  const [storageLoaded, setStorageLoaded] = useState(false);
   const hasClaimed = useRef(false);
 
   const user: UserInfo | null =
@@ -70,14 +74,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : null;
 
   useEffect(() => {
-    getOrCreateGuestOwnerId().then(setGuestOwnerId);
-    loadJoinCodesIntoMemory();
+    async function init() {
+      const [guestId, guestMode] = await Promise.all([
+        getOrCreateGuestOwnerId(),
+        AsyncStorage.getItem(GUEST_MODE_KEY),
+      ]);
+      setGuestOwnerId(guestId);
+      if (guestMode === "true") {
+        setIsGuest(true);
+      }
+      loadJoinCodesIntoMemory();
+      setStorageLoaded(true);
+    }
+    void init();
   }, []);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !storageLoaded) return;
     if (isSignedIn) {
       setIsGuest(false);
+      void AsyncStorage.removeItem(GUEST_MODE_KEY);
       setAuthTokenGetter(() => getToken());
 
       if (!hasClaimed.current && guestOwnerId) {
@@ -96,13 +112,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthTokenGetter(() => null);
       hasClaimed.current = false;
     }
-  }, [isLoaded, isSignedIn, getToken, guestOwnerId]);
+  }, [isLoaded, isSignedIn, getToken, guestOwnerId, storageLoaded]);
 
   const login = useCallback(async (_token: string, _user: UserInfo) => {
   }, []);
 
   const logout = useCallback(async () => {
     setIsGuest(false);
+    void AsyncStorage.removeItem(GUEST_MODE_KEY);
     setAuthTokenGetter(() => null);
     hasClaimed.current = false;
     await signOut();
@@ -110,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const continueAsGuest = useCallback(() => {
     setIsGuest(true);
+    void AsyncStorage.setItem(GUEST_MODE_KEY, "true");
     setAuthTokenGetter(() => null);
   }, []);
 
@@ -118,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         token: null,
-        isLoading: !isLoaded,
+        isLoading: !isLoaded || !storageLoaded,
         isGuest,
         guestOwnerId,
         login,
