@@ -1,0 +1,72 @@
+Copy/paste this into Replit:
+
+```text id="nggqrt"
+I want to implement proper guest bill handling for unauthenticated users.
+
+Current idea:
+Logged-in users should have their bills saved normally to the database under their user account.
+
+For guests who are not authenticated, do not rely only on AsyncStorage for the full bill data. Instead, save the actual bill data to the database as a guest bill, and only save a small local reference in AsyncStorage so the guest can reopen bills from the same device.
+
+Please implement this flow:
+
+1. When the app opens, check AsyncStorage for a guestOwnerId.
+   - If it exists, reuse it.
+   - If it does not exist, generate a new secure random guestOwnerId and save it to AsyncStorage.
+   - Example: guest_ + random UUID.
+
+2. When an unauthenticated guest creates a bill:
+   - Save the full bill to the database.
+   - Set createdByUserId to null.
+   - Set guestOwnerId to the saved guestOwnerId from AsyncStorage.
+   - Mark the bill as a guest bill.
+   - Generate a joinCode/share code.
+   - Save createdAt and optionally expiresAt.
+   - Save only a small reference in AsyncStorage, not the full bill.
+
+Example AsyncStorage guest bill reference:
+
+{
+  id: "bill_123",
+  joinCode: "ABCD12",
+  title: "Dinner",
+  date: "2026-05-10"
+}
+
+3. The full bill data should always come from the database.
+   AsyncStorage should only be used for remembering which guest bills were created on this device.
+
+4. When a guest opens the app, load their local guest bill references from AsyncStorage, then fetch the actual bill records from the database by bill id.
+
+5. When a guest signs up or logs in:
+   - Read the saved guestOwnerId from AsyncStorage.
+   - Find all bills in the database where guestOwnerId matches.
+   - Attach those bills to the logged-in user account.
+   - Set createdByUserId to the logged-in user id.
+   - Set isGuestBill to false.
+   - Keep the bill id, joinCode, items, participants, and payment data unchanged.
+
+6. Security:
+   - Do not allow access to guest bills only by guestOwnerId.
+   - guestOwnerId is only for local ownership/recovery on the same device.
+   - Accessing or joining a bill should require a valid bill id, joinCode, or secure share token.
+   - joinCode should be unique enough and not easily guessable.
+
+7. Database fields needed on bills:
+   - id
+   - title
+   - joinCode
+   - createdByUserId nullable
+   - guestOwnerId nullable
+   - isGuestBill boolean
+   - createdAt
+   - updatedAt
+   - expiresAt nullable
+   - bill data/items/participants/payment details as currently designed
+
+8. Please preserve the existing logged-in user flow.
+   Logged-in users should not use guestOwnerId for new bills. Their bills should be linked directly to their user id.
+
+Goal:
+Guests should be able to create and reopen bills without logging in, but the database should still be the source of truth. If they later create an account, their guest bills should transfer to their account.
+```
