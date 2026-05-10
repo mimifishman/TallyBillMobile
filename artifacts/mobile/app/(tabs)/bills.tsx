@@ -26,7 +26,12 @@ import { useAuth } from "@/context/AuthContext";
 import { BillCard } from "@/components/BillCard";
 import { BillCardSkeleton } from "@/components/Skeleton";
 import { EmptyBillsIllustration } from "@/components/EmptyBillsIllustration";
-import { useGetBills, useDeleteBill, getGetBillsQueryKey, customFetch } from "@workspace/api-client-react";
+import {
+  useGetBills,
+  useDeleteBill,
+  getGetBillsQueryKey,
+  customFetch,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 import {
@@ -41,6 +46,8 @@ interface GuestBillItem extends GuestBillRef {
   settled?: boolean;
   currency?: string | null;
   restaurantName?: string | null;
+  users?: { id: number; name: string; color: string }[];
+  isOwner?: boolean;
 }
 
 function DeleteAction({ onDelete }: { onDelete: () => void }) {
@@ -95,135 +102,17 @@ function PulsingFab({
   );
 }
 
-function GuestBillsSection({
-  onNewBill,
-}: {
-  onNewBill: () => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [guestBills, setGuestBills] = useState<GuestBillItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const refs = await listGuestBills();
-    if (refs.length === 0) {
-      setGuestBills([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      const ids = refs.map((r) => r.id).join(",");
-      const fresh = await customFetch<GuestBillItem[]>(`/api/bills/guest?ids=${ids}`);
-      const enriched = fresh.map((b) => ({
-        ...b,
-        joinCode: refs.find((r) => r.id === b.id)?.joinCode ?? b.joinCode ?? "",
-      }));
-      setGuestBills(enriched);
-    } catch {
-      setGuestBills(refs.map((r) => ({ ...r, settled: false })));
-    }
-    setLoading(false);
-  }, []);
-
-  useFocusEffect(useCallback(() => { load(); }, [load]));
-
-  const handleDelete = (billId: number, title: string) => {
-    Alert.alert("Remove Bill", `Remove "${title}" from your guest bills?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove", style: "destructive", onPress: async () => {
-          await removeGuestBill(billId);
-          setGuestBills((prev) => prev.filter((b) => b.id !== billId));
-        }
-      },
-    ]);
-  };
-
-  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
-  const isEmpty = !loading && guestBills.length === 0;
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={guestBills}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[
-          styles.list,
-          {
-            paddingBottom: insets.bottom + 100,
-            paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
-          },
-        ]}
-        ListHeaderComponent={
-          <View style={[styles.guestBanner, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "30" }]}>
-            <Feather name="user" size={14} color={colors.primary} />
-            <Text style={[styles.guestBannerText, { color: colors.primary }]}>
-              Guest bills — sign in to save permanently
-            </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-              <Text style={[styles.guestBannerLink, { color: colors.primary }]}>Sign in</Text>
-            </TouchableOpacity>
-          </View>
-        }
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
-            <Swipeable
-              renderRightActions={() => (
-                <DeleteAction onDelete={() => handleDelete(item.id, item.title)} />
-              )}
-              overshootRight={false}
-              rightThreshold={72}
-              friction={2}
-            >
-              <BillCard
-                title={item.title}
-                restaurantName={item.restaurantName ?? null}
-                date={item.date}
-                currency={item.currency ?? null}
-                joinCode={item.joinCode}
-                participants={[]}
-                status={item.settled ? "settled" : "open"}
-                onPress={() => router.push(`/bill/${item.id}`)}
-              />
-            </Swipeable>
-          </Animated.View>
-        )}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.skeletonWrap}>
-              <BillCardSkeleton />
-              <BillCardSkeleton />
-            </View>
-          ) : (
-            <Animated.View entering={FadeInDown.duration(400)} style={styles.empty}>
-              <EmptyBillsIllustration size={180} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No bills yet</Text>
-              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
-                Tap the + button to start your first bill
-              </Text>
-            </Animated.View>
-          )
-        }
-      />
-
-      <PulsingFab
-        pulse={isEmpty}
-        bottom={fabBottom}
-        bg={colors.primary}
-        onPress={onNewBill}
-      />
-    </View>
-  );
-}
-
 export default function BillsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, isGuest } = useAuth();
   const queryClient = useQueryClient();
-  const { data: bills, isLoading, refetch, isRefetching } = useGetBills({
+
+  const [guestBills, setGuestBills] = useState<GuestBillItem[]>([]);
+  const [guestLoading, setGuestLoading] = useState(false);
+  const [guestRefreshing, setGuestRefreshing] = useState(false);
+
+  const { data: authBills, isLoading: authLoading, refetch, isRefetching } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
   });
 
@@ -238,25 +127,67 @@ export default function BillsScreen() {
     },
   });
 
-  const handleDeleteBill = useCallback((billId: number) => {
-    confirmDeleteBill(() => deleteBillMutation.mutate({ billId }));
-  }, [deleteBillMutation]);
+  const handleDeleteAuthBill = useCallback(
+    (billId: number) => {
+      confirmDeleteBill(() => deleteBillMutation.mutate({ billId }));
+    },
+    [deleteBillMutation],
+  );
+
+  const loadGuestBills = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setGuestRefreshing(true);
+    else setGuestLoading(true);
+    const refs = await listGuestBills();
+    if (refs.length === 0) {
+      setGuestBills([]);
+      setGuestLoading(false);
+      setGuestRefreshing(false);
+      return;
+    }
+    try {
+      const ids = refs.map((r) => r.id).join(",");
+      const fresh = await customFetch<GuestBillItem[]>(`/api/bills/guest?ids=${ids}`);
+      setGuestBills(
+        fresh.map((b) => ({
+          ...b,
+          joinCode: refs.find((r) => r.id === b.id)?.joinCode ?? b.joinCode ?? "",
+        })),
+      );
+    } catch {
+      setGuestBills(refs.map((r) => ({ ...r, users: [], settled: false, isOwner: true })));
+    }
+    setGuestLoading(false);
+    setGuestRefreshing(false);
+  }, []);
+
+  const handleDeleteGuestBill = useCallback((billId: number, title: string) => {
+    Alert.alert("Remove Bill", `Remove "${title}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          await removeGuestBill(billId);
+          setGuestBills((prev) => prev.filter((b) => b.id !== billId));
+        },
+      },
+    ]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      if (user) {
-        refetch();
-      }
-    }, [user, refetch]),
+      if (user) refetch();
+      else if (isGuest) void loadGuestBills();
+    }, [user, isGuest, refetch, loadGuestBills]),
   );
 
-  if (!user) {
-    if (isGuest) {
-      return (
-        <GuestBillsSection onNewBill={() => router.push("/bill/new")} />
-      );
-    }
+  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
+  const listPadding = {
+    paddingBottom: insets.bottom + 100,
+    paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
+  };
 
+  if (!user && !isGuest) {
     return (
       <View style={[styles.gateContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <View style={[styles.gateIconWrap, { backgroundColor: colors.primarySoft }]}>
@@ -273,9 +204,7 @@ export default function BillsScreen() {
           <Text style={styles.gateBtnText}>Sign In</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-          <Text style={[styles.gateLink, { color: colors.mutedForeground }]}>
-            Create account
-          </Text>
+          <Text style={[styles.gateLink, { color: colors.mutedForeground }]}>Create account</Text>
         </TouchableOpacity>
         <View style={[styles.divider, { borderTopColor: colors.border }]} />
         <TouchableOpacity
@@ -289,35 +218,39 @@ export default function BillsScreen() {
     );
   }
 
-  const isEmpty = !isLoading && (!bills || bills.length === 0);
-  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
+  const isGuest_ = !user && isGuest;
+  const bills = isGuest_ ? guestBills : (authBills ?? []);
+  const isLoading = isGuest_ ? guestLoading : authLoading;
+  const isRefreshing = isGuest_ ? guestRefreshing : isRefetching;
+  const isEmpty = !isLoading && bills.length === 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
-        data={bills ?? []}
+        data={bills}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[
-          styles.list,
-          {
-            paddingBottom: insets.bottom + 100,
-            paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
-          },
-        ]}
+        contentContainerStyle={[styles.list, listPadding]}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => {
+              if (isGuest_) void loadGuestBills(true);
+              else refetch();
+            }}
+            tintColor={colors.primary}
+          />
         }
-        scrollEnabled={!!(bills && bills.length > 0)}
+        scrollEnabled={bills.length > 0}
         renderItem={({ item, index }) => {
-          const isOwner = item.isOwner === true;
+          const isOwner = item.isOwner !== false;
           const card = (
             <BillCard
               title={item.title}
-              restaurantName={item.restaurantName}
+              restaurantName={item.restaurantName ?? null}
               date={item.date}
-              currency={item.currency}
+              currency={item.currency ?? null}
               joinCode={item.joinCode}
-              participants={item.users}
+              participants={item.users ?? []}
               status={item.settled ? "settled" : "open"}
               onPress={() => router.push(`/bill/${item.id}`)}
             />
@@ -327,7 +260,13 @@ export default function BillsScreen() {
               {isOwner ? (
                 <Swipeable
                   renderRightActions={() => (
-                    <DeleteAction onDelete={() => handleDeleteBill(item.id)} />
+                    <DeleteAction
+                      onDelete={() =>
+                        isGuest_
+                          ? handleDeleteGuestBill(item.id, item.title)
+                          : handleDeleteAuthBill(item.id)
+                      }
+                    />
                   )}
                   overshootRight={false}
                   rightThreshold={72}
@@ -335,7 +274,9 @@ export default function BillsScreen() {
                 >
                   {card}
                 </Swipeable>
-              ) : card}
+              ) : (
+                card
+              )}
             </Animated.View>
           );
         }}
@@ -387,7 +328,12 @@ const styles = StyleSheet.create({
   skeletonWrap: { paddingTop: 8 },
   empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32, gap: 10 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 },
-  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  emptySub: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+  },
   fab: {
     position: "absolute",
     right: 20,
@@ -418,7 +364,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   gateTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  gateSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  gateSub: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+  },
   gateBtn: {
     borderRadius: 12,
     paddingVertical: 14,
@@ -439,22 +390,4 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   newBillGhostText: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  guestBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 10,
-    marginBottom: 12,
-  },
-  guestBannerText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  guestBannerLink: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
 });
