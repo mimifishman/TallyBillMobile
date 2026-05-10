@@ -474,7 +474,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.guestNote, { color: colors.mutedForeground }]}>
-          Without an account you won't be able to see your bill history
+          Your bills stay here. Sign up to take them anywhere.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
