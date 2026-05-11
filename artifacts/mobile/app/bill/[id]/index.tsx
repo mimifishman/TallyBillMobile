@@ -6,7 +6,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   AppState,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -715,72 +717,77 @@ export default function BillDetailScreen() {
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowEditHeader(false)}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Bill Details</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.editModalScroll}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title</Text>
-              <TextInput
-                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder="Bill title"
-                placeholderTextColor={colors.mutedForeground}
-                value={editTitle}
-                onChangeText={setEditTitle}
-                autoFocus
-              />
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Restaurant (optional)</Text>
-              <TextInput
-                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder="Restaurant name"
-                placeholderTextColor={colors.mutedForeground}
-                value={editRestaurant}
-                onChangeText={setEditRestaurant}
-              />
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
-              <TextInput
-                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.mutedForeground}
-                value={editDate}
-                onChangeText={setEditDate}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Currency</Text>
-              <CurrencyPicker value={editCurrency} onChange={setEditCurrency} />
-              <View style={styles.taxTipRow}>
-                <View style={styles.taxTipField}>
-                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tax %</Text>
-                  <TextInput
-                    style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                    placeholder="0"
-                    placeholderTextColor={colors.mutedForeground}
-                    value={editTaxPercent}
-                    onChangeText={setEditTaxPercent}
-                    keyboardType="numeric"
-                  />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ flex: 1 }}
+            >
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.editModalScroll}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title</Text>
+                <TextInput
+                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="Bill title"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  autoFocus
+                />
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Restaurant (optional)</Text>
+                <TextInput
+                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="Restaurant name"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={editRestaurant}
+                  onChangeText={setEditRestaurant}
+                />
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
+                <TextInput
+                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={editDate}
+                  onChangeText={setEditDate}
+                  autoCapitalize="none"
+                />
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Currency</Text>
+                <CurrencyPicker value={editCurrency} onChange={setEditCurrency} />
+                <View style={styles.taxTipRow}>
+                  <View style={styles.taxTipField}>
+                    <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tax %</Text>
+                    <TextInput
+                      style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                      placeholder="0"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={editTaxPercent}
+                      onChangeText={setEditTaxPercent}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.taxTipField}>
+                    <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tip %</Text>
+                    <TextInput
+                      style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                      placeholder="0"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={editTipPercent}
+                      onChangeText={setEditTipPercent}
+                      keyboardType="numeric"
+                    />
+                  </View>
                 </View>
-                <View style={styles.taxTipField}>
-                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tip %</Text>
-                  <TextInput
-                    style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                    placeholder="0"
-                    placeholderTextColor={colors.mutedForeground}
-                    value={editTipPercent}
-                    onChangeText={setEditTipPercent}
-                    keyboardType="numeric"
-                  />
-                </View>
+              </ScrollView>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity onPress={() => setShowEditHeader(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
+                  <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSaveHeader}
+                  disabled={patchBillMutation.isPending}
+                  style={[styles.modalConfirmBtn, { backgroundColor: colors.primary, opacity: patchBillMutation.isPending ? 0.6 : 1 }]}
+                >
+                  <Text style={styles.modalConfirmText}>{patchBillMutation.isPending ? "Saving..." : "Save"}</Text>
+                </TouchableOpacity>
               </View>
-            </ScrollView>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setShowEditHeader(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveHeader}
-                disabled={patchBillMutation.isPending}
-                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary, opacity: patchBillMutation.isPending ? 0.6 : 1 }]}
-              >
-                <Text style={styles.modalConfirmText}>{patchBillMutation.isPending ? "Saving..." : "Save"}</Text>
-              </TouchableOpacity>
-            </View>
+            </KeyboardAvoidingView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
