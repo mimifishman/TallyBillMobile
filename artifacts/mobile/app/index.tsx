@@ -1,14 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -19,14 +15,11 @@ import { listGuestBills } from "@/utils/guestBillStore";
 import { useGetBills, getGetBillsQueryKey } from "@workspace/api-client-react";
 
 export default function WelcomeScreen() {
-  const { user, isLoading, isGuest, guestName, saveGuestName } = useAuth();
+  const { user, isLoading, guestName } = useAuth();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [hasGuestBills, setHasGuestBills] = useState(false);
   const [guestCheckDone, setGuestCheckDone] = useState(false);
-  const [nameInput, setNameInput] = useState("");
-  const [showNamePrompt, setShowNamePrompt] = useState(false);
-  const inputRef = useRef<TextInput>(null);
 
   const { data: authBills, isLoading: authBillsLoading } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
@@ -40,23 +33,6 @@ export default function WelcomeScreen() {
   }, []);
 
   const checksComplete = !isLoading && guestCheckDone && (!user || !authBillsLoading);
-
-  useEffect(() => {
-    if (checksComplete && !user && isGuest && guestName === null) {
-      setShowNamePrompt(true);
-    }
-  }, [checksComplete, user, isGuest, guestName]);
-
-  const handleNameSubmit = async () => {
-    const trimmed = nameInput.trim();
-    await saveGuestName(trimmed);
-    setShowNamePrompt(false);
-  };
-
-  const handleSkip = async () => {
-    await saveGuestName("");
-    setShowNamePrompt(false);
-  };
 
   if (!checksComplete) {
     return (
@@ -160,59 +136,6 @@ export default function WelcomeScreen() {
         </View>
       )}
 
-      <Modal visible={showNamePrompt} transparent animationType="fade">
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <View style={[styles.modalIconWrap, { backgroundColor: colors.primarySoft }]}>
-              <Feather name="user" size={26} color={colors.primary} />
-            </View>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              What's your name?
-            </Text>
-            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-              We'll use this to identify you on bills you create or join.
-            </Text>
-            <TextInput
-              ref={inputRef}
-              style={[styles.modalInput, { borderColor: nameInput.trim() ? colors.primary : colors.border, color: colors.foreground }]}
-              placeholder="First name"
-              placeholderTextColor={colors.mutedForeground}
-              value={nameInput}
-              onChangeText={setNameInput}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={handleNameSubmit}
-              autoFocus
-            />
-            <TouchableOpacity
-              style={[
-                styles.modalConfirmBtn,
-                { backgroundColor: nameInput.trim() ? colors.primary : colors.muted },
-              ]}
-              onPress={handleNameSubmit}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[
-                  styles.modalConfirmText,
-                  { color: nameInput.trim() ? "#fff" : colors.mutedForeground },
-                ]}
-              >
-                Continue
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-              <Text style={[styles.skipText, { color: colors.mutedForeground }]}>
-                Skip for now
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }
@@ -301,68 +224,6 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   footerLink: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalCard: {
-    width: "100%",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 24,
-    alignItems: "center",
-    gap: 12,
-  },
-  modalIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-  },
-  modalSub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalInput: {
-    width: "100%",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    marginTop: 4,
-  },
-  modalConfirmBtn: {
-    width: "100%",
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  modalConfirmText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  skipBtn: {
-    paddingVertical: 8,
-  },
-  skipText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
