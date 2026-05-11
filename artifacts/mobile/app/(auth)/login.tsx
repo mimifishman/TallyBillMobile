@@ -166,7 +166,7 @@ export default function LoginScreen() {
         await signIn.finalize({
           navigate: () => {},
         });
-        router.replace("/(tabs)/bills");
+        router.replace("/");
       } else {
         setCodeError("Incorrect code. Please try again.");
       }
