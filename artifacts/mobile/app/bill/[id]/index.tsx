@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   AppState,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -713,6 +714,7 @@ export default function BillDetailScreen() {
       </Modal>
 
       <Modal visible={showEditHeader} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowEditHeader(false)}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Bill Details</Text>
@@ -784,6 +786,7 @@ export default function BillDetailScreen() {
               </View>
           </TouchableOpacity>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showAddItem} transparent animationType="fade">
