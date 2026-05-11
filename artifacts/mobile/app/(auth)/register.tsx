@@ -244,7 +244,7 @@ export default function RegisterScreen() {
             if (isNewUser) {
               router.replace("/(auth)/name");
             } else {
-              router.replace("/(tabs)/bills");
+              router.replace("/");
             }
           },
         });

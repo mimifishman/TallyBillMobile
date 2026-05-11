@@ -111,7 +111,7 @@ export default function LoginScreen() {
 
     if (signIn.status === "complete") {
       await signIn.finalize({ navigate: async () => {} });
-      router.replace("/(tabs)/bills");
+      router.replace("/");
     } else if (signIn.status === "needs_client_trust") {
       await signIn.mfa.sendEmailCode();
     } else if (signIn.status === "needs_second_factor") {
@@ -196,7 +196,7 @@ export default function LoginScreen() {
         });
         if (!createdSessionId || !setActive) return;
         await setActive({ session: createdSessionId, navigate: async () => {} });
-        router.replace("/(tabs)/bills");
+        router.replace("/");
       } catch (err: unknown) {
         if (__DEV__) {
           console.warn("[OAuth sign-in error]", err);
@@ -226,7 +226,7 @@ export default function LoginScreen() {
   };
 
   if (clerkLoaded && isSignedIn) {
-    return <Redirect href="/(tabs)/bills" />;
+    return <Redirect href="/" />;
   }
 
   const isVerifying =

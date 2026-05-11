@@ -31,10 +31,6 @@ export default function IndexScreen() {
       router.replace("/(auth)/login");
       return;
     }
-    if (user && !isGuest) {
-      router.replace("/(tabs)/bills");
-      return;
-    }
     if (prompt === "1" && guestName === null) {
       setShowNamePrompt(true);
     }
