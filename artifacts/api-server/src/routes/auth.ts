@@ -38,19 +38,72 @@ router.put("/password", requireAuth, async (req: AuthRequest, res) => {
       res.status(401).json({ error: "User not found" });
       return;
     }
-    if (!user.passwordHash) {
-      res.status(400).json({ error: "This account does not have a password set" });
-      return;
+
+    let valid = false;
+
+    if (user.clerkId) {
+      const clerkVerifyRes = await fetch(
+        `https://api.clerk.com/v1/users/${user.clerkId}/verify_password`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ password: currentPassword }),
+        }
+      );
+      if (clerkVerifyRes.ok) {
+        valid = true;
+      } else {
+        const body = await clerkVerifyRes.json().catch(() => ({})) as { errors?: Array<{ code?: string }> };
+        const clerkErrors: Array<{ code?: string }> = body?.errors ?? [];
+        const isWrongPassword = clerkErrors.some(
+          (e) => e.code === "form_password_incorrect" || e.code === "form_password_validation_failed"
+        );
+        if (isWrongPassword || clerkVerifyRes.status === 422 || clerkVerifyRes.status === 400) {
+          res.status(401).json({ error: "Current password is incorrect" });
+          return;
+        }
+        console.warn("[change-password] Clerk verify_password failed:", clerkVerifyRes.status, body);
+        res.status(500).json({ error: "Server error" });
+        return;
+      }
+    } else {
+      if (!user.passwordHash) {
+        res.status(400).json({ error: "This account does not have a password set" });
+        return;
+      }
+      valid = await bcrypt.compare(currentPassword, user.passwordHash);
     }
-    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+
     if (!valid) {
       res.status(401).json({ error: "Current password is incorrect" });
       return;
     }
+
+    if (user.clerkId) {
+      const clerkUpdateRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: newPassword, skip_password_checks: true }),
+      });
+      if (!clerkUpdateRes.ok) {
+        console.error("[change-password] Clerk password update failed:", await clerkUpdateRes.text());
+        res.status(502).json({ error: "Failed to update password. Please try again." });
+        return;
+      }
+    }
+
     const newHash = await bcrypt.hash(newPassword, 12);
     await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, userId));
+
     res.json({ message: "Password updated successfully" });
-  } catch {
+  } catch (err) {
+    console.error("[change-password]", err);
     res.status(500).json({ error: "Server error" });
   }
 });
