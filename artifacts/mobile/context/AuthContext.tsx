@@ -86,6 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : null;
 
   useEffect(() => {
+    setDisplayNameOverride(null);
+  }, [clerkUser?.id]);
+
+  useEffect(() => {
     async function init() {
       const [guestId, guestMode, storedName] = await Promise.all([
         getOrCreateGuestOwnerId(),
