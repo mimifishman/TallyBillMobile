@@ -19,7 +19,7 @@ import { listGuestBills } from "@/utils/guestBillStore";
 import { useGetBills, getGetBillsQueryKey } from "@workspace/api-client-react";
 
 export default function WelcomeScreen() {
-  const { user, isLoading, guestName, saveGuestName } = useAuth();
+  const { user, isLoading, isGuest, guestName, saveGuestName } = useAuth();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [hasGuestBills, setHasGuestBills] = useState(false);
@@ -42,10 +42,10 @@ export default function WelcomeScreen() {
   const checksComplete = !isLoading && guestCheckDone && (!user || !authBillsLoading);
 
   useEffect(() => {
-    if (checksComplete && !user && guestName === null) {
+    if (checksComplete && !user && isGuest && guestName === null) {
       setShowNamePrompt(true);
     }
-  }, [checksComplete, user, guestName]);
+  }, [checksComplete, user, isGuest, guestName]);
 
   const handleNameSubmit = async () => {
     const trimmed = nameInput.trim();
