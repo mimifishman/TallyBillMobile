@@ -110,12 +110,8 @@ export default function LoginScreen() {
     }
 
     if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ session }) => {
-          if (session?.currentTask) return;
-          router.replace("/(tabs)/bills");
-        },
-      });
+      await signIn.finalize({ navigate: async () => {} });
+      router.replace("/(tabs)/bills");
     } else if (signIn.status === "needs_client_trust") {
       await signIn.mfa.sendEmailCode();
     } else if (signIn.status === "needs_second_factor") {
@@ -199,13 +195,8 @@ export default function LoginScreen() {
           redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }),
         });
         if (!createdSessionId || !setActive) return;
-        await setActive({
-          session: createdSessionId,
-          navigate: async ({ session }) => {
-            if (session?.currentTask) return;
-            router.replace("/(tabs)/bills");
-          },
-        });
+        await setActive({ session: createdSessionId, navigate: async () => {} });
+        router.replace("/(tabs)/bills");
       } catch (err: unknown) {
         if (__DEV__) {
           console.warn("[OAuth sign-in error]", err);
