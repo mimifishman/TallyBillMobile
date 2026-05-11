@@ -39,6 +39,7 @@ interface AuthContextType {
   /** null = never asked; "" = skipped; "John" = real name */
   guestName: string | null;
   saveGuestName: (name: string) => Promise<void>;
+  setDisplayNameOverride: (name: string) => void;
   login: (token: string, user: UserInfo) => Promise<void>;
   logout: () => Promise<void>;
   continueAsGuest: () => void;
@@ -52,6 +53,7 @@ const AuthContext = createContext<AuthContextType>({
   guestOwnerId: null,
   guestName: null,
   saveGuestName: async () => {},
+  setDisplayNameOverride: () => {},
   login: async () => {},
   logout: async () => {},
   continueAsGuest: () => {},
@@ -64,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [guestOwnerId, setGuestOwnerId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [storageLoaded, setStorageLoaded] = useState(false);
+  const [displayNameOverride, setDisplayNameOverride] = useState<string | null>(null);
   const hasClaimed = useRef(false);
 
   const user: UserInfo | null =
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: clerkUser.id,
           email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
           displayName:
+            displayNameOverride ||
             clerkUser.fullName ||
             clerkUser.firstName ||
             clerkUser.username ||
@@ -129,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     setIsGuest(false);
+    setDisplayNameOverride(null);
     void AsyncStorage.removeItem(GUEST_MODE_KEY);
     setAuthTokenGetter(() => null);
     hasClaimed.current = false;
@@ -156,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         guestOwnerId,
         guestName,
         saveGuestName: handleSaveGuestName,
+        setDisplayNameOverride,
         login,
         logout,
         continueAsGuest,

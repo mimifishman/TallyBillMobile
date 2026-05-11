@@ -22,7 +22,7 @@ import { customFetch } from "@workspace/api-client-react";
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout, isGuest, guestName, saveGuestName } = useAuth();
+  const { user, logout, isGuest, guestName, saveGuestName, setDisplayNameOverride } = useAuth();
   const { user: clerkUser } = useUser();
 
   const [firstName, setFirstName] = useState("");
@@ -60,11 +60,15 @@ export default function SettingsScreen() {
       if (__DEV__) console.warn("[settings.update Clerk error - ignored]", err);
     }
     try {
-      await customFetch("/api/me", {
+      const res = await customFetch("/api/me", {
         method: "PATCH",
         body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim() || null }),
         headers: { "Content-Type": "application/json" },
       });
+      const data = res as { displayName?: string };
+      if (data?.displayName) {
+        setDisplayNameOverride(data.displayName);
+      }
       setNameChanged(false);
       Alert.alert("Saved", "Your name has been updated");
     } catch {
