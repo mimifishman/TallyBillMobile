@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { billMembersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { notifyBillChanged } from "../lib/sseManager.js";
 
 const router = Router({ mergeParams: true });
 
@@ -23,6 +24,7 @@ router.post("/", async (req, res) => {
     return;
   }
   const [member] = await db.insert(billMembersTable).values({ billId, name, color }).returning();
+  notifyBillChanged(billId);
   res.status(201).json(member);
 });
 
@@ -41,6 +43,7 @@ router.put("/:userId", async (req, res) => {
     res.status(404).json({ error: "Bill member not found" });
     return;
   }
+  notifyBillChanged(billId);
   res.json(updated);
 });
 
@@ -49,6 +52,7 @@ router.delete("/:userId", async (req, res) => {
   const userId = parseInt(String(req.params["userId"]), 10);
   await db.delete(billMembersTable)
     .where(and(eq(billMembersTable.id, userId), eq(billMembersTable.billId, billId)));
+  notifyBillChanged(billId);
   res.status(204).send();
 });
 

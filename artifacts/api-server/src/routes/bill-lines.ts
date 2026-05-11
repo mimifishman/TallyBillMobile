@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { billLinesTable, billLineMembersTable, billMembersTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
+import { notifyBillChanged } from "../lib/sseManager.js";
 
 const router = Router({ mergeParams: true });
 
@@ -41,6 +42,7 @@ router.post("/", async (req, res) => {
     unitPrice: String(unitPrice ?? 0),
     total: String(total ?? 0),
   }).returning();
+  notifyBillChanged(billId);
   res.status(201).json({ ...line, assignedUserIds: [] });
 });
 
@@ -60,6 +62,7 @@ router.post("/bulk", async (req, res) => {
       total: String(l.total ?? 0),
     }))
   ).returning();
+  notifyBillChanged(billId);
   res.status(201).json(insertedLines.map((l) => ({ ...l, assignedUserIds: [] })));
 });
 
@@ -80,6 +83,7 @@ router.put("/:lineId", async (req, res) => {
     return;
   }
   const assignments = await db.select().from(billLineMembersTable).where(eq(billLineMembersTable.billLineId, lineId));
+  notifyBillChanged(billId);
   res.json({ ...updated, assignedUserIds: assignments.map((a) => a.billMemberId) });
 });
 
@@ -88,6 +92,7 @@ router.delete("/:lineId", async (req, res) => {
   const lineId = parseInt(String(req.params["lineId"]), 10);
   await db.delete(billLinesTable)
     .where(and(eq(billLinesTable.id, lineId), eq(billLinesTable.billId, billId)));
+  notifyBillChanged(billId);
   res.status(204).send();
 });
 
@@ -119,9 +124,11 @@ router.post("/:lineId/users", async (req, res) => {
   if (existing) {
     await db.delete(billLineMembersTable)
       .where(and(eq(billLineMembersTable.billLineId, lineId), eq(billLineMembersTable.billMemberId, billUserId)));
+    notifyBillChanged(billId);
     res.json({ assigned: false });
   } else {
     await db.insert(billLineMembersTable).values({ billLineId: lineId, billMemberId: billUserId });
+    notifyBillChanged(billId);
     res.json({ assigned: true });
   }
 });

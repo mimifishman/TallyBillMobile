@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useAuth as useClerkAuth } from "@clerk/expo";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   Modal,
   ScrollView,
   StyleSheet,
@@ -39,7 +41,8 @@ import { getCurrencySymbol } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 import { useAuth } from "@/context/AuthContext";
-import { removeGuestBill, listGuestBills } from "@/utils/guestBillStore";
+import { removeGuestBill, listGuestBills, getCachedGuestOwnerId } from "@/utils/guestBillStore";
+import { getBillCode } from "@/lib/billCodeStore";
 
 const PEOPLE_COLORS = colors_data.light.people;
 
@@ -50,6 +53,7 @@ export default function BillDetailScreen() {
   const billId = parseInt(id!);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { getToken, isSignedIn } = useClerkAuth();
   const [guestHasBill, setGuestHasBill] = useState(false);
 
   useEffect(() => {
@@ -89,6 +93,123 @@ export default function BillDetailScreen() {
     queryClient.invalidateQueries({ queryKey: getGetBillQueryKey(billId) });
     queryClient.invalidateQueries({ queryKey: getGetBillTotalsQueryKey(billId) });
   }, [billId, queryClient]);
+
+  const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "";
+  const sseRetryDelayRef = useRef(1000);
+  const sseXhrRef = useRef<XMLHttpRequest | null>(null);
+  const sseRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sseMountedRef = useRef(true);
+  const sseForegroundRef = useRef(true);
+  const sseInvalidateRef = useRef(invalidate);
+  useEffect(() => { sseInvalidateRef.current = invalidate; }, [invalidate]);
+
+  const connectSSE = useCallback(async () => {
+    if (!sseMountedRef.current) return;
+    if (sseRetryTimerRef.current) {
+      clearTimeout(sseRetryTimerRef.current);
+      sseRetryTimerRef.current = null;
+    }
+
+    const url = `${baseUrl}/api/bills/${billId}/events`;
+
+    const xhr = new XMLHttpRequest();
+    sseXhrRef.current = xhr;
+    xhr.open("GET", url, true);
+
+    const joinCode = getBillCode(billId);
+    if (joinCode) xhr.setRequestHeader("X-Join-Code", joinCode);
+
+    if (isSignedIn) {
+      try {
+        const token = await getToken();
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      } catch {
+      }
+    }
+
+    const guestOwnerId = getCachedGuestOwnerId();
+    if (guestOwnerId) xhr.setRequestHeader("X-Guest-Owner-Id", guestOwnerId);
+
+    let lastLength = 0;
+    let connectedOnce = false;
+    let sseBuffer = "";
+
+    xhr.onprogress = () => {
+      if (!sseMountedRef.current) return;
+      if (!connectedOnce) {
+        connectedOnce = true;
+        sseInvalidateRef.current();
+      }
+      sseBuffer += xhr.responseText.slice(lastLength);
+      lastLength = xhr.responseText.length;
+      const parts = sseBuffer.split("\n\n");
+      sseBuffer = parts.pop() ?? "";
+      for (const block of parts) {
+        if (block.includes('"bill_changed"')) {
+          sseRetryDelayRef.current = 1000;
+          sseInvalidateRef.current();
+        }
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (!sseMountedRef.current || !sseForegroundRef.current) return;
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      const delay = sseRetryDelayRef.current;
+      sseRetryDelayRef.current = Math.min(delay * 2, 30_000);
+      sseRetryTimerRef.current = setTimeout(() => {
+        if (sseMountedRef.current && sseForegroundRef.current) connectSSE();
+      }, delay);
+    };
+
+    xhr.onload = scheduleReconnect;
+    xhr.onerror = scheduleReconnect;
+    xhr.ontimeout = scheduleReconnect;
+
+    xhr.send();
+  }, [billId, baseUrl, isSignedIn, getToken]);
+
+  useEffect(() => {
+    sseMountedRef.current = true;
+    sseRetryDelayRef.current = 1000;
+
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        sseForegroundRef.current = true;
+        if (sseXhrRef.current) {
+          sseXhrRef.current.abort();
+          sseXhrRef.current = null;
+        }
+        sseRetryDelayRef.current = 1000;
+        connectSSE();
+        sseInvalidateRef.current();
+      } else {
+        sseForegroundRef.current = false;
+        if (sseRetryTimerRef.current) {
+          clearTimeout(sseRetryTimerRef.current);
+          sseRetryTimerRef.current = null;
+        }
+        if (sseXhrRef.current) {
+          sseXhrRef.current.abort();
+          sseXhrRef.current = null;
+        }
+      }
+    });
+
+    connectSSE();
+
+    return () => {
+      sseMountedRef.current = false;
+      appStateSub.remove();
+      if (sseRetryTimerRef.current) clearTimeout(sseRetryTimerRef.current);
+      if (sseXhrRef.current) {
+        sseXhrRef.current.abort();
+        sseXhrRef.current = null;
+      }
+    };
+  }, [connectSSE, invalidate]);
 
   const addPersonMutation = useCreateBillUser({
     mutation: { onSuccess: invalidate },

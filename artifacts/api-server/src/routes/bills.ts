@@ -11,6 +11,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth.js";
 import { requireBillAccess } from "../middlewares/billAccess.js";
 import { generateJoinCode } from "../lib/auth.js";
+import { subscribe, unsubscribe, notifyBillChanged } from "../lib/sseManager.js";
 
 const router = Router();
 
@@ -268,6 +269,43 @@ router.delete("/:billId/leave", requireBillAccess, requireAuth, async (req: Auth
   res.status(204).send();
 });
 
+router.get("/:billId/events",
+  (req, _res, next) => {
+    const q = req.query as Record<string, string>;
+    if (q["joinCode"] && !req.headers["x-join-code"]) {
+      req.headers["x-join-code"] = q["joinCode"];
+    }
+    next();
+  },
+  requireBillAccess,
+  (req: AuthRequest, res) => {
+    const billId = parseInt(String(req.params["billId"]));
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    res.write(": connected\n\n");
+
+    const pingTimer = setInterval(() => {
+      try {
+        res.write(": ping\n\n");
+      } catch {
+        clearInterval(pingTimer);
+      }
+    }, 30_000);
+
+    subscribe(billId, res);
+
+    req.on("close", () => {
+      clearInterval(pingTimer);
+      unsubscribe(billId, res);
+    });
+  }
+);
+
 router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
   const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
@@ -279,6 +317,7 @@ router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     ...(taxPercent !== undefined && { taxPercent: String(taxPercent) }),
     ...(tipPercent !== undefined && { tipPercent: String(tipPercent) }),
   }).where(eq(billsTable.id, billId)).returning();
+  notifyBillChanged(billId);
   res.json(updated);
 });
 
@@ -306,6 +345,7 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     ...(taxPercent !== undefined && { taxPercent: String(parseFloat(taxPercent) || 0) }),
     ...(tipPercent !== undefined && { tipPercent: String(parseFloat(tipPercent) || 0) }),
   }).where(eq(billsTable.id, billId)).returning();
+  notifyBillChanged(billId);
   res.json(updated);
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -68,9 +68,73 @@ export default function BillPage() {
   return <BillView data={data} onChange={invalidate} />;
 }
 
+function useBillSSE(billId: number, joinCode: string, invalidate: () => void) {
+  const retryDelayRef = useRef(1000);
+  const esRef = useRef<EventSource | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  const invalidateRef = useRef(invalidate);
+  useEffect(() => { invalidateRef.current = invalidate; }, [invalidate]);
+
+  const connect = useCallback(() => {
+    if (!mountedRef.current) return;
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    const params = new URLSearchParams({ joinCode });
+    const es = new EventSource(`/api/bills/${billId}/events?${params}`);
+    esRef.current = es;
+
+    es.onopen = () => {
+      retryDelayRef.current = 1000;
+      invalidateRef.current();
+    };
+
+    es.onmessage = (e) => {
+      try {
+        const parsed = JSON.parse(e.data);
+        if (parsed?.event === "bill_changed") {
+          invalidateRef.current();
+        }
+      } catch {
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (!mountedRef.current) return;
+      es.close();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      const delay = retryDelayRef.current;
+      retryDelayRef.current = Math.min(delay * 2, 30_000);
+      retryTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) connect();
+      }, delay);
+    };
+
+    es.onerror = scheduleReconnect;
+  }, [billId, joinCode]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    retryDelayRef.current = 1000;
+    connect();
+    return () => {
+      mountedRef.current = false;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
+    };
+  }, [connect]);
+}
+
 function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }) {
   const { bill, lines, users } = data;
   const billId = bill.id;
+
+  useBillSSE(billId, bill.joinCode, onChange);
 
   const totalsQuery = useGetBillTotals(billId, {
     query: { queryKey: getGetBillTotalsQueryKey(billId) },
