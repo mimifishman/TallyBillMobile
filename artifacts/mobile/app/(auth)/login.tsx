@@ -327,15 +327,26 @@ export default function LoginScreen() {
     );
   }
 
+  const canGoBack = router.canGoBack();
+
   return (
     <KeyboardAvoidingView
       style={[styles.flex, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {canGoBack && (
+        <TouchableOpacity
+          style={[styles.backBtn, { top: insets.top + 8 }]}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={24} color={colors.foreground} />
+        </TouchableOpacity>
+      )}
       <ScrollView
         contentContainerStyle={[
           styles.container,
-          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 },
+          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -486,7 +497,12 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    justifyContent: "center",
+  },
+  backBtn: {
+    position: "absolute",
+    left: 16,
+    zIndex: 10,
+    padding: 4,
   },
   header: {
     alignItems: "center",
