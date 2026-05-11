@@ -18,17 +18,26 @@ import { setBaseUrl, setExtraHeadersGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/context/AuthContext";
 import { billIdFromUrl, getBillCode } from "@/lib/billCodeStore";
+import { getOrCreateGuestOwnerId, getCachedGuestOwnerId } from "@/utils/guestBillStore";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
+// Warm the guest owner ID cache immediately so the header getter below
+// can read it synchronously on the first bill request.
+void getOrCreateGuestOwnerId();
+
 // When a request targets a specific bill (`/api/bills/<id>/...`), attach
-// the cached join-code capability header. This lets signed-out users who
-// arrived via a share link continue to read/edit that bill in-app.
+// the join-code capability header and the guest owner ID so the server
+// can determine ownership for guest-created bills.
 setExtraHeadersGetter(({ url }) => {
   const billId = billIdFromUrl(url);
   if (!billId) return null;
   const code = getBillCode(billId);
-  return code ? { "X-Join-Code": code } : null;
+  const guestOwnerId = getCachedGuestOwnerId();
+  const headers: Record<string, string> = {};
+  if (code) headers["X-Join-Code"] = code;
+  if (guestOwnerId) headers["X-Guest-Owner-Id"] = guestOwnerId;
+  return Object.keys(headers).length > 0 ? headers : null;
 });
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;

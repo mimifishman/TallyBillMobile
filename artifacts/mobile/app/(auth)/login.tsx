@@ -231,7 +231,7 @@ export default function LoginScreen() {
 
   const handleGuest = () => {
     continueAsGuest();
-    router.replace("/bill/new");
+    router.replace("/");
   };
 
   if (clerkLoaded && isSignedIn) {

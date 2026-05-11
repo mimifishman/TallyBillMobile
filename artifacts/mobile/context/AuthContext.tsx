@@ -16,6 +16,8 @@ import {
   getOrCreateGuestOwnerId,
   loadJoinCodesIntoMemory,
   clearGuestBills,
+  getGuestName,
+  saveGuestName,
 } from "@/utils/guestBillStore";
 
 const GUEST_MODE_KEY = "is_guest_mode";
@@ -34,6 +36,9 @@ interface AuthContextType {
   isLoading: boolean;
   isGuest: boolean;
   guestOwnerId: string | null;
+  /** null = never asked; "" = skipped; "John" = real name */
+  guestName: string | null;
+  saveGuestName: (name: string) => Promise<void>;
   login: (token: string, user: UserInfo) => Promise<void>;
   logout: () => Promise<void>;
   continueAsGuest: () => void;
@@ -45,6 +50,8 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isGuest: false,
   guestOwnerId: null,
+  guestName: null,
+  saveGuestName: async () => {},
   login: async () => {},
   logout: async () => {},
   continueAsGuest: () => {},
@@ -55,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser } = useUser();
   const [isGuest, setIsGuest] = useState(false);
   const [guestOwnerId, setGuestOwnerId] = useState<string | null>(null);
+  const [guestName, setGuestName] = useState<string | null>(null);
   const [storageLoaded, setStorageLoaded] = useState(false);
   const hasClaimed = useRef(false);
 
@@ -75,14 +83,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      const [guestId, guestMode] = await Promise.all([
+      const [guestId, guestMode, storedName] = await Promise.all([
         getOrCreateGuestOwnerId(),
         AsyncStorage.getItem(GUEST_MODE_KEY),
+        getGuestName(),
       ]);
       setGuestOwnerId(guestId);
       if (guestMode === "true") {
         setIsGuest(true);
       }
+      setGuestName(storedName);
       loadJoinCodesIntoMemory();
       setStorageLoaded(true);
     }
@@ -131,6 +141,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthTokenGetter(() => null);
   }, []);
 
+  const handleSaveGuestName = useCallback(async (name: string) => {
+    setGuestName(name);
+    await saveGuestName(name);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -139,6 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: !isLoaded || !storageLoaded,
         isGuest,
         guestOwnerId,
+        guestName,
+        saveGuestName: handleSaveGuestName,
         login,
         logout,
         continueAsGuest,

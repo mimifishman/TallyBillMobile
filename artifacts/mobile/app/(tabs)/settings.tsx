@@ -21,15 +21,17 @@ import { customFetch } from "@workspace/api-client-react";
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout, isGuest } = useAuth();
+  const { user, logout, isGuest, guestName, saveGuestName } = useAuth();
   const { user: clerkUser } = useUser();
-
-  const [joinCode, setJoinCode] = useState("");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [nameChanged, setNameChanged] = useState(false);
+
+  const [guestNameInput, setGuestNameInput] = useState(guestName ?? "");
+  const [guestNameChanged, setGuestNameChanged] = useState(false);
+  const [savingGuestName, setSavingGuestName] = useState(false);
 
   useEffect(() => {
     if (clerkUser) {
@@ -37,6 +39,10 @@ export default function SettingsScreen() {
       setLastName(clerkUser.lastName ?? "");
     }
   }, [clerkUser?.firstName, clerkUser?.lastName]);
+
+  useEffect(() => {
+    setGuestNameInput(guestName ?? "");
+  }, [guestName]);
 
   const handleSaveName = async () => {
     if (!firstName.trim()) {
@@ -67,6 +73,13 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleSaveGuestName = async () => {
+    setSavingGuestName(true);
+    await saveGuestName(guestNameInput.trim());
+    setGuestNameChanged(false);
+    setSavingGuestName(false);
+  };
+
   const handleLogout = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
@@ -76,21 +89,8 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const handleJoinBill = () => {
-    if (!joinCode.trim()) {
-      Alert.alert("Error", "Please enter a join code");
-      return;
-    }
-    if (!user) {
-      Alert.alert("Sign in required", "Please sign in to join a bill", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign In", onPress: () => router.push("/(auth)/login") },
-      ]);
-      return;
-    }
-    router.push({ pathname: "/bill/join", params: { code: joinCode.toUpperCase() } });
-    setJoinCode("");
-  };
+  const guestDisplayName = guestName || "Guest";
+  const guestInitial = guestDisplayName.charAt(0).toUpperCase();
 
   return (
     <ScrollView
@@ -116,10 +116,14 @@ export default function SettingsScreen() {
       ) : (
         <View style={[styles.guestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
-            <Feather name="user" size={20} color={colors.mutedForeground} />
+            {guestName ? (
+              <Text style={[styles.avatarText, { color: colors.mutedForeground }]}>{guestInitial}</Text>
+            ) : (
+              <Feather name="user" size={20} color={colors.mutedForeground} />
+            )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: colors.foreground }]}>Guest</Text>
+            <Text style={[styles.profileName, { color: colors.foreground }]}>{guestDisplayName}</Text>
             <Text style={[styles.profileEmail, { color: colors.mutedForeground }]}>Not signed in</Text>
           </View>
           <TouchableOpacity
@@ -128,6 +132,43 @@ export default function SettingsScreen() {
           >
             <Text style={styles.signInBtnText}>Sign In</Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {!user && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>YOUR NAME</Text>
+          <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.nameCardLabel, { color: colors.foreground }]}>Display name</Text>
+            <Text style={[styles.nameCardSub, { color: colors.mutedForeground }]}>
+              Shown on bills you create or join as a guest
+            </Text>
+            <View style={[styles.nameInputWrap, { borderColor: guestNameChanged ? colors.primary : colors.border }]}>
+              <TextInput
+                style={[styles.nameInput, { color: colors.foreground }]}
+                placeholder="Your first name"
+                placeholderTextColor={colors.mutedForeground}
+                value={guestNameInput}
+                onChangeText={(v) => { setGuestNameInput(v); setGuestNameChanged(true); }}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>
+            {guestNameChanged && (
+              <TouchableOpacity
+                style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveGuestName}
+                disabled={savingGuestName}
+                activeOpacity={0.8}
+              >
+                {savingGuestName ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.saveNameBtnText}>Save Name</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
 
@@ -175,33 +216,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       )}
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>JOIN A BILL</Text>
-        <View style={[styles.joinCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.joinLabel, { color: colors.foreground }]}>Enter join code</Text>
-          <Text style={[styles.joinSub, { color: colors.mutedForeground }]}>
-            Get the 6-character code from the bill owner
-          </Text>
-          <View style={styles.joinRow}>
-            <TextInput
-              style={[styles.joinInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="ABC123"
-              placeholderTextColor={colors.mutedForeground}
-              value={joinCode}
-              onChangeText={setJoinCode}
-              autoCapitalize="characters"
-              maxLength={6}
-            />
-            <TouchableOpacity
-              style={[styles.joinBtn, { backgroundColor: colors.primary }]}
-              onPress={handleJoinBill}
-            >
-              <Text style={styles.joinBtnText}>Join</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
 
       {user && !isGuest && (
         <View style={styles.section}>
@@ -279,6 +293,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, paddingHorizontal: 4 },
   nameCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 12 },
   nameCardLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  nameCardSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, marginTop: -4 },
   nameRow: { flexDirection: "row", gap: 10 },
   nameInputWrap: {
     flex: 1,
@@ -294,23 +309,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveNameBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  joinCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 6 },
-  joinLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  joinSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, marginBottom: 6 },
-  joinRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  joinInput: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 2,
-    textAlign: "center",
-  },
-  joinBtn: { borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
-  joinBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
   menuCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   menuItem: {
     flexDirection: "row",

@@ -15,6 +15,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Bills</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="join">
+        <Icon sf={{ default: "person.badge.plus", selected: "person.badge.plus" }} />
+        <Label>Join</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
@@ -81,6 +85,30 @@ function ClassicTabLayout() {
               ) : (
                 <Ionicons
                   name={focused ? "document-text" : "document-text-outline"}
+                  size={22}
+                  color={color}
+                />
+              )}
+              {focused ? <ActiveDot color={colors.primary} /> : null}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="join"
+        options={{
+          title: "Join",
+          tabBarIcon: ({ color, focused }) => (
+            <View style={styles.iconWrap}>
+              {isIOS ? (
+                <SymbolView
+                  name="person.badge.plus"
+                  tintColor={color}
+                  size={22}
+                />
+              ) : (
+                <Ionicons
+                  name={focused ? "person-add" : "person-add-outline"}
                   size={22}
                   color={color}
                 />

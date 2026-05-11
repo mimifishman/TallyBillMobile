@@ -287,7 +287,7 @@ export default function RegisterScreen() {
 
   const handleGuest = () => {
     continueAsGuest();
-    router.replace("/bill/new");
+    router.replace("/");
   };
 
   const isPostSignupVerification =

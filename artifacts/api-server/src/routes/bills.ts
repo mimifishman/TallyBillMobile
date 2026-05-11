@@ -90,13 +90,9 @@ router.get("/guest", async (req, res) => {
     res.json([]);
     return;
   }
+  const guestOwnerId = String(req.query["guestOwnerId"] ?? "").trim();
 
-  const bills = await db.select().from(billsTable).where(
-    and(
-      inArray(billsTable.id, ids),
-      eq(billsTable.isGuestBill, true),
-    ),
-  );
+  const bills = await db.select().from(billsTable).where(inArray(billsTable.id, ids));
 
   if (bills.length === 0) {
     res.json([]);
@@ -133,7 +129,8 @@ router.get("/guest", async (req, res) => {
       users.length > 0 &&
       billLines.length > 0 &&
       billLines.every((l) => assignedLineIds.has(l.id));
-    return { ...bill, settled, users, isOwner: true };
+    const isOwner = guestOwnerId.length > 0 && bill.guestOwnerId === guestOwnerId;
+    return { ...bill, settled, users, isOwner };
   });
 
   res.json(enriched);
@@ -232,8 +229,43 @@ router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   }
   const lines = await getBillLines(billId);
   const users = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
-  const isOwner = bill.isGuestBill ? true : (!!req.user && bill.ownerUserId === req.user.userId);
-  res.json({ bill, lines, users, isOwner });
+  const guestOwnerId = String(req.headers["x-guest-owner-id"] ?? "").trim();
+  let isOwner: boolean;
+  if (bill.isGuestBill) {
+    isOwner = guestOwnerId.length > 0 && bill.guestOwnerId === guestOwnerId;
+  } else {
+    isOwner = !!req.user && bill.ownerUserId === req.user.userId;
+  }
+  let isMember = false;
+  if (!isOwner) {
+    if (req.user) {
+      const [memberRow] = await db.select().from(billUsersTable)
+        .where(and(eq(billUsersTable.billId, billId), eq(billUsersTable.userId, req.user.userId)))
+        .limit(1);
+      isMember = !!memberRow;
+    } else if (bill.isGuestBill && guestOwnerId.length > 0) {
+      isMember = true;
+    }
+  }
+  res.json({ bill, lines, users, isOwner, isMember });
+});
+
+router.delete("/:billId/leave", requireBillAccess, requireAuth, async (req: AuthRequest, res) => {
+  const billId = parseInt(String(req.params["billId"]));
+  const userId = req.user!.userId;
+  const [bill] = await db.select().from(billsTable).where(eq(billsTable.id, billId)).limit(1);
+  if (!bill) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (bill.ownerUserId === userId) {
+    res.status(403).json({ error: "Owner cannot leave their own bill. Delete the bill instead." });
+    return;
+  }
+  await db.delete(billUsersTable).where(
+    and(eq(billUsersTable.billId, billId), eq(billUsersTable.userId, userId))
+  );
+  res.status(204).send();
 });
 
 router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
@@ -284,7 +316,13 @@ router.delete("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  if (!bill.isGuestBill && bill.ownerUserId !== req.user?.userId) {
+  if (bill.isGuestBill) {
+    const guestOwnerId = String(req.headers["x-guest-owner-id"] ?? "").trim();
+    if (!guestOwnerId || bill.guestOwnerId !== guestOwnerId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  } else if (bill.ownerUserId !== req.user?.userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }

@@ -10,6 +10,27 @@ export interface GuestBillRef {
 
 const GUEST_BILLS_KEY = "guest_bills";
 const GUEST_OWNER_ID_KEY = "guest_owner_id";
+const GUEST_NAME_KEY = "guest_name";
+
+/**
+ * Returns:
+ *   null   — never been asked (show the prompt)
+ *   ""     — was asked but skipped (don't ask again)
+ *   "John" — has a real name
+ */
+export async function getGuestName(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(GUEST_NAME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveGuestName(name: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(GUEST_NAME_KEY, name);
+  } catch {}
+}
 
 export function registerJoinCode(billId: number, joinCode: string): void {
   rememberBillCode(billId, joinCode);
@@ -22,15 +43,28 @@ function generateGuestId(): string {
   return `guest_${ts}_${r1}${r2}`;
 }
 
+let _cachedGuestOwnerId: string | null = null;
+
+export function getCachedGuestOwnerId(): string | null {
+  return _cachedGuestOwnerId;
+}
+
 export async function getOrCreateGuestOwnerId(): Promise<string> {
+  if (_cachedGuestOwnerId) return _cachedGuestOwnerId;
   try {
     const existing = await AsyncStorage.getItem(GUEST_OWNER_ID_KEY);
-    if (existing) return existing;
+    if (existing) {
+      _cachedGuestOwnerId = existing;
+      return existing;
+    }
     const id = generateGuestId();
     await AsyncStorage.setItem(GUEST_OWNER_ID_KEY, id);
+    _cachedGuestOwnerId = id;
     return id;
   } catch {
-    return generateGuestId();
+    const id = generateGuestId();
+    _cachedGuestOwnerId = id;
+    return id;
   }
 }
 

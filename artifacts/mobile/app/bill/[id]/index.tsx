@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Modal,
@@ -32,11 +32,14 @@ import {
   getGetBillQueryKey,
   getGetBillsQueryKey,
   getGetBillTotalsQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
 import colors_data from "@/constants/colors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
+import { useAuth } from "@/context/AuthContext";
+import { removeGuestBill, listGuestBills } from "@/utils/guestBillStore";
 
 const PEOPLE_COLORS = colors_data.light.people;
 
@@ -46,6 +49,16 @@ export default function BillDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const billId = parseInt(id!);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [guestHasBill, setGuestHasBill] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      listGuestBills().then((bills) => {
+        setGuestHasBill(bills.some((b) => b.id === billId));
+      });
+    }
+  }, [billId, user]);
 
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
@@ -171,6 +184,35 @@ export default function BillDetailScreen() {
 
   const handleDeleteBill = () => {
     confirmDeleteBill(() => deleteBillMutation.mutate({ billId }));
+  };
+
+  const handleRemoveFromList = () => {
+    Alert.alert(
+      "Remove from your list",
+      "This removes the bill from your view. The bill itself will not be deleted.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            if (user) {
+              try {
+                await customFetch(`/api/bills/${billId}/leave`, { method: "DELETE" });
+                queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+              } catch {
+                Alert.alert("Error", "Couldn't remove the bill. Please try again.");
+                return;
+              }
+            } else {
+              await removeGuestBill(billId);
+              queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+            }
+            router.replace("/(tabs)/bills");
+          },
+        },
+      ]
+    );
   };
 
   const openEditHeader = () => {
@@ -344,7 +386,8 @@ export default function BillDetailScreen() {
     );
   }
 
-  const { bill, lines, users, isOwner } = data;
+  const { bill, lines, users, isOwner, isMember } = data as typeof data & { isMember?: boolean };
+  const canRemoveFromList = !isOwner && (isMember || guestHasBill);
 
   const fmt = (n: number) => {
     const symbol = getCurrencySymbol(bill.currency);
@@ -365,7 +408,7 @@ export default function BillDetailScreen() {
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)/bills")}
+          onPress={() => router.replace("/(tabs)/bills")}
           style={styles.headerBtn}
         >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -392,6 +435,14 @@ export default function BillDetailScreen() {
               <Feather name="edit-2" size={18} color={colors.foreground} />
             </TouchableOpacity>
           </>
+        ) : canRemoveFromList ? (
+          <TouchableOpacity
+            onPress={handleRemoveFromList}
+            style={styles.headerBtn}
+            accessibilityLabel="Remove from my list"
+          >
+            <Feather name="log-out" size={18} color={colors.destructive ?? "#EF4444"} />
+          </TouchableOpacity>
         ) : null}
         <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn}>
           <Feather name="share-2" size={20} color={colors.foreground} />

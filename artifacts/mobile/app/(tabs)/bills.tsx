@@ -37,6 +37,7 @@ import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 import {
   listGuestBills,
   removeGuestBill,
+  getOrCreateGuestOwnerId,
   type GuestBillRef,
 } from "@/utils/guestBillStore";
 
@@ -60,6 +61,20 @@ function DeleteAction({ onDelete }: { onDelete: () => void }) {
     >
       <Feather name="trash-2" size={22} color="#fff" />
       <Text style={styles.deleteActionText}>Delete</Text>
+    </TouchableOpacity>
+  );
+}
+
+function RemoveAction({ onRemove }: { onRemove: () => void }) {
+  const colors = useColors();
+  return (
+    <TouchableOpacity
+      style={[styles.deleteAction, { backgroundColor: colors.mutedForeground ?? "#6B7280" }]}
+      onPress={onRemove}
+      activeOpacity={0.85}
+    >
+      <Feather name="log-out" size={22} color="#fff" />
+      <Text style={styles.deleteActionText}>Remove</Text>
     </TouchableOpacity>
   );
 }
@@ -105,7 +120,7 @@ function PulsingFab({
 export default function BillsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, isGuest } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [guestBills, setGuestBills] = useState<GuestBillItem[]>([]);
@@ -146,7 +161,8 @@ export default function BillsScreen() {
     }
     try {
       const ids = refs.map((r) => r.id).join(",");
-      const fresh = await customFetch<GuestBillItem[]>(`/api/bills/guest?ids=${ids}`);
+      const guestOwnerId = await getOrCreateGuestOwnerId();
+      const fresh = await customFetch<GuestBillItem[]>(`/api/bills/guest?ids=${ids}&guestOwnerId=${guestOwnerId}`);
       setGuestBills(
         fresh.map((b) => ({
           ...b,
@@ -160,25 +176,51 @@ export default function BillsScreen() {
     setGuestRefreshing(false);
   }, []);
 
-  const handleDeleteGuestBill = useCallback((billId: number, title: string) => {
-    Alert.alert("Remove Bill", `Remove "${title}"?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          await removeGuestBill(billId);
-          setGuestBills((prev) => prev.filter((b) => b.id !== billId));
+  const handleDeleteGuestBill = useCallback((billId: number, _title: string) => {
+    Alert.alert(
+      "Remove from your list",
+      "This removes the bill from your view. The bill itself will not be deleted.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            await removeGuestBill(billId);
+            setGuestBills((prev) => prev.filter((b) => b.id !== billId));
+          },
         },
-      },
-    ]);
+      ]
+    );
   }, []);
+
+  const handleLeaveAuthBill = useCallback((billId: number, _title: string) => {
+    Alert.alert(
+      "Remove from your list",
+      "This removes the bill from your view. The bill itself will not be deleted.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await customFetch(`/api/bills/${billId}/leave`, { method: "DELETE" });
+              queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+            } catch {
+              Alert.alert("Error", "Couldn't remove the bill. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, [queryClient]);
 
   useFocusEffect(
     useCallback(() => {
       if (user) refetch();
-      else if (isGuest) void loadGuestBills();
-    }, [user, isGuest, refetch, loadGuestBills]),
+      else void loadGuestBills();
+    }, [user, refetch, loadGuestBills]),
   );
 
   const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
@@ -187,38 +229,7 @@ export default function BillsScreen() {
     paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
   };
 
-  if (!user && !isGuest) {
-    return (
-      <View style={[styles.gateContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <View style={[styles.gateIconWrap, { backgroundColor: colors.primarySoft }]}>
-          <Feather name="lock" size={32} color={colors.primary} />
-        </View>
-        <Text style={[styles.gateTitle, { color: colors.foreground }]}>Sign in to see history</Text>
-        <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-          Create an account or sign in to save and view your bill history across sessions
-        </Text>
-        <TouchableOpacity
-          style={[styles.gateBtn, { backgroundColor: colors.primary }]}
-          onPress={() => router.push("/(auth)/login")}
-        >
-          <Text style={styles.gateBtnText}>Sign In</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-          <Text style={[styles.gateLink, { color: colors.mutedForeground }]}>Create account</Text>
-        </TouchableOpacity>
-        <View style={[styles.divider, { borderTopColor: colors.border }]} />
-        <TouchableOpacity
-          style={[styles.newBillGhostBtn, { borderColor: colors.border }]}
-          onPress={() => router.push("/bill/new")}
-        >
-          <Feather name="plus" size={18} color={colors.primary} />
-          <Text style={[styles.newBillGhostText, { color: colors.primary }]}>New Bill (Guest)</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const isGuest_ = !user && isGuest;
+  const isGuest_ = !user;
   const bills = isGuest_ ? guestBills : (authBills ?? []);
   const isLoading = isGuest_ ? guestLoading : authLoading;
   const isRefreshing = isGuest_ ? guestRefreshing : isRefetching;
@@ -257,9 +268,9 @@ export default function BillsScreen() {
           );
           return (
             <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
-              {isOwner ? (
-                <Swipeable
-                  renderRightActions={() => (
+              <Swipeable
+                renderRightActions={() =>
+                  isOwner ? (
                     <DeleteAction
                       onDelete={() =>
                         isGuest_
@@ -267,16 +278,22 @@ export default function BillsScreen() {
                           : handleDeleteAuthBill(item.id)
                       }
                     />
-                  )}
-                  overshootRight={false}
-                  rightThreshold={72}
-                  friction={2}
-                >
-                  {card}
-                </Swipeable>
-              ) : (
-                card
-              )}
+                  ) : (
+                    <RemoveAction
+                      onRemove={() =>
+                        isGuest_
+                          ? handleDeleteGuestBill(item.id, item.title)
+                          : handleLeaveAuthBill(item.id, item.title)
+                      }
+                    />
+                  )
+                }
+                overshootRight={false}
+                rightThreshold={72}
+                friction={2}
+              >
+                {card}
+              </Swipeable>
             </Animated.View>
           );
         }}
@@ -348,46 +365,4 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  gateContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 12,
-  },
-  gateIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  gateTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  gateSub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  gateBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    marginTop: 8,
-    alignItems: "center",
-  },
-  gateBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  gateLink: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  divider: { borderTopWidth: 1, width: "100%", marginVertical: 16 },
-  newBillGhostBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  newBillGhostText: { fontSize: 15, fontFamily: "Inter_500Medium" },
 });
