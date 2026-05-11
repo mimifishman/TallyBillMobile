@@ -9,7 +9,7 @@ import {
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth.js";
-import { requireBillAccess } from "../middlewares/billAccess.js";
+import { requireBillAccess, type BillAccessRequest } from "../middlewares/billAccess.js";
 import { generateJoinCode } from "../lib/auth.js";
 import { subscribe, unsubscribe, notifyBillChanged } from "../lib/sseManager.js";
 
@@ -328,9 +328,12 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     res.status(404).json({ error: "Bill not found" });
     return;
   }
-  if (!bill.isGuestBill && bill.ownerUserId !== req.user?.userId) {
-    res.status(403).json({ error: "Only the bill owner can edit bill details" });
-    return;
+  if (!bill.isGuestBill) {
+    const via = (req as BillAccessRequest).billAccess?.via;
+    if (via !== "owner" && via !== "member") {
+      res.status(403).json({ error: "Only bill members can edit bill details" });
+      return;
+    }
   }
   const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {

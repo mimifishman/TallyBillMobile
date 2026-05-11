@@ -507,8 +507,18 @@ export default function BillDetailScreen() {
     );
   }
 
-  const { bill, lines, users, isOwner, isMember } = data as typeof data & { isMember?: boolean };
-  const canRemoveFromList = !isOwner && (isMember || guestHasBill);
+  const { bill: rawBill, lines, users, isOwner, isMember } = data as typeof data & { isMember?: boolean };
+  const bill = rawBill as typeof rawBill & { isGuestBill?: boolean; guestOwnerId?: string | null };
+  const cachedGuestOwnerId = getCachedGuestOwnerId();
+  const isGuestOwner =
+    !user &&
+    !!bill.isGuestBill &&
+    !!bill.guestOwnerId &&
+    !!cachedGuestOwnerId &&
+    bill.guestOwnerId === cachedGuestOwnerId;
+  const canDelete = isOwner || isGuestOwner;
+  const canEditHeader = isOwner || !!isMember || isGuestOwner || (!user && !!bill.isGuestBill && guestHasBill);
+  const canRemoveFromList = !isOwner && !isGuestOwner && (!!isMember || guestHasBill);
 
   const fmt = (n: number) => {
     const symbol = getCurrencySymbol(bill.currency);
@@ -542,21 +552,22 @@ export default function BillDetailScreen() {
             </Text>
           ) : null}
         </View>
-        {isOwner ? (
-          <>
-            <TouchableOpacity
-              onPress={handleDeleteBill}
-              style={styles.headerBtn}
-              accessibilityLabel="Delete bill"
-              disabled={deleteBillMutation.isPending}
-            >
-              <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details">
-              <Feather name="edit-2" size={18} color={colors.foreground} />
-            </TouchableOpacity>
-          </>
-        ) : canRemoveFromList ? (
+        {canDelete && (
+          <TouchableOpacity
+            onPress={handleDeleteBill}
+            style={styles.headerBtn}
+            accessibilityLabel="Delete bill"
+            disabled={deleteBillMutation.isPending}
+          >
+            <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
+          </TouchableOpacity>
+        )}
+        {canEditHeader && (
+          <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details">
+            <Feather name="edit-2" size={18} color={colors.foreground} />
+          </TouchableOpacity>
+        )}
+        {canRemoveFromList && (
           <TouchableOpacity
             onPress={handleRemoveFromList}
             style={styles.headerBtn}
@@ -564,7 +575,7 @@ export default function BillDetailScreen() {
           >
             <Feather name="log-out" size={18} color={colors.destructive ?? "#EF4444"} />
           </TouchableOpacity>
-        ) : null}
+        )}
         <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn}>
           <Feather name="share-2" size={20} color={colors.foreground} />
         </TouchableOpacity>
