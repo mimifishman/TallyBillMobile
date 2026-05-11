@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useUser } from "@clerk/expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -252,6 +253,29 @@ export default function SettingsScreen() {
         </View>
       )}
 
+      {__DEV__ && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>DEV TOOLS</Text>
+          <TouchableOpacity
+            style={[styles.devBtn, { backgroundColor: colors.card, borderColor: colors.destructive }]}
+            onPress={() => {
+              Alert.alert("Clear Storage", "This will wipe all local data and restart to login.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Clear", style: "destructive", onPress: async () => {
+                    await AsyncStorage.clear();
+                    router.replace("/(auth)/login");
+                  },
+                },
+              ]);
+            }}
+          >
+            <Feather name="trash-2" size={16} color={colors.destructive} />
+            <Text style={[styles.devBtnText, { color: colors.destructive }]}>Clear Local Storage</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <Text style={[styles.version, { color: colors.mutedForeground }]}>TallyBill v1.0</Text>
     </ScrollView>
   );
@@ -319,4 +343,14 @@ const styles = StyleSheet.create({
   },
   menuItemText: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
   version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", paddingVertical: 8 },
+  devBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  devBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });
