@@ -123,6 +123,14 @@ export default function IndexScreen() {
         </View>
       )}
 
+      <TouchableOpacity
+        style={[styles.settingsBtn, { bottom: insets.bottom + 24, backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push("/(tabs)/settings")}
+        activeOpacity={0.8}
+      >
+        <Feather name="settings" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
       <Modal visible={showNamePrompt} transparent animationType="fade">
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -275,6 +283,16 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  settingsBtn: {
+    position: "absolute",
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalOverlay: {
     flex: 1,
