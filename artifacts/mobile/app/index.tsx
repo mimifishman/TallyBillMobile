@@ -26,15 +26,11 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (user) {
-      router.replace("/(tabs)/bills");
-      return;
-    }
-    if (!isGuest) {
+    if (!user && !isGuest) {
       router.replace("/(auth)/login");
       return;
     }
-    if (guestName === null) {
+    if (!user && isGuest && guestName === null) {
       setShowNamePrompt(true);
     }
   }, [isLoading, user, isGuest, guestName]);
@@ -49,7 +45,7 @@ export default function IndexScreen() {
     setShowNamePrompt(false);
   };
 
-  if (isLoading || !isGuest || user) {
+  if (isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
@@ -57,7 +53,9 @@ export default function IndexScreen() {
     );
   }
 
-  const displayName = guestName || null;
+  const displayName = user
+    ? (user.firstName ?? user.displayName ?? null)
+    : (guestName || null);
   const greeting = displayName ? `Welcome, ${displayName}!` : null;
 
   return (
@@ -113,14 +111,16 @@ export default function IndexScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-          <Text style={[styles.footerLink, { color: colors.mutedForeground }]}>
-            Already have an account?{" "}
-            <Text style={{ color: colors.primary }}>Sign in</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {!user && (
+        <View style={styles.footer}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+            <Text style={[styles.footerLink, { color: colors.mutedForeground }]}>
+              Already have an account?{" "}
+              <Text style={{ color: colors.primary }}>Sign in</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <Modal visible={showNamePrompt} transparent animationType="fade">
         <KeyboardAvoidingView
