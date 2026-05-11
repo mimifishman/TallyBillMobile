@@ -296,7 +296,7 @@ export default function RegisterScreen() {
     signUp.missingFields.length === 0;
 
   if (clerkLoaded && isSignedIn && !isPostSignupVerification) {
-    return <Redirect href="/(tabs)/bills" />;
+    return <Redirect href="/" />;
   }
 
   if (isPostSignupVerification) {
