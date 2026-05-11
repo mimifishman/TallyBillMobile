@@ -231,7 +231,7 @@ export default function LoginScreen() {
 
   const handleGuest = () => {
     continueAsGuest();
-    router.replace("/");
+    router.replace("/?prompt=1");
   };
 
   if (clerkLoaded && isSignedIn) {

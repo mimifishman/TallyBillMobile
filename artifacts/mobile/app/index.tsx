@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function IndexScreen() {
   const { user, isLoading, isGuest, guestName, saveGuestName } = useAuth();
+  const { prompt } = useLocalSearchParams<{ prompt?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [nameInput, setNameInput] = useState("");
@@ -30,10 +31,10 @@ export default function IndexScreen() {
       router.replace("/(auth)/login");
       return;
     }
-    if (!user && isGuest && guestName === null) {
+    if (prompt === "1" && guestName === null) {
       setShowNamePrompt(true);
     }
-  }, [isLoading, user, isGuest, guestName]);
+  }, [isLoading, user, isGuest, prompt, guestName]);
 
   const handleNameSubmit = async () => {
     await saveGuestName(nameInput.trim());
