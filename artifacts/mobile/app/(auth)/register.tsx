@@ -96,6 +96,7 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [codeError, setCodeError] = useState("");
+  const [showVerification, setShowVerification] = useState(false);
 
   const isPending = fetchStatus === "fetching";
 
@@ -133,6 +134,7 @@ export default function RegisterScreen() {
         return;
       }
       await signUp.verifications.sendEmailCode();
+      setShowVerification(true);
     } catch (err: unknown) {
       if (isDuplicateEmail(err)) {
         showDuplicateAlert();
@@ -291,6 +293,7 @@ export default function RegisterScreen() {
   };
 
   const isPostSignupVerification =
+    showVerification &&
     signUp.status === "missing_requirements" &&
     signUp.unverifiedFields.includes("email_address") &&
     signUp.missingFields.length === 0;
@@ -298,6 +301,12 @@ export default function RegisterScreen() {
   if (clerkLoaded && isSignedIn && !isPostSignupVerification) {
     return <Redirect href="/" />;
   }
+
+  const abandonSignUp = () => {
+    setShowVerification(false);
+    setVerificationCode("");
+    setCodeError("");
+  };
 
   if (isPostSignupVerification) {
     return (
@@ -311,7 +320,7 @@ export default function RegisterScreen() {
             { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
           ]}
         >
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={abandonSignUp} style={styles.backBtn}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <View style={styles.header}>
@@ -354,6 +363,14 @@ export default function RegisterScreen() {
             >
               <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
                 Resend code
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={abandonSignUp} style={styles.linkBtn}>
+              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
+                Wrong email?{" "}
+                <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                  Use a different email
+                </Text>
               </Text>
             </TouchableOpacity>
           </View>
