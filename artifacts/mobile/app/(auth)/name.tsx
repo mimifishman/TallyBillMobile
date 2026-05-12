@@ -16,11 +16,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 export default function NameScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, isLoaded } = useUser();
+  const { setDbProfile, setDisplayNameOverride } = useAuth();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -60,6 +62,9 @@ export default function NameScreen() {
         body: JSON.stringify({ firstName: trimmedFirst, lastName: trimmedLast || null }),
         headers: { "Content-Type": "application/json" },
       });
+      setDbProfile(trimmedFirst, trimmedLast || null);
+      const displayName = [trimmedFirst, trimmedLast].filter(Boolean).join(" ");
+      if (displayName) setDisplayNameOverride(displayName);
     } catch (err) {
       if (__DEV__) {
         console.warn("[name.update API sync error]", err);
@@ -73,7 +78,7 @@ export default function NameScreen() {
     }
 
     setSaving(false);
-    router.replace("/(tabs)/bills");
+    router.replace("/");
   };
 
   if (!isLoaded) {
