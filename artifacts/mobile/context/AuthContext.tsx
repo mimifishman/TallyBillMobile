@@ -40,6 +40,7 @@ interface AuthContextType {
   guestName: string | null;
   saveGuestName: (name: string) => Promise<void>;
   setDisplayNameOverride: (name: string) => void;
+  setDbProfile: (firstName: string | null, lastName: string | null) => void;
   login: (token: string, user: UserInfo) => Promise<void>;
   logout: () => Promise<void>;
   continueAsGuest: () => void;
@@ -54,6 +55,7 @@ const AuthContext = createContext<AuthContextType>({
   guestName: null,
   saveGuestName: async () => {},
   setDisplayNameOverride: () => {},
+  setDbProfile: () => {},
   login: async () => {},
   logout: async () => {},
   continueAsGuest: () => {},
@@ -67,6 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [guestName, setGuestName] = useState<string | null>(null);
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [displayNameOverride, setDisplayNameOverride] = useState<string | null>(null);
+  const [dbFirstName, setDbFirstName] = useState<string | null>(null);
+  const [dbLastName, setDbLastName] = useState<string | null>(null);
   const hasClaimed = useRef(false);
 
   const user: UserInfo | null =
@@ -80,13 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clerkUser.firstName ||
             clerkUser.username ||
             "User",
-          firstName: clerkUser.firstName ?? null,
-          lastName: clerkUser.lastName ?? null,
+          firstName: dbFirstName ?? clerkUser.firstName ?? null,
+          lastName: dbLastName ?? clerkUser.lastName ?? null,
         }
       : null;
 
   useEffect(() => {
     setDisplayNameOverride(null);
+    setDbFirstName(null);
+    setDbLastName(null);
   }, [clerkUser?.id]);
 
   useEffect(() => {
@@ -113,6 +119,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsGuest(false);
       void AsyncStorage.removeItem(GUEST_MODE_KEY);
       setAuthTokenGetter(() => getToken());
+
+      customFetch("/api/me", { method: "GET" })
+        .then((data) => {
+          const me = data as { displayName?: string; firstName?: string | null; lastName?: string | null };
+          if (me?.displayName) {
+            setDisplayNameOverride(me.displayName);
+          }
+          if (me?.firstName !== undefined) {
+            setDbFirstName(me.firstName ?? null);
+          }
+          if (me?.lastName !== undefined) {
+            setDbLastName(me.lastName ?? null);
+          }
+        })
+        .catch(() => {});
 
       if (!hasClaimed.current && guestOwnerId) {
         hasClaimed.current = true;
@@ -155,6 +176,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await saveGuestName(name);
   }, []);
 
+  const handleSetDbProfile = useCallback((firstName: string | null, lastName: string | null) => {
+    setDbFirstName(firstName);
+    setDbLastName(lastName);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -166,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         guestName,
         saveGuestName: handleSaveGuestName,
         setDisplayNameOverride,
+        setDbProfile: handleSetDbProfile,
         login,
         logout,
         continueAsGuest,

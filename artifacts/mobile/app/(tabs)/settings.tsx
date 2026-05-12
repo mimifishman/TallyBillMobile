@@ -22,7 +22,7 @@ import { customFetch } from "@workspace/api-client-react";
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout, isGuest, guestName, saveGuestName, setDisplayNameOverride } = useAuth();
+  const { user, logout, isGuest, guestName, saveGuestName, setDisplayNameOverride, setDbProfile } = useAuth();
   const { user: clerkUser } = useUser();
 
   const [firstName, setFirstName] = useState("");
@@ -35,11 +35,11 @@ export default function SettingsScreen() {
   const [savingGuestName, setSavingGuestName] = useState(false);
 
   useEffect(() => {
-    if (clerkUser) {
-      setFirstName(clerkUser.firstName ?? "");
-      setLastName(clerkUser.lastName ?? "");
+    if (user) {
+      setFirstName(user.firstName ?? "");
+      setLastName(user.lastName ?? "");
     }
-  }, [clerkUser?.firstName, clerkUser?.lastName]);
+  }, [user?.firstName, user?.lastName]);
 
   useEffect(() => {
     setGuestNameInput(guestName ?? "");
@@ -52,14 +52,6 @@ export default function SettingsScreen() {
     }
     setSavingName(true);
     try {
-      await clerkUser?.update({
-        firstName: firstName.trim(),
-        lastName: lastName.trim() || "",
-      });
-    } catch (err) {
-      if (__DEV__) console.warn("[settings.update Clerk error - ignored]", err);
-    }
-    try {
       const res = await customFetch("/api/me", {
         method: "PATCH",
         body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim() || null }),
@@ -69,6 +61,11 @@ export default function SettingsScreen() {
       if (data?.displayName) {
         setDisplayNameOverride(data.displayName);
       }
+      const trimmedFirst = firstName.trim();
+      const trimmedLast = lastName.trim();
+      setFirstName(trimmedFirst);
+      setLastName(trimmedLast);
+      setDbProfile(trimmedFirst || null, trimmedLast || null);
       setNameChanged(false);
       Alert.alert("Saved", "Your name has been updated");
     } catch {

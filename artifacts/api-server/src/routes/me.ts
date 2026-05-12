@@ -6,6 +6,29 @@ import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
 
 const router = Router();
 
+router.get("/", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.userId;
+
+  const [current] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!current) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json({
+    id: current.id,
+    email: current.email,
+    firstName: current.firstName ?? null,
+    lastName: current.lastName ?? null,
+    displayName: current.displayName,
+  });
+});
+
 router.patch("/", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.userId;
   const { firstName, lastName } = req.body as { firstName?: unknown; lastName?: unknown };
