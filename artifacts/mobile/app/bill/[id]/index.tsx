@@ -107,11 +107,24 @@ export default function BillDetailScreen() {
   const sseInvalidateRef = useRef(invalidate);
   useEffect(() => { sseInvalidateRef.current = invalidate; }, [invalidate]);
 
+  // Keep a stable ref to getToken so connectSSE doesn't need it as a dep.
+  // Clerk returns a new getToken function reference on every render, which
+  // would cause connectSSE (and the SSE useEffect) to re-run on every render,
+  // creating a rapid reconnection loop that exhausts TCP connection slots.
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   const connectSSE = useCallback(async () => {
     if (!sseMountedRef.current) return;
     if (sseRetryTimerRef.current) {
       clearTimeout(sseRetryTimerRef.current);
       sseRetryTimerRef.current = null;
+    }
+
+    // Abort any existing connection before opening a new one.
+    if (sseXhrRef.current) {
+      sseXhrRef.current.abort();
+      sseXhrRef.current = null;
     }
 
     const url = `${baseUrl}/api/bills/${billId}/events`;
@@ -125,11 +138,16 @@ export default function BillDetailScreen() {
 
     if (isSignedIn) {
       try {
-        const token = await getToken();
+        const token = await getTokenRef.current();
+        // If the XHR was replaced while we were awaiting the token, bail out.
+        if (sseXhrRef.current !== xhr) return;
         if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       } catch {
       }
     }
+
+    // Bail if the XHR was replaced (e.g. effect re-ran) before we could send.
+    if (sseXhrRef.current !== xhr) return;
 
     const guestOwnerId = getCachedGuestOwnerId();
     if (guestOwnerId) xhr.setRequestHeader("X-Guest-Owner-Id", guestOwnerId);
@@ -171,7 +189,11 @@ export default function BillDetailScreen() {
     xhr.ontimeout = scheduleReconnect;
 
     xhr.send();
-  }, [billId, baseUrl, isSignedIn, getToken]);
+  // getToken is intentionally excluded — it's accessed via getTokenRef so
+  // connectSSE stays stable and doesn't cause the SSE effect to re-run on
+  // every render (which would create a rapid reconnection loop).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [billId, baseUrl, isSignedIn]);
 
   useEffect(() => {
     sseMountedRef.current = true;
@@ -242,6 +264,7 @@ export default function BillDetailScreen() {
       onError: () => {
         splitPendingUsersRef.current = null;
         invalidate();
+        Alert.alert("Couldn't add item", "Something went wrong. Please try again.");
       },
     },
   });

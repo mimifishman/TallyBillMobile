@@ -1,21 +1,61 @@
 import { Router } from "express";
-import { revSentenceWord, isHebrew } from "../lib/auth.js";
+import OpenAI from "openai";
 
 const router = Router();
 
-interface VeryfiLineItem {
+let _openai: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!_openai) {
+    const baseURL = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+    const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+    if (!baseURL || !apiKey) {
+      throw new Error("OCR service not configured.");
+    }
+    _openai = new OpenAI({ baseURL, apiKey });
+  }
+  return _openai;
+}
+
+interface AIReceiptItem {
   description: string;
   quantity: number | null;
-  price: number | null;
+  unitPrice: number | null;
   total: number | null;
 }
 
-interface VeryfiResponse {
-  line_items?: VeryfiLineItem[];
-  tax?: number | null;
-  tip?: number | null;
-  currency_code?: string | null;
+interface AIReceiptResponse {
+  items?: AIReceiptItem[];
+  taxAmount?: number | null;
+  tipAmount?: number | null;
+  currency?: string | null;
 }
+
+const SYSTEM_PROMPT = `You are a receipt parser. Extract all line items and totals from the receipt image.
+Return ONLY valid JSON with this exact structure:
+{
+  "items": [
+    {
+      "description": "item name",
+      "quantity": 1,
+      "unitPrice": 9.99,
+      "total": 9.99
+    }
+  ],
+  "taxAmount": 1.50,
+  "tipAmount": null,
+  "currency": "USD"
+}
+
+Rules:
+- Include every purchased item; omit subtotals, totals, and payment lines.
+- quantity must be a positive number (use 1 if not shown).
+- unitPrice = total / quantity.
+- taxAmount and tipAmount are the receipt-level amounts (null if absent).
+- currency is the 3-letter ISO code (null if unclear).
+- Return null for any numeric field you cannot determine.
+- Return ONLY the JSON object, no markdown, no commentary.
+- Preserve the exact order of items as they appear on the receipt, top to bottom.
+- CRITICAL for non-Latin scripts (Hebrew, Arabic, etc.): transcribe every character EXACTLY as it appears on the receipt. Never invent or guess a word — if a character or word is unclear, output the characters you can confidently read and use "?" for any character you cannot make out. It is far better to output "אב?קד?" than to guess a wrong word.`;
 
 router.post("/", async (req, res) => {
   const { imageBase64, fileName } = req.body;
@@ -24,50 +64,59 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const clientId = process.env["VERYFI_CLIENT_ID"];
-  const clientSecret = process.env["VERYFI_CLIENT_SECRET"];
-  const username = process.env["VERYFI_USERNAME"];
-  const apiKey = process.env["VERYFI_API_KEY"];
-
-  if (!clientId || !clientSecret || !username || !apiKey) {
-    res.status(500).json({ error: "OCR service not configured. Please set Veryfi API credentials." });
-    return;
-  }
+  const mimeType = fileName?.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+  const dataUrl = `data:${mimeType};base64,${imageBase64}`;
 
   try {
-    const veryfiRes = await fetch("https://api.veryfi.com/api/v8/partner/documents/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Client-Id": clientId,
-        "Authorization": `apikey ${username}:${apiKey}`,
-        "X-Veryfi-Client-Id": clientId,
-        "X-Veryfi-Client-Secret": clientSecret,
-      },
-      body: JSON.stringify({
-        file_data: imageBase64,
-        file_name: fileName || "receipt.jpg",
-        tags: ["tallybill"],
-        boost_mode: 1,
-        async_mode: false,
-      }),
+    const openai = getOpenAIClient();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 2048,
+      messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: dataUrl, detail: "high" },
+            },
+            {
+              type: "text",
+              text: "Parse this receipt and return the JSON.",
+            },
+          ],
+        },
+      ],
     });
 
-    if (!veryfiRes.ok) {
-      const errText = await veryfiRes.text();
-      res.status(500).json({ error: `OCR failed: ${errText}` });
+    const rawContent = completion.choices[0]?.message?.content ?? "";
+    if (!rawContent) {
+      res.status(500).json({ error: "AI model returned an empty response." });
       return;
     }
 
-    const data = await veryfiRes.json() as VeryfiResponse;
-    const lineItems = (data.line_items || []).map((item) => {
-      let description = item.description || "";
-      if (isHebrew(description)) {
-        description = revSentenceWord(description);
+    let parsed: AIReceiptResponse;
+    try {
+      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        res.status(500).json({ error: "Could not parse receipt: no JSON found in model response." });
+        return;
       }
+      parsed = JSON.parse(jsonMatch[0]) as AIReceiptResponse;
+    } catch {
+      res.status(500).json({ error: "Could not parse receipt: invalid JSON from model." });
+      return;
+    }
+
+    const lineItems = (parsed.items || []).map((item) => {
+      const description = item.description || "";
       const quantity = item.quantity ?? 1;
-      const total = item.total ?? item.price ?? 0;
-      const unitPrice = quantity > 0 ? total / quantity : total;
+      const total = item.total ?? (item.unitPrice != null ? item.unitPrice * quantity : 0);
+      const unitPrice = item.unitPrice ?? (quantity > 0 ? total / quantity : total);
       return {
         description,
         quantity,
@@ -78,12 +127,13 @@ router.post("/", async (req, res) => {
 
     res.json({
       items: lineItems,
-      taxAmount: data.tax ?? null,
-      tipAmount: data.tip ?? null,
-      currency: data.currency_code ?? null,
+      taxAmount: parsed.taxAmount ?? null,
+      tipAmount: parsed.tipAmount ?? null,
+      currency: parsed.currency ?? null,
     });
   } catch (err) {
-    res.status(500).json({ error: "OCR request failed" });
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: `OCR request failed: ${message}` });
   }
 });
 

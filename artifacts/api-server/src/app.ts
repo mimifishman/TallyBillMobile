@@ -46,6 +46,9 @@ app.use(
   })),
 );
 
+// Receipt images sent as base64 can easily exceed the default 1 MB limit.
+// Apply a larger limit for the OCR route before the global parser runs.
+app.use("/api/ocr", express.json({ limit: "20mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
