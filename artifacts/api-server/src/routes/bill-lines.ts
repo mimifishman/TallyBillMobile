@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { billLinesTable, billLineMembersTable, billMembersTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import { notifyBillChanged } from "../lib/sseManager.js";
 
 const router = Router({ mergeParams: true });
@@ -11,7 +11,7 @@ function parseBillId(req: { params: Record<string, unknown> }): number {
 }
 
 async function getBillLinesWithAssignments(billId: number) {
-  const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId));
+  const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId)).orderBy(asc(billLinesTable.id));
   const lineIds = lines.map((l) => l.id);
   const assignments = lineIds.length > 0
     ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, lineIds))
