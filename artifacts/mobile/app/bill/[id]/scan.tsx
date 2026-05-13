@@ -2,11 +2,13 @@ import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -26,6 +28,14 @@ interface ParsedItem {
 }
 
 const MAX_WIDTH = 1800;
+const THUMBNAIL_HEIGHT = 300;
+
+const SCAN_MESSAGES = [
+  "Preparing image…",
+  "Reading receipt…",
+  "Identifying items…",
+  "Calculating totals…",
+];
 
 async function preprocessImage(uri: string, width: number): Promise<string> {
   let context = ImageManipulator.manipulate(uri);
@@ -37,6 +47,108 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
   return result.base64 ?? "";
 }
 
+function ScanningOverlay({ colors }: { colors: ReturnType<typeof useColors> }) {
+  const scanLineY = useRef(new Animated.Value(0)).current;
+  const messageOpacity = useRef(new Animated.Value(1)).current;
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const scanLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLineY, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanLineY, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    scanLoop.start();
+
+    const makeDotPulse = (dot: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+          Animated.delay(800),
+        ]),
+      );
+    const d1 = makeDotPulse(dot1, 0);
+    const d2 = makeDotPulse(dot2, 200);
+    const d3 = makeDotPulse(dot3, 400);
+    d1.start();
+    d2.start();
+    d3.start();
+
+    let idx = 0;
+    const msgInterval = setInterval(() => {
+      if (idx < SCAN_MESSAGES.length - 1) {
+        Animated.sequence([
+          Animated.timing(messageOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(messageOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+        ]).start();
+        idx += 1;
+        setMessageIndex(idx);
+      }
+    }, 3500);
+
+    return () => {
+      scanLoop.stop();
+      d1.stop();
+      d2.stop();
+      d3.stop();
+      clearInterval(msgInterval);
+    };
+  }, []);
+
+  const scanLineTranslate = scanLineY.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, THUMBNAIL_HEIGHT - 2],
+  });
+
+  return (
+    <View style={styles.overlayContainer}>
+      <Animated.View
+        style={[
+          styles.scanLine,
+          {
+            backgroundColor: colors.primary,
+            transform: [{ translateY: scanLineTranslate }],
+          },
+        ]}
+      />
+      <View style={[styles.scanCorner, styles.scanCornerTL, { borderColor: colors.primary }]} />
+      <View style={[styles.scanCorner, styles.scanCornerTR, { borderColor: colors.primary }]} />
+      <View style={[styles.scanCorner, styles.scanCornerBL, { borderColor: colors.primary }]} />
+      <View style={[styles.scanCorner, styles.scanCornerBR, { borderColor: colors.primary }]} />
+
+      <View style={styles.messageRow}>
+        <Animated.Text
+          style={[styles.scanMessage, { color: "#fff", opacity: messageOpacity }]}
+        >
+          {SCAN_MESSAGES[messageIndex]}
+        </Animated.Text>
+        <View style={styles.dotsRow}>
+          {[dot1, dot2, dot3].map((dot, i) => (
+            <Animated.View
+              key={i}
+              style={[styles.dot, { backgroundColor: "#fff", opacity: dot }]}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function ScanScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -44,6 +156,7 @@ export default function ScanScreen() {
   const billId = parseInt(id!);
   const [items, setItems] = useState<ParsedItem[]>([]);
   const [step, setStep] = useState<"pick" | "review">("pick");
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
 
   const ocrMutation = useOcrReceipt({
     mutation: {
@@ -90,6 +203,7 @@ export default function ScanScreen() {
     }
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
+      setCapturedUri(asset.uri);
       try {
         const base64 = await preprocessImage(asset.uri, asset.width ?? MAX_WIDTH);
         if (!base64) {
@@ -129,9 +243,9 @@ export default function ScanScreen() {
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {step === "pick" ? "Scan Receipt" : "Review Items"}
+          {isLoading ? "Scanning…" : step === "pick" ? "Scan Receipt" : "Review Items"}
         </Text>
-        {step === "review" && (
+        {step === "review" && !isLoading && (
           <TouchableOpacity
             onPress={handleConfirm}
             disabled={bulkCreateMutation.isPending}
@@ -146,10 +260,20 @@ export default function ScanScreen() {
         )}
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Reading receipt...</Text>
+      {isLoading && capturedUri ? (
+        <View style={styles.scanContainer}>
+          <View style={styles.thumbnailWrapper}>
+            <Image
+              source={{ uri: capturedUri }}
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+            <View style={styles.thumbnailDim} />
+            <ScanningOverlay colors={colors} />
+          </View>
+          <Text style={[styles.scanHint, { color: colors.mutedForeground }]}>
+            This usually takes 10–20 seconds
+          </Text>
         </View>
       ) : step === "pick" ? (
         <View style={styles.pickContainer}>
@@ -233,8 +357,81 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold" },
   confirmBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   confirmBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
-  loadingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+
+  scanContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    gap: 20,
+  },
+  thumbnailWrapper: {
+    width: "100%",
+    height: THUMBNAIL_HEIGHT,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  thumbnail: {
+    width: "100%",
+    height: "100%",
+  },
+  thumbnailDim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 2,
+    opacity: 0.85,
+  },
+  scanCorner: {
+    position: "absolute",
+    width: 22,
+    height: 22,
+    borderWidth: 3,
+  },
+  scanCornerTL: { top: 12, left: 12, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 4 },
+  scanCornerTR: { top: 12, right: 12, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 4 },
+  scanCornerBL: { bottom: 12, left: 12, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 4 },
+  scanCornerBR: { bottom: 12, right: 12, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 4 },
+  messageRow: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    gap: 8,
+  },
+  scanMessage: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  scanHint: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+
   pickContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 16 },
   iconBox: { width: 100, height: 100, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   pickTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
