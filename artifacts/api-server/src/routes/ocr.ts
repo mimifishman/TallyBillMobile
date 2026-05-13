@@ -71,6 +71,7 @@ router.post("/", async (req, res) => {
     const openai = getOpenAIClient();
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
+      temperature: 0,
       max_completion_tokens: 2048,
       messages: [
         {
