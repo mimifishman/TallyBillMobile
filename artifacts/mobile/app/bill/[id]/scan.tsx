@@ -2,7 +2,6 @@ import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import jpeg from "jpeg-js";
-import { Buffer } from "buffer";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -29,6 +28,36 @@ interface ParsedItem {
 
 const MAX_WIDTH = 1800;
 const CONTRAST_LEVEL = 60; // -255 to 255; 60 gives a noticeable boost without clipping fine detail
+
+const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  let result = "";
+  const len = bytes.length;
+  const remainder = len % 3;
+  const mainLen = len - remainder;
+  for (let i = 0; i < mainLen; i += 3) {
+    const triplet = (bytes[i]! << 16) | (bytes[i + 1]! << 8) | bytes[i + 2]!;
+    result +=
+      BASE64_CHARS[(triplet >> 18) & 0x3f] +
+      BASE64_CHARS[(triplet >> 12) & 0x3f] +
+      BASE64_CHARS[(triplet >> 6) & 0x3f] +
+      BASE64_CHARS[triplet & 0x3f];
+  }
+  if (remainder === 1) {
+    const a = bytes[mainLen]!;
+    result += BASE64_CHARS[a >> 2] + BASE64_CHARS[(a << 4) & 0x3f] + "==";
+  } else if (remainder === 2) {
+    const a = bytes[mainLen]!;
+    const b = bytes[mainLen + 1]!;
+    result +=
+      BASE64_CHARS[a >> 2] +
+      BASE64_CHARS[((a << 4) | (b >> 4)) & 0x3f] +
+      BASE64_CHARS[(b << 2) & 0x3f] +
+      "=";
+  }
+  return result;
+}
 
 function applyGrayscaleAndContrast(data: Uint8Array, contrastLevel: number): void {
   const factor = (259 * (contrastLevel + 255)) / (255 * (259 - contrastLevel));
@@ -62,7 +91,7 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
       { data: decoded.data, width: decoded.width, height: decoded.height },
       90,
     );
-    return Buffer.from(encoded.data).toString("base64");
+    return uint8ToBase64(new Uint8Array(encoded.data));
   } catch (err) {
     console.warn("Receipt preprocessing failed, falling back to plain resize:", err);
     const fallback = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1, base64: true });
