@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth as useClerkAuth } from "@clerk/expo";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   KeyboardAvoidingView,
@@ -45,6 +46,7 @@ import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 import { useAuth } from "@/context/AuthContext";
 import { removeGuestBill, listGuestBills, getCachedGuestOwnerId } from "@/utils/guestBillStore";
 import { getBillCode } from "@/lib/billCodeStore";
+import { useScan } from "@/context/ScanContext";
 
 const PEOPLE_COLORS = colors_data.light.people;
 
@@ -65,6 +67,8 @@ export default function BillDetailScreen() {
       });
     }
   }, [billId, user]);
+
+  const scan = useScan();
 
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
@@ -860,6 +864,55 @@ export default function BillDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {(scan.status === "scanning" || scan.status === "ready" || scan.status === "error") && scan.billId === billId && (
+        <TouchableOpacity
+          activeOpacity={scan.status === "ready" ? 0.7 : 1}
+          onPress={() => {
+            if (scan.status === "ready") {
+              router.push(`/bill/${billId}/scan`);
+            }
+          }}
+          style={[
+            styles.scanBanner,
+            {
+              bottom: insets.bottom + 12,
+              backgroundColor:
+                scan.status === "error"
+                  ? "#EF4444"
+                  : scan.status === "ready"
+                  ? colors.primary
+                  : colors.foreground,
+            },
+          ]}
+        >
+          {scan.status === "scanning" && (
+            <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+          )}
+          {scan.status === "ready" && (
+            <Feather name="check-circle" size={16} color="#fff" style={{ marginRight: 8 }} />
+          )}
+          {scan.status === "error" && (
+            <Feather name="alert-circle" size={16} color="#fff" style={{ marginRight: 8 }} />
+          )}
+          <Text style={styles.scanBannerText}>
+            {scan.status === "scanning"
+              ? "Scanning receipt…"
+              : scan.status === "ready"
+              ? "Scan ready — tap to review"
+              : scan.errorMessage || "Scan failed"}
+          </Text>
+          {scan.status === "error" && (
+            <TouchableOpacity
+              onPress={scan.reset}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginLeft: 8 }}
+            >
+              <Feather name="x" size={16} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+      )}
+
       <Modal visible={showSplitModal} transparent animationType="fade">
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowSplitModal(false)}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -984,4 +1037,25 @@ const styles = StyleSheet.create({
   addItemQtyInput: { textAlign: "center" },
   addItemTotalWrap: { flex: 1 },
   splitHint: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  scanBanner: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  scanBannerText: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
 });

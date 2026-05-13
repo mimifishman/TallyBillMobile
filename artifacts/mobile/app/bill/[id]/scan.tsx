@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -18,17 +17,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useOcrReceipt, useBulkCreateBillLines } from "@workspace/api-client-react";
+import { useBulkCreateBillLines } from "@workspace/api-client-react";
+import { useScan } from "@/context/ScanContext";
 
-interface ParsedItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-  selected: boolean;
-}
-
-const MAX_WIDTH = 1800;
 const THUMBNAIL_HEIGHT = 300;
 
 const SCAN_MESSAGES = [
@@ -37,16 +28,6 @@ const SCAN_MESSAGES = [
   "Identifying items…",
   "Calculating totals…",
 ];
-
-async function preprocessImage(uri: string, width: number): Promise<string> {
-  let context = ImageManipulator.manipulate(uri);
-  if (width > MAX_WIDTH) {
-    context = context.resize({ width: MAX_WIDTH });
-  }
-  const imageRef = await context.renderAsync();
-  const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 0.85, base64: true });
-  return result.base64 ?? "";
-}
 
 function ScanningOverlay({ colors }: { colors: ReturnType<typeof useColors> }) {
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -59,16 +40,8 @@ function ScanningOverlay({ colors }: { colors: ReturnType<typeof useColors> }) {
   useEffect(() => {
     const scanLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineY, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLineY, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(scanLineY, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ]),
     );
     scanLoop.start();
@@ -120,29 +93,20 @@ function ScanningOverlay({ colors }: { colors: ReturnType<typeof useColors> }) {
       <Animated.View
         style={[
           styles.scanLine,
-          {
-            backgroundColor: colors.primary,
-            transform: [{ translateY: scanLineTranslate }],
-          },
+          { backgroundColor: colors.primary, transform: [{ translateY: scanLineTranslate }] },
         ]}
       />
       <View style={[styles.scanCorner, styles.scanCornerTL, { borderColor: colors.primary }]} />
       <View style={[styles.scanCorner, styles.scanCornerTR, { borderColor: colors.primary }]} />
       <View style={[styles.scanCorner, styles.scanCornerBL, { borderColor: colors.primary }]} />
       <View style={[styles.scanCorner, styles.scanCornerBR, { borderColor: colors.primary }]} />
-
       <View style={styles.messageRow}>
-        <Animated.Text
-          style={[styles.scanMessage, { color: "#fff", opacity: messageOpacity }]}
-        >
+        <Animated.Text style={[styles.scanMessage, { color: "#fff", opacity: messageOpacity }]}>
           {SCAN_MESSAGES[messageIndex]}
         </Animated.Text>
         <View style={styles.dotsRow}>
           {[dot1, dot2, dot3].map((dot, i) => (
-            <Animated.View
-              key={i}
-              style={[styles.dot, { backgroundColor: "#fff", opacity: dot }]}
-            />
+            <Animated.View key={i} style={[styles.dot, { backgroundColor: "#fff", opacity: dot }]} />
           ))}
         </View>
       </View>
@@ -155,26 +119,18 @@ export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const billId = parseInt(id!);
-  const [items, setItems] = useState<ParsedItem[]>([]);
-  const [step, setStep] = useState<"pick" | "review">("pick");
-  const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const scan = useScan();
+
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  const ocrMutation = useOcrReceipt({
-    mutation: {
-      onSuccess: (data) => {
-        setItems(data.items.map((item) => ({ ...item, selected: true })));
-        setStep("review");
-      },
-      onError: (err: Error) => {
-        Alert.alert("OCR Failed", err.message || "Could not read the receipt. Try again with better lighting.");
-      },
-    },
-  });
+  const isScanning = scan.status === "scanning";
+  const isReady = scan.status === "ready";
+  const step: "pick" | "review" = isReady ? "review" : "pick";
 
   const bulkCreateMutation = useBulkCreateBillLines({
     mutation: {
       onSuccess: () => {
+        scan.reset();
         router.back();
       },
       onError: () => {
@@ -205,27 +161,16 @@ export default function ScanScreen() {
     }
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      setCapturedUri(asset.uri);
-      try {
-        const base64 = await preprocessImage(asset.uri, asset.width ?? MAX_WIDTH);
-        if (!base64) {
-          Alert.alert("Error", "Could not process image");
-          return;
-        }
-        ocrMutation.mutate({ data: { imageBase64: base64, fileName: "receipt.jpg" } });
-      } catch (err) {
-        console.warn("preprocessImage threw:", err);
-        Alert.alert("Error", "Could not process image");
-      }
+      scan.startScan(billId, asset.uri, asset.width ?? 1800);
     }
   };
 
   const toggleItem = (index: number) => {
-    setItems((prev) => prev.map((item, i) => i === index ? { ...item, selected: !item.selected } : item));
+    scan.setItems((prev) => prev.map((item, i) => i === index ? { ...item, selected: !item.selected } : item));
   };
 
   const handleConfirm = () => {
-    const selected = items.filter((i) => i.selected);
+    const selected = scan.items.filter((i) => i.selected);
     if (selected.length === 0) {
       Alert.alert("Nothing selected", "Select at least one item to add");
       return;
@@ -236,18 +181,30 @@ export default function ScanScreen() {
     });
   };
 
-  const isLoading = ocrMutation.isPending;
+  const handleClose = () => {
+    scan.reset();
+    router.back();
+  };
+
+  const handleMinimize = () => {
+    router.back();
+  };
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+        <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {isLoading ? "Scanning…" : step === "pick" ? "Scan Receipt" : "Review Items"}
+          {isScanning ? "Scanning…" : step === "pick" ? "Scan Receipt" : "Review Items"}
         </Text>
-        {step === "review" && !isLoading && (
+        {isScanning && (
+          <TouchableOpacity onPress={handleMinimize} style={styles.minimizeBtn}>
+            <Feather name="chevron-down" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+        )}
+        {step === "review" && !isScanning && (
           <TouchableOpacity
             onPress={handleConfirm}
             disabled={bulkCreateMutation.isPending}
@@ -256,20 +213,16 @@ export default function ScanScreen() {
             {bulkCreateMutation.isPending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.confirmBtnText}>Add {items.filter(i => i.selected).length} Items</Text>
+              <Text style={styles.confirmBtnText}>Add {scan.items.filter(i => i.selected).length} Items</Text>
             )}
           </TouchableOpacity>
         )}
       </View>
 
-      {isLoading && capturedUri ? (
+      {isScanning && scan.capturedUri ? (
         <View style={styles.scanContainer}>
           <View style={styles.thumbnailWrapper}>
-            <Image
-              source={{ uri: capturedUri }}
-              style={styles.thumbnail}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: scan.capturedUri }} style={styles.thumbnail} resizeMode="cover" />
             <View style={styles.thumbnailDim} />
             <ScanningOverlay colors={colors} />
           </View>
@@ -286,7 +239,6 @@ export default function ScanScreen() {
           <Text style={[styles.pickSub, { color: colors.mutedForeground }]}>
             Take a photo or choose from your library. Works with English and Hebrew receipts.
           </Text>
-
           <TouchableOpacity
             style={[styles.pickBtn, { backgroundColor: colors.primary }]}
             onPress={() => Platform.OS !== "web" ? pickImage(true) : pickImage(false)}
@@ -294,7 +246,6 @@ export default function ScanScreen() {
             <Feather name="camera" size={20} color="#fff" />
             <Text style={styles.pickBtnText}>Take Photo</Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.pickBtnGhost, { borderColor: colors.border }]}
             onPress={() => pickImage(false)}
@@ -305,7 +256,7 @@ export default function ScanScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={scan.items}
           keyExtractor={(_, i) => String(i)}
           contentContainerStyle={[styles.reviewList, { paddingBottom: insets.bottom + 20 }]}
           ListHeaderComponent={
@@ -327,10 +278,7 @@ export default function ScanScreen() {
                 ]}
               >
                 <TouchableOpacity
-                  onPress={() => {
-                    if (isEditing) setEditingIndex(null);
-                    toggleItem(index);
-                  }}
+                  onPress={() => { if (isEditing) setEditingIndex(null); toggleItem(index); }}
                   activeOpacity={0.7}
                   style={styles.checkboxHitArea}
                 >
@@ -350,9 +298,7 @@ export default function ScanScreen() {
                       style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
                       value={item.description}
                       onChangeText={(text) =>
-                        setItems((prev) =>
-                          prev.map((it, i) => i === index ? { ...it, description: text } : it)
-                        )
+                        scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text } : it))
                       }
                       onBlur={() => setEditingIndex(null)}
                       autoFocus
@@ -375,10 +321,7 @@ export default function ScanScreen() {
                 </View>
 
                 <TouchableOpacity
-                  onPress={() => {
-                    if (isEditing) setEditingIndex(null);
-                    toggleItem(index);
-                  }}
+                  onPress={() => { if (isEditing) setEditingIndex(null); toggleItem(index); }}
                   activeOpacity={0.7}
                   style={styles.priceHitArea}
                 >
@@ -406,83 +349,27 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   closeBtn: { padding: 4 },
+  minimizeBtn: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold" },
   confirmBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   confirmBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
-  scanContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-    gap: 20,
-  },
-  thumbnailWrapper: {
-    width: "100%",
-    height: THUMBNAIL_HEIGHT,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  thumbnail: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbnailDim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  overlayContainer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 2,
-    opacity: 0.85,
-  },
-  scanCorner: {
-    position: "absolute",
-    width: 22,
-    height: 22,
-    borderWidth: 3,
-  },
+  scanContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28, gap: 20 },
+  thumbnailWrapper: { width: "100%", height: THUMBNAIL_HEIGHT, borderRadius: 16, overflow: "hidden" },
+  thumbnail: { width: "100%", height: "100%" },
+  thumbnailDim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
+  overlayContainer: { ...StyleSheet.absoluteFillObject },
+  scanLine: { position: "absolute", left: 0, right: 0, height: 2, opacity: 0.85 },
+  scanCorner: { position: "absolute", width: 22, height: 22, borderWidth: 3 },
   scanCornerTL: { top: 12, left: 12, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 4 },
   scanCornerTR: { top: 12, right: 12, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 4 },
   scanCornerBL: { bottom: 12, left: 12, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 4 },
   scanCornerBR: { bottom: 12, right: 12, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 4 },
-  messageRow: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    gap: 8,
-  },
-  scanMessage: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  dotsRow: {
-    flexDirection: "row",
-    gap: 6,
-    alignItems: "center",
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  scanHint: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
+  messageRow: { position: "absolute", bottom: 0, left: 0, right: 0, paddingBottom: 16, paddingHorizontal: 16, alignItems: "center", gap: 8 },
+  scanMessage: { fontSize: 15, fontFamily: "Inter_600SemiBold", textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  dotsRow: { flexDirection: "row", gap: 6, alignItems: "center" },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  scanHint: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
 
   pickContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 16 },
   iconBox: { width: 100, height: 100, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 8 },
