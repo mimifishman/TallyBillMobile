@@ -25,7 +25,7 @@ interface ParsedItem {
   selected: boolean;
 }
 
-const MAX_WIDTH = 1800;
+const MAX_WIDTH = 1280;
 
 async function preprocessImage(uri: string, width: number): Promise<string> {
   let context = ImageManipulator.manipulate(uri);
