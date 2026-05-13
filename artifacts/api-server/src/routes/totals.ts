@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { billsTable, billMembersTable, billLinesTable, billLineMembersTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, asc } from "drizzle-orm";
 
 const router = Router({ mergeParams: true });
 
@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
     return;
   }
 
-  const billMembers = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
+  const billMembers = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId)).orderBy(asc(billMembersTable.id));
   const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId));
   const lineIds = lines.map((l) => l.id);
   const assignments = lineIds.length > 0
