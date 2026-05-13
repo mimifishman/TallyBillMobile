@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import jpeg from "jpeg-js";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -26,6 +27,21 @@ interface ParsedItem {
 }
 
 const MAX_WIDTH = 1800;
+const CONTRAST_LEVEL = 60; // -255 to 255; 60 gives a noticeable boost without clipping fine detail
+
+function applyGrayscaleAndContrast(data: Uint8Array, contrastLevel: number): void {
+  const factor = (259 * (contrastLevel + 255)) / (255 * (259 - contrastLevel));
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]!;
+    const g = data[i + 1]!;
+    const b = data[i + 2]!;
+    const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    const enhanced = Math.max(0, Math.min(255, Math.round(factor * (lum - 128) + 128)));
+    data[i] = enhanced;
+    data[i + 1] = enhanced;
+    data[i + 2] = enhanced;
+  }
+}
 
 async function preprocessImage(uri: string, width: number): Promise<string> {
   let context = ImageManipulator.manipulate(uri);
@@ -33,8 +49,26 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
     context = context.resize({ width: MAX_WIDTH });
   }
   const imageRef = await context.renderAsync();
-  const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1, base64: true });
-  return result.base64 ?? "";
+  const resized = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1 });
+
+  const response = await fetch(resized.uri);
+  const arrayBuffer = await response.arrayBuffer();
+  const rawData = new Uint8Array(arrayBuffer);
+
+  const decoded = jpeg.decode(rawData, { useTArray: true });
+  applyGrayscaleAndContrast(decoded.data as Uint8Array, CONTRAST_LEVEL);
+
+  const encoded = jpeg.encode(
+    { data: decoded.data, width: decoded.width, height: decoded.height },
+    90,
+  );
+
+  let binary = "";
+  const bytes = new Uint8Array(encoded.data);
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
 }
 
 export default function ScanScreen() {
