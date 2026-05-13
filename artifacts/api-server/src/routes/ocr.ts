@@ -38,7 +38,7 @@ Rules:
 - If a character is unclear or you cannot read it with confidence, output "?" for that character. Never guess or invent a character.
 - Include every line on the receipt: item names, quantities, prices, totals, tax lines, headers, footers — everything.
 - Output plain text only. No JSON, no markdown, no commentary.
-- Preserve the left-to-right line order as it appears top to bottom on the receipt.`;
+- Preserve line order top to bottom as it appears on the receipt; preserve character order within each line exactly as printed (including right-to-left scripts).`;
 
 const PARSE_PROMPT = `You are a receipt parser. You will receive a verbatim text transcription of a receipt. Parse it into structured JSON.
 
