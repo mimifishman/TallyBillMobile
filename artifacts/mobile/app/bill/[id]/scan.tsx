@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import jpeg from "jpeg-js";
+import { Buffer } from "buffer";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -51,25 +52,22 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
   const imageRef = await context.renderAsync();
   const resized = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1 });
 
-  let arrayBuffer: ArrayBuffer;
   try {
     const response = await fetch(resized.uri);
-    arrayBuffer = await response.arrayBuffer();
-  } catch {
+    const arrayBuffer = await response.arrayBuffer();
+    const rawData = new Uint8Array(arrayBuffer);
+    const decoded = jpeg.decode(rawData, { useTArray: true });
+    applyGrayscaleAndContrast(decoded.data as Uint8Array, CONTRAST_LEVEL);
+    const encoded = jpeg.encode(
+      { data: decoded.data, width: decoded.width, height: decoded.height },
+      90,
+    );
+    return Buffer.from(encoded.data).toString("base64");
+  } catch (err) {
+    console.warn("Receipt preprocessing failed, falling back to plain resize:", err);
     const fallback = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1, base64: true });
     return fallback.base64 ?? "";
   }
-
-  const rawData = new Uint8Array(arrayBuffer);
-  const decoded = jpeg.decode(rawData, { useTArray: true });
-  applyGrayscaleAndContrast(decoded.data as Uint8Array, CONTRAST_LEVEL);
-
-  const encoded = jpeg.encode(
-    { data: decoded.data, width: decoded.width, height: decoded.height },
-    90,
-  );
-
-  return Buffer.from(encoded.data).toString("base64");
 }
 
 export default function ScanScreen() {
@@ -132,7 +130,8 @@ export default function ScanScreen() {
           return;
         }
         ocrMutation.mutate({ data: { imageBase64: base64, fileName: "receipt.jpg" } });
-      } catch {
+      } catch (err) {
+        console.warn("preprocessImage threw:", err);
         Alert.alert("Error", "Could not process image");
       }
     }
