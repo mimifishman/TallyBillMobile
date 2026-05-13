@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -22,6 +23,18 @@ interface ParsedItem {
   unitPrice: number;
   total: number;
   selected: boolean;
+}
+
+const MAX_WIDTH = 1800;
+
+async function preprocessImage(uri: string, width: number): Promise<string> {
+  let context = ImageManipulator.manipulate(uri);
+  if (width > MAX_WIDTH) {
+    context = context.resize({ width: MAX_WIDTH });
+  }
+  const imageRef = await context.renderAsync();
+  const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1, base64: true });
+  return result.base64 ?? "";
 }
 
 export default function ScanScreen() {
@@ -64,25 +77,29 @@ export default function ScanScreen() {
         return;
       }
       result = await ImagePicker.launchCameraAsync({
-        base64: true,
-        quality: 0.8,
+        base64: false,
+        quality: 1,
         allowsEditing: false,
       });
     } else {
       result = await ImagePicker.launchImageLibraryAsync({
-        base64: true,
-        quality: 0.8,
+        base64: false,
+        quality: 1,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
     }
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      const base64 = asset.base64;
-      if (!base64) {
-        Alert.alert("Error", "Could not get image data");
-        return;
+      try {
+        const base64 = await preprocessImage(asset.uri, asset.width ?? MAX_WIDTH);
+        if (!base64) {
+          Alert.alert("Error", "Could not process image");
+          return;
+        }
+        ocrMutation.mutate({ data: { imageBase64: base64, fileName: "receipt.jpg" } });
+      } catch {
+        Alert.alert("Error", "Could not process image");
       }
-      ocrMutation.mutate({ data: { imageBase64: base64, fileName: "receipt.jpg" } });
     }
   };
 
