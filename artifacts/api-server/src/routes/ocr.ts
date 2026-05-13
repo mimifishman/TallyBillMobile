@@ -30,7 +30,18 @@ interface AIReceiptResponse {
   currency?: string | null;
 }
 
-const SYSTEM_PROMPT = `You are a receipt parser. Extract all line items and totals from the receipt image.
+const TRANSCRIPTION_PROMPT = `You are a receipt transcriber. Your only job is to copy the text from the receipt image exactly as it appears, line by line.
+
+Rules:
+- Copy every character exactly as printed. Do not translate, interpret, or rephrase anything.
+- Preserve the original language and script (Hebrew, Arabic, Latin, etc.) character for character.
+- If a character is unclear or you cannot read it with confidence, output "?" for that character. Never guess or invent a character.
+- Include every line on the receipt: item names, quantities, prices, totals, tax lines, headers, footers — everything.
+- Output plain text only. No JSON, no markdown, no commentary.
+- Preserve the left-to-right line order as it appears top to bottom on the receipt.`;
+
+const PARSE_PROMPT = `You are a receipt parser. You will receive a verbatim text transcription of a receipt. Parse it into structured JSON.
+
 Return ONLY valid JSON with this exact structure:
 {
   "items": [
@@ -54,8 +65,8 @@ Rules:
 - currency is the 3-letter ISO code (null if unclear).
 - Return null for any numeric field you cannot determine.
 - Return ONLY the JSON object, no markdown, no commentary.
-- Preserve the exact order of items as they appear on the receipt, top to bottom.
-- CRITICAL for non-Latin scripts (Hebrew, Arabic, etc.): transcribe every character EXACTLY as it appears on the receipt. Never invent or guess a word — if a character or word is unclear, output the characters you can confidently read and use "?" for any character you cannot make out. It is far better to output "אב?קד?" than to guess a wrong word.`;
+- Preserve the exact order of items as they appear in the transcription, top to bottom.
+- Preserve item descriptions exactly as transcribed, including any "?" placeholders for unclear characters. Do not attempt to correct or complete them.`;
 
 router.post("/", async (req, res) => {
   const { imageBase64, fileName } = req.body;
@@ -69,14 +80,15 @@ router.post("/", async (req, res) => {
 
   try {
     const openai = getOpenAIClient();
-    const completion = await openai.chat.completions.create({
+
+    const transcriptionCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
       temperature: 0,
       max_completion_tokens: 2048,
       messages: [
         {
           role: "system",
-          content: SYSTEM_PROMPT,
+          content: TRANSCRIPTION_PROMPT,
         },
         {
           role: "user",
@@ -87,14 +99,36 @@ router.post("/", async (req, res) => {
             },
             {
               type: "text",
-              text: "Parse this receipt and return the JSON.",
+              text: "Transcribe this receipt exactly as it appears.",
             },
           ],
         },
       ],
     });
 
-    const rawContent = completion.choices[0]?.message?.content ?? "";
+    const transcribedText = transcriptionCompletion.choices[0]?.message?.content ?? "";
+    if (!transcribedText) {
+      res.status(500).json({ error: "AI model returned an empty transcription." });
+      return;
+    }
+
+    const parseCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      temperature: 0,
+      max_completion_tokens: 2048,
+      messages: [
+        {
+          role: "system",
+          content: PARSE_PROMPT,
+        },
+        {
+          role: "user",
+          content: `Parse this receipt transcription into JSON:\n\n${transcribedText}`,
+        },
+      ],
+    });
+
+    const rawContent = parseCompletion.choices[0]?.message?.content ?? "";
     if (!rawContent) {
       res.status(500).json({ error: "AI model returned an empty response." });
       return;
