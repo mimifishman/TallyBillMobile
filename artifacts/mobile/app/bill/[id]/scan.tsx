@@ -51,10 +51,16 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
   const imageRef = await context.renderAsync();
   const resized = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1 });
 
-  const response = await fetch(resized.uri);
-  const arrayBuffer = await response.arrayBuffer();
-  const rawData = new Uint8Array(arrayBuffer);
+  let arrayBuffer: ArrayBuffer;
+  try {
+    const response = await fetch(resized.uri);
+    arrayBuffer = await response.arrayBuffer();
+  } catch {
+    const fallback = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1, base64: true });
+    return fallback.base64 ?? "";
+  }
 
+  const rawData = new Uint8Array(arrayBuffer);
   const decoded = jpeg.decode(rawData, { useTArray: true });
   applyGrayscaleAndContrast(decoded.data as Uint8Array, CONTRAST_LEVEL);
 
@@ -63,12 +69,7 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
     90,
   );
 
-  let binary = "";
-  const bytes = new Uint8Array(encoded.data);
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
+  return Buffer.from(encoded.data).toString("base64");
 }
 
 export default function ScanScreen() {
