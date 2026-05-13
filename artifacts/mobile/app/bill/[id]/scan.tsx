@@ -12,6 +12,7 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -157,6 +158,7 @@ export default function ScanScreen() {
   const [items, setItems] = useState<ParsedItem[]>([]);
   const [step, setStep] = useState<"pick" | "review">("pick");
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const ocrMutation = useOcrReceipt({
     mutation: {
@@ -311,32 +313,82 @@ export default function ScanScreen() {
               Tap items to deselect. All selected items will be added to the bill.
             </Text>
           }
-          renderItem={({ item, index }) => (
-            <TouchableOpacity
-              style={[
-                styles.reviewItem,
-                {
-                  backgroundColor: item.selected ? colors.card : colors.background,
-                  borderColor: item.selected ? colors.primary : colors.border,
-                  opacity: item.selected ? 1 : 0.5,
-                },
-              ]}
-              onPress={() => toggleItem(index)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.reviewItemLeft}>
-                <View style={[styles.checkbox, { borderColor: item.selected ? colors.primary : colors.border, backgroundColor: item.selected ? colors.primary : "transparent" }]}>
-                  {item.selected && <Feather name="check" size={12} color="#fff" />}
+          renderItem={({ item, index }) => {
+            const isEditing = editingIndex === index;
+            return (
+              <View
+                style={[
+                  styles.reviewItem,
+                  {
+                    backgroundColor: item.selected ? colors.card : colors.background,
+                    borderColor: item.selected ? colors.primary : colors.border,
+                    opacity: item.selected ? 1 : 0.5,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    if (isEditing) setEditingIndex(null);
+                    toggleItem(index);
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.checkboxHitArea}
+                >
+                  <View style={[styles.checkbox, { borderColor: item.selected ? colors.primary : colors.border, backgroundColor: item.selected ? colors.primary : "transparent" }]}>
+                    {item.selected && <Feather name="check" size={12} color="#fff" />}
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.reviewItemMiddle}>
+                  {item.quantity > 1 && (
+                    <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
+                      ×{item.quantity}
+                    </Text>
+                  )}
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                      value={item.description}
+                      onChangeText={(text) =>
+                        setItems((prev) =>
+                          prev.map((it, i) => i === index ? { ...it, description: text } : it)
+                        )
+                      }
+                      onBlur={() => setEditingIndex(null)}
+                      autoFocus
+                      returnKeyType="done"
+                      onSubmitEditing={() => setEditingIndex(null)}
+                      selectTextOnFocus
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setEditingIndex(index)}
+                      activeOpacity={0.6}
+                      style={styles.reviewItemNameBtn}
+                    >
+                      <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                      <Feather name="edit-2" size={11} color={colors.mutedForeground} style={styles.editIcon} />
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
-                  {item.description}
-                </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    if (isEditing) setEditingIndex(null);
+                    toggleItem(index);
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.priceHitArea}
+                >
+                  <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
+                    {item.total.toFixed(2)}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
-                {item.total.toFixed(2)}
-              </Text>
-            </TouchableOpacity>
-          )}
+            );
+          }}
         />
       )}
     </View>
@@ -442,9 +494,15 @@ const styles = StyleSheet.create({
   pickBtnGhostText: { fontSize: 15, fontFamily: "Inter_500Medium" },
   reviewList: { paddingHorizontal: 16, paddingTop: 16, gap: 8 },
   reviewHint: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 12, textAlign: "center" },
-  reviewItem: { flexDirection: "row", alignItems: "center", borderRadius: 10, borderWidth: 1.5, padding: 14, gap: 10 },
-  reviewItemLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  reviewItem: { flexDirection: "row", alignItems: "center", borderRadius: 10, borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
+  checkboxHitArea: { padding: 4 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  reviewItemMiddle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 },
+  quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 },
+  reviewItemNameBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   reviewItemName: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
+  editIcon: { marginTop: 1 },
+  reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 },
+  priceHitArea: { padding: 4 },
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" },
 });
