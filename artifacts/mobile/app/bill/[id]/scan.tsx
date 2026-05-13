@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import jpeg from "jpeg-js";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -27,51 +26,6 @@ interface ParsedItem {
 }
 
 const MAX_WIDTH = 1800;
-const CONTRAST_LEVEL = 60; // -255 to 255; 60 gives a noticeable boost without clipping fine detail
-
-const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-function uint8ToBase64(bytes: Uint8Array): string {
-  let result = "";
-  const len = bytes.length;
-  const remainder = len % 3;
-  const mainLen = len - remainder;
-  for (let i = 0; i < mainLen; i += 3) {
-    const triplet = (bytes[i]! << 16) | (bytes[i + 1]! << 8) | bytes[i + 2]!;
-    result +=
-      BASE64_CHARS[(triplet >> 18) & 0x3f] +
-      BASE64_CHARS[(triplet >> 12) & 0x3f] +
-      BASE64_CHARS[(triplet >> 6) & 0x3f] +
-      BASE64_CHARS[triplet & 0x3f];
-  }
-  if (remainder === 1) {
-    const a = bytes[mainLen]!;
-    result += BASE64_CHARS[a >> 2] + BASE64_CHARS[(a << 4) & 0x3f] + "==";
-  } else if (remainder === 2) {
-    const a = bytes[mainLen]!;
-    const b = bytes[mainLen + 1]!;
-    result +=
-      BASE64_CHARS[a >> 2] +
-      BASE64_CHARS[((a << 4) | (b >> 4)) & 0x3f] +
-      BASE64_CHARS[(b << 2) & 0x3f] +
-      "=";
-  }
-  return result;
-}
-
-function applyGrayscaleAndContrast(data: Uint8Array, contrastLevel: number): void {
-  const factor = (259 * (contrastLevel + 255)) / (255 * (259 - contrastLevel));
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i]!;
-    const g = data[i + 1]!;
-    const b = data[i + 2]!;
-    const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-    const enhanced = Math.max(0, Math.min(255, Math.round(factor * (lum - 128) + 128)));
-    data[i] = enhanced;
-    data[i + 1] = enhanced;
-    data[i + 2] = enhanced;
-  }
-}
 
 async function preprocessImage(uri: string, width: number): Promise<string> {
   let context = ImageManipulator.manipulate(uri);
@@ -79,24 +33,8 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
     context = context.resize({ width: MAX_WIDTH });
   }
   const imageRef = await context.renderAsync();
-  const resized = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1 });
-
-  try {
-    const response = await fetch(resized.uri);
-    const arrayBuffer = await response.arrayBuffer();
-    const rawData = new Uint8Array(arrayBuffer);
-    const decoded = jpeg.decode(rawData, { useTArray: true });
-    applyGrayscaleAndContrast(decoded.data as Uint8Array, CONTRAST_LEVEL);
-    const encoded = jpeg.encode(
-      { data: decoded.data, width: decoded.width, height: decoded.height },
-      90,
-    );
-    return uint8ToBase64(new Uint8Array(encoded.data));
-  } catch (err) {
-    console.warn("Receipt preprocessing failed, falling back to plain resize:", err);
-    const fallback = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 1, base64: true });
-    return fallback.base64 ?? "";
-  }
+  const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 0.85, base64: true });
+  return result.base64 ?? "";
 }
 
 export default function ScanScreen() {

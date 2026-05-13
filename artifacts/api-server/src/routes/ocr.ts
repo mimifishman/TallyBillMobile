@@ -30,17 +30,7 @@ interface AIReceiptResponse {
   currency?: string | null;
 }
 
-const TRANSCRIPTION_PROMPT = `You are a receipt transcriber. Your only job is to copy the text from the receipt image exactly as it appears, line by line.
-
-Rules:
-- Copy every character exactly as printed. Do not translate, interpret, or rephrase anything.
-- Preserve the original language and script (Hebrew, Arabic, Latin, etc.) character for character.
-- If a character is unclear or you cannot read it with confidence, output "?" for that character. Never guess or invent a character.
-- Include every line on the receipt: item names, quantities, prices, totals, tax lines, headers, footers — everything.
-- Output plain text only. No JSON, no markdown, no commentary.
-- Preserve line order top to bottom as it appears on the receipt; preserve character order within each line exactly as printed (including right-to-left scripts).`;
-
-const PARSE_PROMPT = `You are a receipt parser. You will receive a verbatim text transcription of a receipt. Parse it into structured JSON.
+const OCR_PROMPT = `You are a receipt parser. Look at the receipt image and extract every purchased line item plus tax, tip, and currency.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -58,15 +48,17 @@ Return ONLY valid JSON with this exact structure:
 }
 
 Rules:
-- Include every purchased item; omit subtotals, totals, and payment lines.
-- quantity must be a positive number (use 1 if not shown).
-- unitPrice = total / quantity.
-- taxAmount and tipAmount are the receipt-level amounts (null if absent).
-- currency is the 3-letter ISO code (null if unclear).
-- Return null for any numeric field you cannot determine.
-- Return ONLY the JSON object, no markdown, no commentary.
-- Preserve the exact order of items as they appear in the transcription, top to bottom.
-- Preserve item descriptions exactly as transcribed, including any "?" placeholders for unclear characters. Do not attempt to correct or complete them.`;
+- Include EVERY purchased line item. Never skip a line item, even if some characters are unclear — read it to the best of your ability and use the most likely characters.
+- Omit subtotals, totals, payment lines, store header/footer text, and order/receipt numbers.
+- Preserve the original language and script of each item description exactly as printed (Hebrew, Arabic, Latin, etc.). Do not translate or transliterate.
+- For right-to-left scripts (Hebrew, Arabic), preserve the visual character order as it appears on the receipt.
+- quantity must be a positive number — use 1 if not shown on the receipt.
+- unitPrice = total / quantity. If only one of unitPrice or total is visible, compute the other.
+- taxAmount and tipAmount are the receipt-level amounts (use null if absent — do NOT confuse subtotal or total with tax).
+- currency is the 3-letter ISO code (e.g. "USD", "ILS", "EUR"). Use null only if you genuinely cannot infer it from currency symbols, language, or store name.
+- Preserve the order of items as they appear on the receipt, top to bottom.
+- A line item description is text — never put a number or price into the description field.
+- Return ONLY the JSON object, no markdown fences, no commentary.`;
 
 router.post("/", async (req, res) => {
   const { imageBase64, fileName } = req.body;
@@ -81,14 +73,14 @@ router.post("/", async (req, res) => {
   try {
     const openai = getOpenAIClient();
 
-    const transcriptionCompletion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
       temperature: 0,
       max_completion_tokens: 2048,
       messages: [
         {
           role: "system",
-          content: TRANSCRIPTION_PROMPT,
+          content: OCR_PROMPT,
         },
         {
           role: "user",
@@ -99,36 +91,14 @@ router.post("/", async (req, res) => {
             },
             {
               type: "text",
-              text: "Transcribe this receipt exactly as it appears.",
+              text: "Extract the line items, tax, tip, and currency from this receipt as JSON.",
             },
           ],
         },
       ],
     });
 
-    const transcribedText = transcriptionCompletion.choices[0]?.message?.content ?? "";
-    if (!transcribedText) {
-      res.status(500).json({ error: "AI model returned an empty transcription." });
-      return;
-    }
-
-    const parseCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      temperature: 0,
-      max_completion_tokens: 2048,
-      messages: [
-        {
-          role: "system",
-          content: PARSE_PROMPT,
-        },
-        {
-          role: "user",
-          content: `Parse this receipt transcription into JSON:\n\n${transcribedText}`,
-        },
-      ],
-    });
-
-    const rawContent = parseCompletion.choices[0]?.message?.content ?? "";
+    const rawContent = completion.choices[0]?.message?.content ?? "";
     if (!rawContent) {
       res.status(500).json({ error: "AI model returned an empty response." });
       return;

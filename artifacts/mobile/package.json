@@ -62,7 +62,6 @@
     "expo-camera": "^17.0.10",
     "expo-clipboard": "^8.0.8",
     "expo-image-manipulator": "^55.0.16",
-    "expo-secure-store": "^15.0.8",
-    "jpeg-js": "^0.4.4"
+    "expo-secure-store": "^15.0.8"
   }
 }
