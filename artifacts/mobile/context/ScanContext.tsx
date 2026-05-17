@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { useOcrReceipt } from "@workspace/api-client-react";
+import { File } from "expo-file-system";
+import { fetch as expoFetch } from "expo/fetch";
+import { useOcrReceipt, customFetch } from "@workspace/api-client-react";
 
 export type ScanStatus = "idle" | "scanning" | "ready" | "error";
 
@@ -36,6 +38,38 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
   const imageRef = await context.renderAsync();
   const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 0.85, base64: true });
   return result.base64 ?? "";
+}
+
+async function saveReceiptImage(localUri: string, billId: number): Promise<void> {
+  try {
+    const presignedRes = await customFetch(`/api/bills/${billId}/storage/uploads/request-url`, {
+      method: "POST",
+    }) as { uploadURL: string; objectPath: string };
+
+    const { uploadURL, objectPath } = presignedRes;
+    if (!uploadURL || !objectPath) return;
+
+    const file = new File(localUri, "receipt.jpg", { type: "image/jpeg" });
+
+    const uploadRes = await expoFetch(uploadURL, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": "image/jpeg" },
+    });
+
+    if (!uploadRes.ok) {
+      console.warn("Receipt upload to GCS failed:", uploadRes.status);
+      return;
+    }
+
+    await customFetch(`/api/bills/${billId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receiptImagePath: objectPath }),
+    });
+  } catch (err) {
+    console.warn("saveReceiptImage failed (non-critical):", err);
+  }
 }
 
 const ScanContext = createContext<ScanContextValue | null>(null);
@@ -86,6 +120,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
                   status: "ready",
                   items: data.items.map((item) => ({ ...item, selected: true })),
                 }));
+                saveReceiptImage(uri, billId);
               },
               onError: (err: Error) => {
                 if (myGeneration !== generationRef.current) return;

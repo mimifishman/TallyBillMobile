@@ -335,7 +335,7 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
       return;
     }
   }
-  const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
+  const { title, restaurantName, date, currency, taxPercent, tipPercent, receiptImagePath } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {
     res.status(400).json({ error: "title cannot be empty" });
     return;
@@ -347,6 +347,7 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     ...(currency !== undefined && { currency: currency || null }),
     ...(taxPercent !== undefined && { taxPercent: String(parseFloat(taxPercent) || 0) }),
     ...(tipPercent !== undefined && { tipPercent: String(parseFloat(tipPercent) || 0) }),
+    ...(receiptImagePath !== undefined && { receiptImagePath: receiptImagePath || null }),
   }).where(eq(billsTable.id, billId)).returning();
   notifyBillChanged(billId);
   res.json(updated);

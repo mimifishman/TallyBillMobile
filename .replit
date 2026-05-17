@@ -93,7 +93,7 @@ BASE_PATH = "/__mockup"
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
-integrations = ["resend:1.0.0"]
+integrations = ["resend:1.0.0", "expo_object_storage:1.0.0"]
 
 [postMerge]
 path = "scripts/post-merge.sh"

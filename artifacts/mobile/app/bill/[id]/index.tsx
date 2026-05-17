@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -87,6 +88,8 @@ export default function BillDetailScreen() {
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitLineId, setSplitLineId] = useState<number | null>(null);
   const [splitQtyInput, setSplitQtyInput] = useState("");
+
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   const { data, isLoading } = useGetBill(billId, {
     query: {
@@ -537,7 +540,7 @@ export default function BillDetailScreen() {
   }
 
   const { bill: rawBill, lines, users, isOwner, isMember } = data as typeof data & { isMember?: boolean };
-  const bill = rawBill as typeof rawBill & { isGuestBill?: boolean; guestOwnerId?: string | null };
+  const bill = rawBill as typeof rawBill & { isGuestBill?: boolean; guestOwnerId?: string | null; receiptImagePath?: string | null };
   const cachedGuestOwnerId = getCachedGuestOwnerId();
   const isGuestOwner =
     !user &&
@@ -614,6 +617,24 @@ export default function BillDetailScreen() {
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}>
+        {bill.receiptImagePath ? (
+          <TouchableOpacity
+            onPress={() => setShowReceiptModal(true)}
+            style={[styles.receiptThumb, { backgroundColor: colors.card, borderColor: colors.border }]}
+            activeOpacity={0.8}
+          >
+            <Image
+              source={{ uri: `${baseUrl}/api/bills/${billId}/storage${bill.receiptImagePath}` }}
+              style={styles.receiptThumbImage}
+              resizeMode="cover"
+            />
+            <View style={styles.receiptThumbLabel}>
+              <Feather name="file-text" size={14} color={colors.mutedForeground} />
+              <Text style={[styles.receiptThumbText, { color: colors.mutedForeground }]}>View receipt</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PEOPLE</Text>
@@ -942,6 +963,25 @@ export default function BillDetailScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      <Modal visible={showReceiptModal} transparent animationType="fade" onRequestClose={() => setShowReceiptModal(false)}>
+        <View style={styles.receiptModalOverlay}>
+          <TouchableOpacity
+            style={styles.receiptModalClose}
+            onPress={() => setShowReceiptModal(false)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="x" size={22} color="#fff" />
+          </TouchableOpacity>
+          {bill.receiptImagePath ? (
+            <Image
+              source={{ uri: `${baseUrl}/api/bills/${billId}/storage${bill.receiptImagePath}` }}
+              style={styles.receiptModalImage}
+              resizeMode="contain"
+            />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1057,5 +1097,44 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+  receiptThumb: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    gap: 12,
+  },
+  receiptThumbImage: {
+    width: 72,
+    height: 72,
+  },
+  receiptThumbLabel: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  receiptThumbText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  receiptModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  receiptModalClose: {
+    position: "absolute",
+    top: 52,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  receiptModalImage: {
+    width: "100%",
+    height: "80%",
   },
 });

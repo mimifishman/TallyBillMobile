@@ -17,6 +17,7 @@ export const billsTable = pgTable("bills", {
   guestOwnerId: text("guest_owner_id"),
   isGuestBill: boolean("is_guest_bill").notNull().default(false),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  receiptImagePath: text("receipt_image_path"),
 });
 
 export const insertBillSchema = createInsertSchema(billsTable).omit({ id: true, createdAt: true });
