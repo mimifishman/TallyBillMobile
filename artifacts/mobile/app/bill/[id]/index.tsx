@@ -90,6 +90,7 @@ export default function BillDetailScreen() {
   const [splitQtyInput, setSplitQtyInput] = useState("");
 
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptDownloadUrl, setReceiptDownloadUrl] = useState<string | null>(null);
 
   const { data, isLoading } = useGetBill(billId, {
     query: {
@@ -241,6 +242,31 @@ export default function BillDetailScreen() {
       }
     };
   }, [connectSSE, invalidate]);
+
+  const receiptImagePath =
+    (scan.billId === billId ? scan.receiptImagePath : null) ??
+    (data?.bill as { receiptImagePath?: string | null } | undefined)?.receiptImagePath ??
+    null;
+
+  useEffect(() => {
+    if (!receiptImagePath) {
+      setReceiptDownloadUrl(null);
+      return;
+    }
+    const objectId = receiptImagePath.replace(/^\/objects\/uploads\//, "");
+    let cancelled = false;
+    customFetch(`/api/bills/${billId}/storage/objects/uploads/${objectId}`)
+      .then((res: unknown) => {
+        if (!cancelled) {
+          const r = res as { url?: string };
+          setReceiptDownloadUrl(r.url ?? null);
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn("Failed to fetch receipt download URL:", err);
+      });
+    return () => { cancelled = true; };
+  }, [billId, receiptImagePath]);
 
   const addPersonMutation = useCreateBillUser({
     mutation: { onSuccess: invalidate },
@@ -617,14 +643,14 @@ export default function BillDetailScreen() {
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}>
-        {bill.receiptImagePath ? (
+        {receiptDownloadUrl ? (
           <TouchableOpacity
             onPress={() => setShowReceiptModal(true)}
             style={[styles.receiptThumb, { backgroundColor: colors.card, borderColor: colors.border }]}
             activeOpacity={0.8}
           >
             <Image
-              source={{ uri: `${baseUrl}/api/bills/${billId}/storage${bill.receiptImagePath}` }}
+              source={{ uri: receiptDownloadUrl }}
               style={styles.receiptThumbImage}
               resizeMode="cover"
             />
@@ -973,9 +999,9 @@ export default function BillDetailScreen() {
           >
             <Feather name="x" size={22} color="#fff" />
           </TouchableOpacity>
-          {bill.receiptImagePath ? (
+          {receiptDownloadUrl ? (
             <Image
-              source={{ uri: `${baseUrl}/api/bills/${billId}/storage${bill.receiptImagePath}` }}
+              source={{ uri: receiptDownloadUrl }}
               style={styles.receiptModalImage}
               resizeMode="contain"
             />

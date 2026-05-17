@@ -20,6 +20,7 @@ interface ScanState {
   capturedUri: string | null;
   items: ParsedItem[];
   errorMessage: string | null;
+  receiptImagePath: string | null;
 }
 
 interface ScanContextValue extends ScanState {
@@ -40,35 +41,53 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
   return result.base64 ?? "";
 }
 
-async function saveReceiptImage(localUri: string, billId: number): Promise<void> {
+export async function uploadFileToStorage(
+  localUri: string,
+  getUploadUrlEndpoint: string,
+): Promise<string | null> {
+  const presignedRes = await customFetch(getUploadUrlEndpoint, {
+    method: "POST",
+  }) as { uploadURL: string; objectPath: string };
+
+  const { uploadURL, objectPath } = presignedRes;
+  if (!uploadURL || !objectPath) return null;
+
+  const file = new File(localUri, "receipt.jpg", { type: "image/jpeg" });
+  const uploadRes = await expoFetch(uploadURL, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": "image/jpeg" },
+  });
+
+  if (!uploadRes.ok) {
+    console.warn("Receipt upload to GCS failed:", uploadRes.status);
+    return null;
+  }
+
+  return objectPath;
+}
+
+async function saveReceiptImage(
+  localUri: string,
+  billId: number,
+): Promise<string | null> {
   try {
-    const presignedRes = await customFetch(`/api/bills/${billId}/storage/uploads/request-url`, {
-      method: "POST",
-    }) as { uploadURL: string; objectPath: string };
-
-    const { uploadURL, objectPath } = presignedRes;
-    if (!uploadURL || !objectPath) return;
-
-    const file = new File(localUri, "receipt.jpg", { type: "image/jpeg" });
-
-    const uploadRes = await expoFetch(uploadURL, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": "image/jpeg" },
-    });
-
-    if (!uploadRes.ok) {
-      console.warn("Receipt upload to GCS failed:", uploadRes.status);
-      return;
-    }
+    const objectPath = await uploadFileToStorage(
+      localUri,
+      `/api/bills/${billId}/storage/uploads/request-url`,
+    );
+    if (!objectPath) return null;
 
     await customFetch(`/api/bills/${billId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ receiptImagePath: objectPath }),
     });
+
+    return objectPath;
   } catch (err) {
     console.warn("saveReceiptImage failed (non-critical):", err);
+    return null;
   }
 }
 
@@ -81,6 +100,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     capturedUri: null,
     items: [],
     errorMessage: null,
+    receiptImagePath: null,
   });
 
   const generationRef = useRef(0);
@@ -97,6 +117,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         capturedUri: uri,
         items: [],
         errorMessage: null,
+        receiptImagePath: null,
       });
 
       preprocessImage(uri, imageWidth)
@@ -120,7 +141,12 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
                   status: "ready",
                   items: data.items.map((item) => ({ ...item, selected: true })),
                 }));
-                saveReceiptImage(uri, billId);
+                saveReceiptImage(uri, billId).then((objectPath) => {
+                  if (myGeneration !== generationRef.current) return;
+                  if (objectPath) {
+                    setState((prev) => ({ ...prev, receiptImagePath: objectPath }));
+                  }
+                });
               },
               onError: (err: Error) => {
                 if (myGeneration !== generationRef.current) return;
@@ -148,7 +174,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => {
     generationRef.current += 1;
-    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null });
+    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null });
   }, []);
 
   const setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>> = useCallback(
