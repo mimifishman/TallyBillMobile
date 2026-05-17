@@ -47,7 +47,7 @@ async function saveReceiptImage(
   try {
     const objectPath = await uploadFileToStorage(
       localUri,
-      "/api/storage/uploads/request-url",
+      `/api/bills/${billId}/storage/uploads/request-url`,
     );
     if (!objectPath) return null;
 

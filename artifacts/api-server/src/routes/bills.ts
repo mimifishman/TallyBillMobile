@@ -340,6 +340,18 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     res.status(400).json({ error: "title cannot be empty" });
     return;
   }
+  const RECEIPT_PATH_RE = /^\/objects\/uploads\/\d+\/[0-9a-f-]{36}$/i;
+  if (receiptImagePath !== undefined && receiptImagePath !== null && receiptImagePath !== "") {
+    const expectedPrefix = `/objects/uploads/${billId}/`;
+    if (
+      typeof receiptImagePath !== "string" ||
+      !receiptImagePath.startsWith(expectedPrefix) ||
+      !RECEIPT_PATH_RE.test(receiptImagePath)
+    ) {
+      res.status(400).json({ error: "Invalid receiptImagePath" });
+      return;
+    }
+  }
   const [updated] = await db.update(billsTable).set({
     ...(title !== undefined && { title: title.trim() }),
     ...(restaurantName !== undefined && { restaurantName: restaurantName ? String(restaurantName).trim() : null }),

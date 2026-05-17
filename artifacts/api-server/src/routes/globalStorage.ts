@@ -1,18 +1,21 @@
 import { Router } from "express";
-import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { billsTable, billUsersTable, usersTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { billsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage.js";
-import { requireAuth } from "../middlewares/auth.js";
-import type { AuthRequest } from "../middlewares/auth.js";
+import type { BillAccessRequest } from "../middlewares/billAccess.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-router.post("/uploads/request-url", requireAuth, async (_req: AuthRequest, res) => {
+router.post("/uploads/request-url", async (req: BillAccessRequest, res) => {
   try {
+    const billId = req.billAccess?.billId;
+    if (!billId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const service = new ObjectStorageService();
-    const { uploadURL, objectPath } = await service.getObjectEntityUploadURL();
+    const { uploadURL, objectPath } = await service.getObjectEntityUploadURL(billId);
     res.json({ uploadURL, objectPath });
   } catch (err) {
     console.error("Error generating upload URL:", err);
@@ -20,63 +23,25 @@ router.post("/uploads/request-url", requireAuth, async (_req: AuthRequest, res) 
   }
 });
 
-router.get("/objects/uploads/:objectId", async (req, res) => {
+router.get("/objects/uploads/:objectId", async (req: BillAccessRequest, res) => {
   try {
-    const objectPath = `/objects/uploads/${req.params["objectId"]}`;
-
-    const [bill] = await db
-      .select()
-      .from(billsTable)
-      .where(eq(billsTable.receiptImagePath, objectPath))
-      .limit(1);
-
-    if (!bill) {
-      res.status(404).json({ error: "Not found" });
+    const billId = req.billAccess?.billId;
+    if (!billId) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 
-    const joinCodeInput = String(
-      req.query["joinCode"] ?? req.headers["x-join-code"] ?? "",
-    )
-      .trim()
-      .toUpperCase();
+    const objectId = req.params["objectId"];
+    const objectPath = `/objects/uploads/${billId}/${objectId}`;
 
-    let authorized = false;
+    const [bill] = await db
+      .select({ receiptImagePath: billsTable.receiptImagePath })
+      .from(billsTable)
+      .where(eq(billsTable.id, billId))
+      .limit(1);
 
-    if (joinCodeInput && joinCodeInput === bill.joinCode.toUpperCase()) {
-      authorized = true;
-    } else if (bill.isGuestBill && !bill.ownerUserId) {
-      authorized = true;
-    } else {
-      const auth = getAuth(req);
-      if (auth.userId) {
-        const [user] = await db
-          .select()
-          .from(usersTable)
-          .where(eq(usersTable.clerkId, auth.userId))
-          .limit(1);
-        if (user) {
-          if (bill.ownerUserId === user.id) {
-            authorized = true;
-          } else {
-            const [member] = await db
-              .select()
-              .from(billUsersTable)
-              .where(
-                and(
-                  eq(billUsersTable.billId, bill.id),
-                  eq(billUsersTable.userId, user.id),
-                ),
-              )
-              .limit(1);
-            if (member) authorized = true;
-          }
-        }
-      }
-    }
-
-    if (!authorized) {
-      res.status(403).json({ error: "Forbidden" });
+    if (!bill || bill.receiptImagePath !== objectPath) {
+      res.status(404).json({ error: "Not found" });
       return;
     }
 

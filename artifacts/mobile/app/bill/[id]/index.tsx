@@ -252,9 +252,11 @@ export default function BillDetailScreen() {
     getBillCode(billId) ??
     "";
 
-  const receiptImageUri = receiptImagePath
-    ? `${baseUrl}/api/storage${receiptImagePath}?joinCode=${encodeURIComponent(receiptJoinCode)}`
-    : null;
+  const receiptObjectId = receiptImagePath ? receiptImagePath.split("/").pop() ?? null : null;
+  const receiptImageUri =
+    receiptObjectId && receiptJoinCode
+      ? `${baseUrl}/api/bills/${billId}/storage/objects/uploads/${receiptObjectId}?joinCode=${encodeURIComponent(receiptJoinCode)}`
+      : null;
 
   const addPersonMutation = useCreateBillUser({
     mutation: { onSuccess: invalidate },

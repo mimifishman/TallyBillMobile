@@ -103,7 +103,7 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
-  async getObjectEntityUploadURL(): Promise<{ uploadURL: string; objectPath: string }> {
+  async getObjectEntityUploadURL(billId: number): Promise<{ uploadURL: string; objectPath: string }> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -113,7 +113,7 @@ export class ObjectStorageService {
     }
 
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const fullPath = `${privateObjectDir}/uploads/${billId}/${objectId}`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
     const uploadURL = await signObjectURL({
@@ -123,7 +123,7 @@ export class ObjectStorageService {
       ttlSec: 900,
     });
 
-    const objectPath = `/objects/uploads/${objectId}`;
+    const objectPath = `/objects/uploads/${billId}/${objectId}`;
     return { uploadURL, objectPath };
   }
 

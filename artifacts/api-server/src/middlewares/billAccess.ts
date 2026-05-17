@@ -54,7 +54,10 @@ export function requireBillAccess(
         return;
       }
 
-      const headerCode = String(req.headers[JOIN_CODE_HEADER] ?? "").trim().toUpperCase();
+      const rawCode =
+        String(req.headers[JOIN_CODE_HEADER] ?? "").trim() ||
+        String((req.query as Record<string, string | undefined>)["joinCode"] ?? "").trim();
+      const headerCode = rawCode.toUpperCase();
       if (headerCode) {
         if (headerCode === bill.joinCode.toUpperCase()) {
           req.billAccess = { billId, joinCode: bill.joinCode, via: "joinCode" };
