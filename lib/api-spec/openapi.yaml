@@ -775,6 +775,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        receiptImagePath:
+          type: string
+          nullable: true
+          description: Object storage path of the scanned receipt image
         settled:
           type: boolean
           description: True when every line item on the bill has been assigned to at least one person
@@ -886,6 +890,10 @@ components:
           type: number
         tipPercent:
           type: number
+        receiptImagePath:
+          type: string
+          nullable: true
+          description: Object storage path of the scanned receipt image
 
     JoinBillRequest:
       type: object

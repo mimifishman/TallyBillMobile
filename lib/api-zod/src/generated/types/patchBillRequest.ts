@@ -14,4 +14,6 @@ export interface PatchBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+  /** Object storage path of the scanned receipt image */
+  receiptImagePath?: string | null;
 }

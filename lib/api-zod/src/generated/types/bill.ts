@@ -18,6 +18,8 @@ export interface Bill {
   tipPercent: number;
   joinCode: string;
   createdAt: Date;
+  /** Object storage path of the scanned receipt image */
+  receiptImagePath?: string | null;
   /** True when every line item on the bill has been assigned to at least one person */
   settled?: boolean;
   /** True when the authenticated user is the owner of this bill */

@@ -1,4 +1,4 @@
-import { File } from "expo-file-system";
+import * as FileSystem from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
 import { customFetch } from "@workspace/api-client-react";
 
@@ -20,10 +20,18 @@ export async function uploadFileToStorage(
   const { uploadURL, objectPath } = presignedRes;
   if (!uploadURL || !objectPath) return null;
 
-  const file = new File(localUri, "receipt.jpg", { type: "image/jpeg" });
+  const base64 = await FileSystem.readAsStringAsync(localUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)!;
+  }
+
   const uploadRes = await expoFetch(uploadURL, {
     method: "PUT",
-    body: file,
+    body: bytes.buffer,
     headers: { "Content-Type": "image/jpeg" },
   });
 

@@ -247,8 +247,13 @@ export default function BillDetailScreen() {
     (data?.bill as { receiptImagePath?: string | null } | undefined)?.receiptImagePath ??
     null;
 
+  const receiptJoinCode =
+    (data?.bill as { joinCode?: string } | undefined)?.joinCode ??
+    getBillCode(billId) ??
+    "";
+
   const receiptImageUri = receiptImagePath
-    ? `${baseUrl}/api/storage${receiptImagePath}?joinCode=${encodeURIComponent(getBillCode(billId) ?? "")}`
+    ? `${baseUrl}/api/storage${receiptImagePath}?joinCode=${encodeURIComponent(receiptJoinCode)}`
     : null;
 
   const addPersonMutation = useCreateBillUser({
