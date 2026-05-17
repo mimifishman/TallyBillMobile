@@ -1,48 +1,36 @@
 import { File } from "expo-file-system";
-import { fetch } from "expo/fetch";
+import { fetch as expoFetch } from "expo/fetch";
+import { customFetch } from "@workspace/api-client-react";
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-  : "";
-
-export async function uploadReceiptImage(
+/**
+ * Upload a local file to object storage via a presigned URL.
+ *
+ * @param localUri             - Local file URI (e.g. from camera or image picker).
+ * @param getUploadUrlEndpoint - API endpoint that returns `{ uploadURL, objectPath }`.
+ * @returns The `objectPath` of the stored object, or `null` on failure.
+ */
+export async function uploadFileToStorage(
   localUri: string,
-  billId: number,
-  authHeader?: string,
-): Promise<string> {
-  const endpoint = `${API_BASE}/api/bills/${billId}/storage/uploads/request-url`;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (authHeader) headers["Authorization"] = authHeader;
-
-  const presignedRes = await fetch(endpoint, {
+  getUploadUrlEndpoint: string,
+): Promise<string | null> {
+  const presignedRes = await customFetch(getUploadUrlEndpoint, {
     method: "POST",
-    headers,
-    credentials: "include",
-  });
+  }) as { uploadURL: string; objectPath: string };
 
-  if (!presignedRes.ok) {
-    throw new Error(`Failed to get presigned URL: ${presignedRes.status}`);
-  }
-
-  const { uploadURL, objectPath } = await presignedRes.json();
-  if (!uploadURL || !objectPath) {
-    throw new Error("Invalid presigned URL response");
-  }
+  const { uploadURL, objectPath } = presignedRes;
+  if (!uploadURL || !objectPath) return null;
 
   const file = new File(localUri, "receipt.jpg", { type: "image/jpeg" });
-
-  const uploadRes = await fetch(uploadURL, {
+  const uploadRes = await expoFetch(uploadURL, {
     method: "PUT",
     body: file,
     headers: { "Content-Type": "image/jpeg" },
   });
 
   if (!uploadRes.ok) {
-    throw new Error(`Upload failed: ${uploadRes.status}`);
+    console.warn("Receipt upload to storage failed:", uploadRes.status);
+    return null;
   }
 
-  return objectPath as string;
+  return objectPath;
 }

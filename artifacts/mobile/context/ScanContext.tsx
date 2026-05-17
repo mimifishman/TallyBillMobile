@@ -1,8 +1,7 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { File } from "expo-file-system";
-import { fetch as expoFetch } from "expo/fetch";
 import { useOcrReceipt, customFetch } from "@workspace/api-client-react";
+import { uploadFileToStorage } from "../utils/objectStorageExpo";
 
 export type ScanStatus = "idle" | "scanning" | "ready" | "error";
 
@@ -41,32 +40,6 @@ async function preprocessImage(uri: string, width: number): Promise<string> {
   return result.base64 ?? "";
 }
 
-export async function uploadFileToStorage(
-  localUri: string,
-  getUploadUrlEndpoint: string,
-): Promise<string | null> {
-  const presignedRes = await customFetch(getUploadUrlEndpoint, {
-    method: "POST",
-  }) as { uploadURL: string; objectPath: string };
-
-  const { uploadURL, objectPath } = presignedRes;
-  if (!uploadURL || !objectPath) return null;
-
-  const file = new File(localUri, "receipt.jpg", { type: "image/jpeg" });
-  const uploadRes = await expoFetch(uploadURL, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": "image/jpeg" },
-  });
-
-  if (!uploadRes.ok) {
-    console.warn("Receipt upload to GCS failed:", uploadRes.status);
-    return null;
-  }
-
-  return objectPath;
-}
-
 async function saveReceiptImage(
   localUri: string,
   billId: number,
@@ -74,7 +47,7 @@ async function saveReceiptImage(
   try {
     const objectPath = await uploadFileToStorage(
       localUri,
-      `/api/bills/${billId}/storage/uploads/request-url`,
+      "/api/storage/uploads/request-url",
     );
     if (!objectPath) return null;
 
