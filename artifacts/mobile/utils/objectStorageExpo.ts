@@ -21,7 +21,7 @@ export async function uploadFileToStorage(
   if (!uploadURL || !objectPath) return null;
 
   const base64 = await FileSystem.readAsStringAsync(localUri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: "base64",
   });
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
