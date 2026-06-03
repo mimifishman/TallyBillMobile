@@ -132,6 +132,9 @@ externalPort = 4200
 [userenv.shared]
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_ZnJlZS1hbnRlbG9wZS00MC5jbGVyay5hY2NvdW50cy5kZXYk"
 
+[userenv.production]
+EXPO_PUBLIC_DOMAIN = "tallybill.app"
+
 [nix]
 channel = "stable-25_05"
 
