@@ -1,0 +1,241 @@
+Please update the game engine and mobile UI to match the following rules.
+There are six separate areas that need to change. Read all of them before
+starting — some interact with each other.
+
+---
+
+## Rule 1: Attacker chooses which Royals attack
+
+**Current behaviour:** When a player declares an attack, every eligible Royal
+in their Court is automatically sent into battle.
+
+**Correct rule:** The attacking player decides which of their Royals will
+attack. They do not have to attack with all of them. Royals that are not sent
+into the attack stay back and remain available to defend on the opponent's
+next turn.
+
+**What needs to change:**
+- The declare_attack action must carry a list of the specific Royal card IDs
+  the player has chosen to attack with.
+- The server must validate that every Royal in that list is in the attacker's
+  Court, is not haste-locked, and has not already attacked this turn.
+- Only the chosen Royals are marked as having attacked. The rest are
+  unaffected.
+- The player must choose at least one Royal. An empty selection is an error.
+- In the mobile UI, tapping the Attack button should start a selection step
+  where the player taps individual Royals in their Court to mark them for
+  the attack. Royals that are ineligible (haste-locked or already attacked)
+  cannot be selected. After selecting at least one Royal, the player taps a
+  confirm button and then picks a target opponent.
+
+---
+
+## Rule 2: Multiple blockers can gang up on one attacker
+
+**Current behaviour:** Each attacking Royal can only be blocked by one
+defending Royal (one-to-one mapping).
+
+**Correct rule:** A defending player may commit several of their Royals to
+block the same attacking Royal — they gang up on it together. However, each
+defending Royal can only be assigned to one attacker; once a Royal is
+blocking, it cannot also be used to block a different attacker that turn.
+
+When multiple blockers face one attacker, damage works as follows:
+- The attacking player decides the order in which their attacker's damage
+  is assigned to the blockers.
+- Lethal damage (enough to kill a blocker) must be fully assigned to one
+  blocker before any damage can be assigned to the next.
+- Each blocker independently deals its own attack value back to the attacker.
+- Example: A 5-attack Royal faces blockers of 1 HP and 2 HP. The attacker
+  assigns 1 damage to the first blocker (killing it), then 2 damage to the
+  second (killing it). Both blockers hit the attacker back (1+2=3 damage).
+  The attacker could also choose to assign all 5 to the first blocker, leaving
+  the second blocker untouched — but that wastes damage.
+
+**What needs to change:**
+- The blocking data model must allow multiple blocker IDs per attacking Royal,
+  not just one.
+- The confirm_declare_blocks action must support this: for each attacker, the
+  defender provides either a list of one or more blocker Royal IDs, or a pass.
+- The same blocker Royal cannot be assigned to more than one attacker.
+- After blockers are confirmed, the attacking player must be given the
+  opportunity to set the damage assignment order for any attacker that has
+  multiple blockers. This is an ordered list — which blocker takes damage
+  first, second, and so on.
+- The damage assignment step should happen before the Duel phase begins (or
+  as part of the attacker's first Duel action).
+- Combat resolution must apply damage in the attacker's declared order,
+  assigning lethal damage to each blocker in sequence before moving to the
+  next, with any excess damage being lost (it does not carry through to the
+  defending player).
+- In the mobile UI, the blocking modal must allow the defending player to
+  assign multiple Royals to one attacker. After blocks are submitted, the
+  attacker must be shown a screen where they drag or tap to set the damage
+  order for each multi-blocked attacker.
+
+---
+
+## Rule 3: Card cancellation — equal buffs and debuffs go to the Abyss
+
+**Current behaviour:** This mechanic does not exist in the code at all.
+
+**Correct rule:** When the total positive buff from Spade cards and the total
+negative debuff from Club cards attached to a Royal cancel out mathematically
+to a net of zero, those cancelling cards are automatically removed from the
+Royal and sent to the Abyss.
+
+How it works:
+- Spade cards attached to a Royal add equally to both attack and health.
+- Club cards debuff equally from both attack and health.
+- If the sum of all attached Spade pip values equals the sum of all attached
+  Club pip values on a Royal, those Spade and Club cards have cancelled each
+  other out. They are removed from the Royal and discarded to the Abyss.
+- Heart cards are not involved in cancellation. They only affect health and
+  have no equal-opposite counterpart.
+- The Royal itself remains in play with its base stats (plus any remaining
+  uncancelled buffs).
+- Cancellation is checked automatically any time a Spade or Club is attached
+  to a Royal. If a cancellation is triggered, the cards are sent to the Abyss
+  immediately as part of the same action.
+- This is intentionally strategic: a player can deliberately create a
+  cancellation to move cards into the Abyss so they can later be recalled
+  with a Spade discard.
+
+Example: A Royal has a 3-pip Spade (+3 ATK/+3 HP) and a 2-pip Club
+(-2 ATK/-2 HP) attached. Total Spade pips = 3, total Club pips = 2.
+No cancellation yet. Now a 1-pip Club (-1 ATK/-1 HP) is attached. Total
+Club pips = 3. Now Spade total equals Club total (both 3). The 3-pip Spade
+and both Clubs (2-pip and 1-pip) are all sent to the Abyss. The Royal
+returns to its base stats.
+
+**What needs to change:**
+- After any Spade or Club card is attached to a Royal, the server must check
+  whether the total pip value of all attached Spades equals the total pip
+  value of all attached Clubs on that Royal.
+- If they are equal, all attached Spade cards and all attached Club cards on
+  that Royal are removed and added to the Abyss as part of the same action
+  response. Heart cards attached to the same Royal are not removed.
+- The Royal's buffAttack and buffHealth must be recalculated to reflect only
+  the remaining uncancelled attachments.
+- No new action or player input is needed — cancellation is automatic and
+  immediate.
+
+---
+
+## Rule 4: Allow Jokers in the respond-to-club window
+
+**Current behaviour:** During the respond-to-club window, the targeted player
+is blocked from playing both Royals and Jokers.
+
+**Correct rule:** The targeted player may play any card EXCEPT a Royal and
+EXCEPT a Diamond to the Mine. In particular, Jokers ARE allowed (a player may
+Joker the attacking Royal, or deal direct damage, in response to a Club). This
+makes the respond-to-club window consistent with the duel window, which
+already allows Jokers.
+
+**What needs to change:**
+- Remove the rule that blocks Jokers during the respond-to-club window, in both
+  the server-side validation and the mobile UI's valid-actions logic.
+- Keep the existing blocks: no Royals, and no Diamonds played to the Mine.
+- Diamonds may still be discarded for draw or boost during the window, subject
+  to the one-Diamond-per-turn limit (this is already correct).
+
+---
+
+## Rule 5: An attacking Royal stays tapped through the opponent's turn
+
+**Current behaviour:** When a Royal attacks it is marked as having attacked,
+but that status is cleared at the end of every turn for all players. This means
+a Royal that attacked is incorrectly available to block during the opponent's
+turn.
+
+**Correct rule:** Attacking taps a Royal (turns it sideways). A tapped Royal
+cannot block or defend during the opponent's turn. It stays tapped through the
+opponent's turn(s) and only untaps at the start of its own controller's next
+turn. Blocking does NOT tap a Royal — a Royal that blocked is still free to
+attack on its controller's next turn.
+
+The trade-off: committing a Royal to attack leaves it unable to defend until
+the attacking player's next turn comes around.
+
+**What needs to change:**
+- A Royal that attacked must remain tapped (unable to be assigned as a blocker)
+  for the entire duration until its controller's next turn begins.
+- The untap should happen at the START of a player's own turn, applied only to
+  that player's Royals — not at the end of every turn for everyone.
+- The end-of-turn healing (resetting combat damage on all Royals) should stay
+  as it is, but it must NOT untap a Royal that attacked. Only the controller's
+  own untap step clears the attacked/tapped status.
+- The blocking logic must reject any attempt to assign a tapped Royal (one that
+  attacked and has not yet untapped) as a blocker.
+- In the mobile UI, tapped Royals should be visually distinct and should not be
+  selectable as blockers during the blocking phase.
+
+---
+
+## Rule 6: Destroying a Royal never costs the owner life
+
+**Current behaviour:** When a Royal is destroyed by a Club (debuffed to 0 HP)
+or by a Joker's destroy mode, the owner loses life equal to the Royal's base
+health plus its health buffs.
+
+**Correct rule:** Life is ONLY lost when damage is dealt directly to a player.
+Destroying a Royal — by ANY means — never causes its owner to lose life. The
+destroyed Royal simply goes to the Abyss along with its attached cards.
+
+Life can only be lost from:
+- An unblocked attacker dealing combat damage directly to a player.
+- A Club played in direct-damage mode (deal its pip value to a player).
+- A Joker played in damage mode (deal 10 to a player).
+
+**What needs to change:**
+- Remove the life-loss calculation when a Club debuff brings a Royal to 0 HP.
+  The Royal goes to the Abyss; no life is deducted from its owner.
+- Remove the life-loss calculation when a Joker destroys a Royal. The Royal
+  goes to the Abyss; no life is deducted from its owner.
+- Combat death already correctly deducts no life — leave that as is.
+
+---
+
+## Important: when can you play cards on the opponent's turn?
+
+You may ONLY play a card during the opponent's turn in these two situations:
+
+1. **Your Royal is being debuffed by a Club** and you want to save it. This is
+   the respond-to-club window. Only the targeted player may react, and only
+   with non-Royal cards. They cannot play a Diamond to the Mine (Diamonds may
+   still be discarded for draw or boost, subject to the one-Diamond-per-turn
+   limit). Jokers ARE allowed.
+2. **You are being attacked.** During the blocking and duel phases, the player
+   under attack (and the attacker) may play cards to influence combat.
+
+There is NO general ability to play cards during the opponent's normal main
+phase. Outside of the two reactive windows above, only the active player may
+play cards, and only during their own main phase.
+
+The only change needed here: the respond-to-club window currently blocks
+Jokers. Allow Jokers in that window (see Rule 4 below). Everything else about
+when cards can be played is already correct — please do NOT widen it.
+
+---
+
+## Rules that are already correct — do not change these
+
+The following are implemented correctly and should not be touched:
+- Reactive play is limited to the two windows described above (respond-to-club
+  and being attacked) — do not widen this.
+- The Duel phase (alternating turns for both players to play cards during
+  combat before damage resolves).
+- The respond_to_club window (defender gets to react before a Club debuff
+  lands) — keep this, but allow Jokers in it per Rule 4.
+- The discard phase (player must discard to hand limit of 7 at end of turn).
+- All Royals healing fully at end of turn (combat damage reset) — keep this,
+  but per Rule 5 the heal must NOT untap a Royal that attacked.
+- Haste lock (a Royal cannot attack the turn it is played).
+- The one Diamond action per turn limit, and Diamonds-to-Mine / Royals being
+  playable only on your own turn.
+- The Joker (destroys any Royal or deals 10 damage to a player, costs 10 Vault).
+- The one-attack-per-turn limit (hasAttackedThisTurn on the game state).
+- No Royal destruction ever costs life (combat, Club, or Joker) — see Rule 6.
+  Life is lost ONLY from direct damage to a player: unblocked combat damage,
+  Club direct-damage mode, and Joker damage mode.
