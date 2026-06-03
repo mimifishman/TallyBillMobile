@@ -5,7 +5,7 @@ outputs = []
 id = "NYXOll7tcLg87L7iOfvUv"
 uri = "file://artifacts/mobile/assets/images/icon.png"
 type = "image"
-title = "tallybill app icon"
+title = "tallybill-app-icon-v2"
 
 [[generated]]
 id = "i2tnxJOzyp0BfoD9kvKfR"
