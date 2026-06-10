@@ -555,7 +555,7 @@ export default function BillDetailScreen() {
     );
   }
 
-  const { bill: rawBill, lines, users, isOwner, isMember } = data as typeof data & { isMember?: boolean };
+  const { bill: rawBill, lines, users, isOwner, isMember, ownerName } = data as typeof data & { isMember?: boolean; ownerName?: string };
   const bill = rawBill as typeof rawBill & { isGuestBill?: boolean; guestOwnerId?: string | null; receiptImagePath?: string | null };
   const cachedGuestOwnerId = getCachedGuestOwnerId();
   const isGuestOwner =
@@ -597,6 +597,11 @@ export default function BillDetailScreen() {
           {bill.restaurantName ? (
             <Text style={[styles.headerSub, { color: colors.mutedForeground }]} numberOfLines={1}>
               {bill.restaurantName}
+            </Text>
+          ) : null}
+          {ownerName ? (
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+              Created by {ownerName}
             </Text>
           ) : null}
         </View>

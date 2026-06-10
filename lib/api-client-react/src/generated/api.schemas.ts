@@ -97,6 +97,8 @@ export interface BillDetail {
   lines: BillLine[];
   users: BillMember[];
   isOwner: boolean;
+  /** Display name of the bill owner, or "Guest" for guest-created bills */
+  ownerName: string;
 }
 
 export interface CreateBillRequest {

@@ -6,6 +6,7 @@ import {
   billMembersTable,
   billLinesTable,
   billLineMembersTable,
+  usersTable,
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth.js";
@@ -218,7 +219,13 @@ router.get("/by-code/:joinCode", async (req, res) => {
   }
   const lines = await getBillLines(bill.id);
   const users = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, bill.id));
-  res.json({ bill, lines, users, isOwner: false });
+  let ownerName = "Guest";
+  if (bill.ownerUserId) {
+    const [owner] = await db.select({ displayName: usersTable.displayName }).from(usersTable)
+      .where(eq(usersTable.id, bill.ownerUserId)).limit(1);
+    if (owner) ownerName = owner.displayName;
+  }
+  res.json({ bill, lines, users, isOwner: false, ownerName });
 });
 
 router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
@@ -248,7 +255,13 @@ router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
       isMember = true;
     }
   }
-  res.json({ bill, lines, users, isOwner, isMember });
+  let ownerName = "Guest";
+  if (bill.ownerUserId) {
+    const [owner] = await db.select({ displayName: usersTable.displayName }).from(usersTable)
+      .where(eq(usersTable.id, bill.ownerUserId)).limit(1);
+    if (owner) ownerName = owner.displayName;
+  }
+  res.json({ bill, lines, users, isOwner, isMember, ownerName });
 });
 
 router.delete("/:billId/leave", requireBillAccess, requireAuth, async (req: AuthRequest, res) => {

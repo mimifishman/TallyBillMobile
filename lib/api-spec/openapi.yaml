@@ -825,11 +825,15 @@ components:
             $ref: "#/components/schemas/BillMember"
         isOwner:
           type: boolean
+        ownerName:
+          type: string
+          description: Display name of the bill owner, or "Guest" for guest-created bills
       required:
         - bill
         - lines
         - users
         - isOwner
+        - ownerName
 
     CreateBillRequest:
       type: object

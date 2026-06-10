@@ -132,7 +132,7 @@ function useBillSSE(billId: number, joinCode: string, invalidate: () => void) {
 }
 
 function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }) {
-  const { bill, lines, users } = data;
+  const { bill, lines, users, ownerName } = data;
   const billId = bill.id;
 
   useBillSSE(billId, bill.joinCode, onChange);
@@ -245,7 +245,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     <div className="min-h-screen pb-24">
       <header className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <HeaderEditable bill={bill} onSave={saveBill} />
+          <HeaderEditable bill={bill} onSave={saveBill} ownerName={ownerName} />
         </div>
       </header>
 
@@ -461,9 +461,11 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
 function HeaderEditable({
   bill,
   onSave,
+  ownerName,
 }: {
   bill: Bill;
   onSave: (patch: UpdateBillRequest) => void;
+  ownerName: string;
 }) {
   const [title, setTitle] = useState<string>(bill.title);
   const [restaurant, setRestaurant] = useState<string>(bill.restaurantName ?? "");
@@ -498,6 +500,7 @@ function HeaderEditable({
         placeholder="Restaurant or place"
         className="w-full text-sm text-muted-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1"
       />
+      <p className="text-xs text-muted-foreground px-1 -mx-1">Created by {ownerName}</p>
       <div className="flex gap-2 pt-1">
         <label className="flex-1 text-xs text-muted-foreground">
           <span className="block mb-0.5">Date</span>
