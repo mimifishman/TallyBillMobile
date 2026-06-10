@@ -18,6 +18,7 @@ import { useGetBill, useJoinBill, getGetBillQueryKey } from "@workspace/api-clie
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { rememberBillCode } from "@/lib/billCodeStore";
+import { shortenUrl } from "@/lib/shortenUrl";
 
 export default function ShareScreen() {
   const colors = useColors();
@@ -29,6 +30,8 @@ export default function ShareScreen() {
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [shortUrl, setShortUrl] = useState<string | null>(null);
+  const [shorteningUrl, setShorteningUrl] = useState(false);
 
   const { data } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
   const bill = data?.bill;
@@ -47,6 +50,20 @@ export default function ShareScreen() {
   // can copy/share it (rather than silently hiding the affordance).
   const domain = process.env.EXPO_PUBLIC_DOMAIN || "tallybill.app";
   const shareUrl = bill?.joinCode ? `https://${domain}/b/${bill.joinCode}` : null;
+
+  // Shorten the share URL when it becomes available.
+  useEffect(() => {
+    if (!shareUrl) return;
+    let cancelled = false;
+    setShorteningUrl(true);
+    shortenUrl(shareUrl).then((result) => {
+      if (!cancelled) {
+        setShortUrl(result);
+        setShorteningUrl(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [shareUrl]);
 
   const joinMutation = useJoinBill({
     mutation: {
@@ -67,18 +84,20 @@ export default function ShareScreen() {
   };
 
   const handleCopyLink = async () => {
-    if (!shareUrl) return;
-    await Clipboard.setStringAsync(shareUrl);
+    const url = shortUrl ?? shareUrl;
+    if (!url) return;
+    await Clipboard.setStringAsync(url);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
   const handleShareLink = async () => {
-    if (!shareUrl || !bill) return;
+    const url = shortUrl ?? shareUrl;
+    if (!url || !bill) return;
     try {
       await Share.share({
-        message: `Join me on "${bill.title}" — split the bill: ${shareUrl}`,
-        url: shareUrl,
+        message: `Join me on "${bill.title}" — split the bill: ${url}`,
+        url,
         title: bill.title,
       });
     } catch {
@@ -134,23 +153,32 @@ export default function ShareScreen() {
             {shareUrl && (
               <View style={[styles.linkCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.linkLabel, { color: colors.mutedForeground }]}>Share link</Text>
-                <Text style={[styles.linkUrl, { color: colors.foreground }]} numberOfLines={1}>
-                  {shareUrl}
-                </Text>
+                {shorteningUrl ? (
+                  <View style={styles.linkLoadingRow}>
+                    <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    <Text style={[styles.linkUrl, { color: colors.mutedForeground }]}>Shortening…</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.linkUrl, { color: colors.foreground }]} numberOfLines={1}>
+                    {shortUrl ?? shareUrl}
+                  </Text>
+                )}
                 <Text style={[styles.linkSub, { color: colors.mutedForeground }]}>
                   Opens in a browser — no app or sign-in needed.
                 </Text>
                 <View style={styles.linkBtnRow}>
                   <TouchableOpacity
-                    style={[styles.linkBtn, { backgroundColor: colors.primary }]}
+                    style={[styles.linkBtn, { backgroundColor: colors.primary, opacity: shorteningUrl ? 0.5 : 1 }]}
                     onPress={handleShareLink}
+                    disabled={shorteningUrl}
                   >
                     <Feather name="share-2" size={16} color="#fff" />
                     <Text style={[styles.linkBtnText, { color: "#fff" }]}>Share</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.linkBtn, { backgroundColor: linkCopied ? colors.primary : colors.muted }]}
+                    style={[styles.linkBtn, { backgroundColor: linkCopied ? colors.primary : colors.muted, opacity: shorteningUrl ? 0.5 : 1 }]}
                     onPress={handleCopyLink}
+                    disabled={shorteningUrl}
                   >
                     <Feather
                       name={linkCopied ? "check" : "link"}
@@ -233,6 +261,7 @@ const styles = StyleSheet.create({
   copyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   linkCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 6, marginTop: 12 },
   linkLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
+  linkLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   linkUrl: { fontSize: 13, fontFamily: "Inter_500Medium" },
   linkSub: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
   linkBtnRow: { flexDirection: "row", gap: 10, marginTop: 10 },
