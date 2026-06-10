@@ -9,7 +9,6 @@
 export interface PatchBillRequest {
   /** @minLength 1 */
   title?: string;
-  restaurantName?: string | null;
   date?: string;
   currency?: string | null;
   taxPercent?: number;

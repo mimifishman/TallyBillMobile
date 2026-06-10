@@ -13,7 +13,6 @@ interface BillCardParticipant {
 
 interface BillCardProps {
   title: string;
-  restaurantName?: string | null;
   date: string;
   currency?: string | null;
   joinCode: string;
@@ -25,7 +24,6 @@ interface BillCardProps {
 
 export function BillCard({
   title,
-  restaurantName,
   date,
   currency,
   joinCode,
@@ -60,9 +58,6 @@ export function BillCard({
           </View>
           <View style={styles.info}>
             <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
-            {restaurantName ? (
-              <Text style={[styles.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{restaurantName}</Text>
-            ) : null}
             <View style={styles.meta}>
               <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{date}</Text>
               {currency ? (

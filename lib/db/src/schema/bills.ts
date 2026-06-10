@@ -7,7 +7,6 @@ export const billsTable = pgTable("bills", {
   id: serial("id").primaryKey(),
   ownerUserId: integer("owner_user_id").references(() => usersTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
-  restaurantName: text("restaurant_name"),
   date: text("date").notNull(),
   currency: text("currency"),
   taxPercent: numeric("tax_percent", { precision: 10, scale: 4 }).notNull().default("0"),

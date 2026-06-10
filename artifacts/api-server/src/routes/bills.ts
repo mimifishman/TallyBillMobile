@@ -139,7 +139,7 @@ router.get("/guest", async (req, res) => {
 });
 
 router.post("/", optionalAuth, async (req: AuthRequest, res) => {
-  const { title, restaurantName, date, currency, taxPercent, tipPercent, guestOwnerId } = req.body;
+  const { title, date, currency, taxPercent, tipPercent, guestOwnerId } = req.body;
   if (!title || !date) {
     res.status(400).json({ error: "title and date are required" });
     return;
@@ -152,7 +152,6 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
     const [newBill] = await tx.insert(billsTable).values({
       ownerUserId: user?.userId ?? null,
       title,
-      restaurantName: restaurantName || null,
       date,
       currency: currency || null,
       taxPercent: String(taxPercent ?? 0),
@@ -321,10 +320,9 @@ router.get("/:billId/events",
 
 router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
-  const { title, restaurantName, date, currency, taxPercent, tipPercent } = req.body;
+  const { title, date, currency, taxPercent, tipPercent } = req.body;
   const [updated] = await db.update(billsTable).set({
     ...(title && { title }),
-    ...(restaurantName !== undefined && { restaurantName }),
     ...(date && { date }),
     ...(currency !== undefined && { currency: currency || null }),
     ...(taxPercent !== undefined && { taxPercent: String(taxPercent) }),
@@ -348,7 +346,7 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
       return;
     }
   }
-  const { title, restaurantName, date, currency, taxPercent, tipPercent, receiptImagePath } = req.body;
+  const { title, date, currency, taxPercent, tipPercent, receiptImagePath } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {
     res.status(400).json({ error: "title cannot be empty" });
     return;
@@ -367,7 +365,6 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   }
   const [updated] = await db.update(billsTable).set({
     ...(title !== undefined && { title: title.trim() }),
-    ...(restaurantName !== undefined && { restaurantName: restaurantName ? String(restaurantName).trim() : null }),
     ...(date !== undefined && { date }),
     ...(currency !== undefined && { currency: currency || null }),
     ...(taxPercent !== undefined && { taxPercent: String(parseFloat(taxPercent) || 0) }),

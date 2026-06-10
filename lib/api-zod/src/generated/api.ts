@@ -64,7 +64,6 @@ export const GetBillsResponseItem = zod.object({
   id: zod.number(),
   ownerUserId: zod.number().nullish(),
   title: zod.string(),
-  restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
@@ -105,7 +104,6 @@ export const GetBillsResponse = zod.array(GetBillsResponseItem);
  */
 export const CreateBillBody = zod.object({
   title: zod.string(),
-  restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
@@ -123,7 +121,6 @@ export const JoinBillResponse = zod.object({
   id: zod.number(),
   ownerUserId: zod.number().nullish(),
   title: zod.string(),
-  restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
@@ -170,7 +167,6 @@ export const GetBillByCodeResponse = zod.object({
     id: zod.number(),
     ownerUserId: zod.number().nullish(),
     title: zod.string(),
-    restaurantName: zod.string().nullish(),
     date: zod.string(),
     currency: zod.string().nullish(),
     taxPercent: zod.number(),
@@ -248,7 +244,6 @@ export const GetBillResponse = zod.object({
     id: zod.number(),
     ownerUserId: zod.number().nullish(),
     title: zod.string(),
-    restaurantName: zod.string().nullish(),
     date: zod.string(),
     currency: zod.string().nullish(),
     taxPercent: zod.number(),
@@ -323,7 +318,6 @@ export const UpdateBillParams = zod.object({
 
 export const UpdateBillBody = zod.object({
   title: zod.string().optional(),
-  restaurantName: zod.string().nullish(),
   date: zod.string().optional(),
   currency: zod.string().nullish(),
   taxPercent: zod.number().optional(),
@@ -334,7 +328,6 @@ export const UpdateBillResponse = zod.object({
   id: zod.number(),
   ownerUserId: zod.number().nullish(),
   title: zod.string(),
-  restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
@@ -378,7 +371,6 @@ export const PatchBillParams = zod.object({
 
 export const PatchBillBody = zod.object({
   title: zod.string().min(1).optional(),
-  restaurantName: zod.string().nullish(),
   date: zod.string().optional(),
   currency: zod.string().nullish(),
   taxPercent: zod.number().optional(),
@@ -393,7 +385,6 @@ export const PatchBillResponse = zod.object({
   id: zod.number(),
   ownerUserId: zod.number().nullish(),
   title: zod.string(),
-  restaurantName: zod.string().nullish(),
   date: zod.string(),
   currency: zod.string().nullish(),
   taxPercent: zod.number(),

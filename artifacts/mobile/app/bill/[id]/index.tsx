@@ -79,7 +79,6 @@ export default function BillDetailScreen() {
   const [newItemQty, setNewItemQty] = useState("1");
   const [showEditHeader, setShowEditHeader] = useState(false);
   const [editTitle, setEditTitle] = useState("");
-  const [editRestaurant, setEditRestaurant] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editCurrency, setEditCurrency] = useState("");
   const [editTaxPercent, setEditTaxPercent] = useState("");
@@ -387,7 +386,6 @@ export default function BillDetailScreen() {
   const openEditHeader = () => {
     if (!data) return;
     setEditTitle(data.bill.title ?? "");
-    setEditRestaurant(data.bill.restaurantName ?? "");
     setEditDate(data.bill.date ?? "");
     setEditCurrency(data.bill.currency ?? "");
     setEditTaxPercent(String(parseFloat(String(data.bill.taxPercent ?? 0))));
@@ -405,7 +403,6 @@ export default function BillDetailScreen() {
       billId,
       data: {
         title: trimmedTitle,
-        restaurantName: editRestaurant.trim() ? editRestaurant.trim() : null,
         date: editDate.trim(),
         currency: editCurrency.trim() ? editCurrency.trim().toUpperCase() : null,
         taxPercent: parseFloat(editTaxPercent) || 0,
@@ -596,11 +593,6 @@ export default function BillDetailScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>{bill.title}</Text>
-          {bill.restaurantName ? (
-            <Text style={[styles.headerSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {bill.restaurantName}
-            </Text>
-          ) : null}
           {ownerName ? (
             <Text style={[styles.headerSub, { color: colors.mutedForeground }]} numberOfLines={1}>
               Created by {ownerName}
@@ -799,14 +791,6 @@ export default function BillDetailScreen() {
                   value={editTitle}
                   onChangeText={setEditTitle}
                   autoFocus
-                />
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Restaurant (optional)</Text>
-                <TextInput
-                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                  placeholder="Restaurant name"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={editRestaurant}
-                  onChangeText={setEditRestaurant}
                 />
                 <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
                 <TextInput

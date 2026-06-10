@@ -42,7 +42,6 @@ export default function NewBillScreen() {
   const insets = useSafeAreaInsets();
   const { user, guestOwnerId, guestName } = useAuth();
   const [title, setTitle] = useState("");
-  const [restaurantName, setRestaurantName] = useState("");
   const [date, setDate] = useState(today);
   const [currency, setCurrency] = useState("");
   const [taxPercent, setTaxPercent] = useState("0");
@@ -98,7 +97,6 @@ export default function NewBillScreen() {
     createMutation.mutate({
       data: {
         title: title.trim(),
-        restaurantName: restaurantName.trim() || null,
         date,
         currency: currency || null,
         taxPercent: parseFloat(taxPercent) || 0,
@@ -136,24 +134,13 @@ export default function NewBillScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>BILL TITLE *</Text>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>TITLE *</Text>
           <TextInput
             style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
             placeholder="e.g. Dinner at Mario's"
             placeholderTextColor={colors.mutedForeground}
             value={title}
             onChangeText={setTitle}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>RESTAURANT (OPTIONAL)</Text>
-          <TextInput
-            style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
-            placeholder="Restaurant name"
-            placeholderTextColor={colors.mutedForeground}
-            value={restaurantName}
-            onChangeText={setRestaurantName}
           />
         </View>
 

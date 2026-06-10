@@ -8,7 +8,6 @@
 
 export interface UpdateBillRequest {
   title?: string;
-  restaurantName?: string | null;
   date?: string;
   currency?: string | null;
   taxPercent?: number;

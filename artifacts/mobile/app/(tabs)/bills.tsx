@@ -46,7 +46,6 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 interface GuestBillItem extends GuestBillRef {
   settled?: boolean;
   currency?: string | null;
-  restaurantName?: string | null;
   users?: { id: number; name: string; color: string }[];
   isOwner?: boolean;
 }
@@ -257,7 +256,6 @@ export default function BillsScreen() {
           const card = (
             <BillCard
               title={item.title}
-              restaurantName={item.restaurantName ?? null}
               date={item.date}
               currency={item.currency ?? null}
               joinCode={item.joinCode}

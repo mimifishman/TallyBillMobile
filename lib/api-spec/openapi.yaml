@@ -783,9 +783,6 @@ components:
           nullable: true
         title:
           type: string
-        restaurantName:
-          type: string
-          nullable: true
         date:
           type: string
         currency:
@@ -865,9 +862,6 @@ components:
       properties:
         title:
           type: string
-        restaurantName:
-          type: string
-          nullable: true
         date:
           type: string
         currency:
@@ -888,9 +882,6 @@ components:
       properties:
         title:
           type: string
-        restaurantName:
-          type: string
-          nullable: true
         date:
           type: string
         currency:
@@ -907,9 +898,6 @@ components:
         title:
           type: string
           minLength: 1
-        restaurantName:
-          type: string
-          nullable: true
         date:
           type: string
         currency:

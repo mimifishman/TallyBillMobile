@@ -491,16 +491,14 @@ function HeaderEditable({
   ownerName: string;
 }) {
   const [title, setTitle] = useState<string>(bill.title);
-  const [restaurant, setRestaurant] = useState<string>(bill.restaurantName ?? "");
   const [date, setDate] = useState<string>(bill.date);
   const [currency, setCurrency] = useState<string>(bill.currency ?? "");
 
   useEffect(() => {
     setTitle(bill.title);
-    setRestaurant(bill.restaurantName ?? "");
     setDate(bill.date);
     setCurrency(bill.currency ?? "");
-  }, [bill.title, bill.restaurantName, bill.date, bill.currency]);
+  }, [bill.title, bill.date, bill.currency]);
 
   return (
     <div className="space-y-1.5">
@@ -511,17 +509,6 @@ function HeaderEditable({
           if (title.trim() && title !== bill.title) onSave({ title: title.trim() });
         }}
         className="w-full text-xl font-bold text-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1"
-      />
-      <input
-        value={restaurant}
-        onChange={(e) => setRestaurant(e.target.value)}
-        onBlur={() => {
-          const v = restaurant.trim();
-          const cur = bill.restaurantName ?? "";
-          if (v !== cur) onSave({ restaurantName: v || null });
-        }}
-        placeholder="Restaurant or place"
-        className="w-full text-sm text-muted-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1"
       />
       <p className="text-xs text-muted-foreground px-1 -mx-1">Created by {ownerName}</p>
       <div className="flex gap-2 pt-1">

@@ -57,7 +57,6 @@ export interface Bill {
   id: number;
   ownerUserId?: number | null;
   title: string;
-  restaurantName?: string | null;
   date: string;
   currency?: string | null;
   taxPercent: number;
@@ -108,7 +107,6 @@ export interface BillDetail {
 
 export interface CreateBillRequest {
   title: string;
-  restaurantName?: string | null;
   date: string;
   currency?: string | null;
   taxPercent: number;
@@ -117,7 +115,6 @@ export interface CreateBillRequest {
 
 export interface UpdateBillRequest {
   title?: string;
-  restaurantName?: string | null;
   date?: string;
   currency?: string | null;
   taxPercent?: number;
@@ -127,7 +124,6 @@ export interface UpdateBillRequest {
 export interface PatchBillRequest {
   /** @minLength 1 */
   title?: string;
-  restaurantName?: string | null;
   date?: string;
   currency?: string | null;
   taxPercent?: number;
