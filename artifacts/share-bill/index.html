@@ -8,6 +8,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!--
+      iOS Smart App Banner — shown in Safari when the app is installed (or to
+      prompt download when it is not).  Replace APP_STORE_ID with the numeric
+      App Store ID once the app is published (e.g. "app-id=1234567890").
+      The "app-argument" passes the current URL so iOS opens the correct bill.
+      See: https://developer.apple.com/documentation/webkit/promoting_apps_with_smart_app_banners
+    -->
+    <meta name="apple-itunes-app" content="app-id=PLACEHOLDER_APP_STORE_ID, app-argument=https://tallybill.app/b/">
   </head>
   <body>
     <div id="root"></div>

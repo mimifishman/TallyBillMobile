@@ -15,9 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
+      "bundleIdentifier": "com.tallybill.mobile",
       "associatedDomains": ["applinks:tallybill.app"]
     },
     "android": {
+      "package": "com.tallybill.mobile",
       "intentFilters": [
         {
           "action": "VIEW",
