@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { billsTable } from "./bills";
 
-export const billMembersTable = pgTable("bill_members", {
+export const billMembersTable = pgTable("bill_users", {
   id: serial("id").primaryKey(),
   billId: integer("bill_id").notNull().references(() => billsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
