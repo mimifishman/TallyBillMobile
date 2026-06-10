@@ -71,6 +71,10 @@ export const GetBillsResponseItem = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
   settled: zod
     .boolean()
     .optional()
@@ -126,6 +130,10 @@ export const JoinBillResponse = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
   settled: zod
     .boolean()
     .optional()
@@ -169,6 +177,10 @@ export const GetBillByCodeResponse = zod.object({
     tipPercent: zod.number(),
     joinCode: zod.string(),
     createdAt: zod.coerce.date(),
+    receiptImagePath: zod
+      .string()
+      .nullish()
+      .describe("Object storage path of the scanned receipt image"),
     settled: zod
       .boolean()
       .optional()
@@ -200,6 +212,7 @@ export const GetBillByCodeResponse = zod.object({
       quantity: zod.number(),
       unitPrice: zod.number(),
       total: zod.number(),
+      position: zod.number().nullish(),
       assignedUserIds: zod.array(zod.number()),
       createdAt: zod.coerce.date(),
     }),
@@ -236,6 +249,10 @@ export const GetBillResponse = zod.object({
     tipPercent: zod.number(),
     joinCode: zod.string(),
     createdAt: zod.coerce.date(),
+    receiptImagePath: zod
+      .string()
+      .nullish()
+      .describe("Object storage path of the scanned receipt image"),
     settled: zod
       .boolean()
       .optional()
@@ -267,6 +284,7 @@ export const GetBillResponse = zod.object({
       quantity: zod.number(),
       unitPrice: zod.number(),
       total: zod.number(),
+      position: zod.number().nullish(),
       assignedUserIds: zod.array(zod.number()),
       createdAt: zod.coerce.date(),
     }),
@@ -311,6 +329,10 @@ export const UpdateBillResponse = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
   settled: zod
     .boolean()
     .optional()
@@ -349,6 +371,10 @@ export const PatchBillBody = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number().optional(),
   tipPercent: zod.number().optional(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
 });
 
 export const PatchBillResponse = zod.object({
@@ -362,6 +388,10 @@ export const PatchBillResponse = zod.object({
   tipPercent: zod.number(),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
   settled: zod
     .boolean()
     .optional()
@@ -407,6 +437,7 @@ export const GetBillLinesResponseItem = zod.object({
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
+  position: zod.number().nullish(),
   assignedUserIds: zod.array(zod.number()),
   createdAt: zod.coerce.date(),
 });
@@ -424,6 +455,7 @@ export const CreateBillLineBody = zod.object({
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
+  afterLineId: zod.number().nullish(),
 });
 
 /**
@@ -440,6 +472,7 @@ export const BulkCreateBillLinesBody = zod.object({
       quantity: zod.number(),
       unitPrice: zod.number(),
       total: zod.number(),
+      afterLineId: zod.number().nullish(),
     }),
   ),
 });
@@ -457,6 +490,7 @@ export const UpdateBillLineBody = zod.object({
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
+  afterLineId: zod.number().nullish(),
 });
 
 export const UpdateBillLineResponse = zod.object({
@@ -466,6 +500,7 @@ export const UpdateBillLineResponse = zod.object({
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
+  position: zod.number().nullish(),
   assignedUserIds: zod.array(zod.number()),
   createdAt: zod.coerce.date(),
 });

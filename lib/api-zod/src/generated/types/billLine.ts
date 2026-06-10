@@ -13,6 +13,7 @@ export interface BillLine {
   quantity: number;
   unitPrice: number;
   total: number;
+  position?: number | null;
   assignedUserIds: number[];
   createdAt: Date;
 }

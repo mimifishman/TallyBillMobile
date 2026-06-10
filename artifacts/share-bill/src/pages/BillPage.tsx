@@ -158,6 +158,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemTotal, setNewItemTotal] = useState("");
+  const [newItemQty, setNewItemQty] = useState("1");
 
   const [splitLineId, setSplitLineId] = useState<number | null>(null);
   const [splitQtyInput, setSplitQtyInput] = useState("");
@@ -186,12 +187,15 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     const desc = newItemDesc.trim();
     if (!desc) return;
     const total = parseFloat(newItemTotal) || 0;
+    const quantity = Math.max(1, parseFloat(newItemQty) || 1);
+    const unitPrice = quantity > 0 ? total / quantity : total;
     addLine.mutate({
       billId,
-      data: { description: desc, quantity: 1, unitPrice: total, total },
+      data: { description: desc, quantity, unitPrice, total },
     });
     setNewItemDesc("");
     setNewItemTotal("");
+    setNewItemQty("1");
     setShowAddItem(false);
   };
 
@@ -235,6 +239,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         quantity: splitQty,
         unitPrice: lineUnitPrice,
         total: splitTotal,
+        afterLineId: splitLineId,
       },
     });
   };
@@ -408,16 +413,34 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             autoFocus
             value={newItemDesc}
             onChange={(e) => setNewItemDesc(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
             placeholder="Item description"
             className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
           />
-          <input
-            value={newItemTotal}
-            onChange={(e) => setNewItemTotal(e.target.value)}
-            placeholder="Amount (e.g. 12.50)"
-            inputMode="decimal"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
-          />
+          <div className="flex gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground font-medium">Qty</label>
+              <input
+                value={newItemQty}
+                onChange={(e) => setNewItemQty(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                placeholder="1"
+                inputMode="decimal"
+                className="w-16 border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary text-center"
+              />
+            </div>
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-xs text-muted-foreground font-medium">Total amount</label>
+              <input
+                value={newItemTotal}
+                onChange={(e) => setNewItemTotal(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                placeholder="e.g. 12.50"
+                inputMode="decimal"
+                className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
           <ModalButtons
             onCancel={() => setShowAddItem(false)}
             onConfirm={handleAddItem}
@@ -666,39 +689,53 @@ function LineRow({
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="flex-1 text-left"
+            className="flex-1 min-w-0 text-left"
           >
             <div className="flex items-baseline justify-between gap-2">
-              <span className="font-medium text-foreground">{line.description}</span>
-              <span className="font-semibold text-foreground tabular-nums">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="inline-flex items-center bg-muted text-muted-foreground text-[11px] font-semibold rounded px-1.5 py-0.5 shrink-0">
+                  ×{lineQty}
+                </span>
+                <span className="font-medium text-foreground truncate">{line.description}</span>
+              </div>
+              <span className="font-semibold text-foreground tabular-nums shrink-0">
                 {formatMoney(num(line.total), currency)}
+                {lineQty > 1 && (
+                  <span className="text-xs font-normal text-muted-foreground ml-1">
+                    ({formatMoney(num(line.unitPrice), currency)} each)
+                  </span>
+                )}
               </span>
             </div>
-            {lineQty !== 1 && (
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {lineQty} × {formatMoney(num(line.unitPrice), currency)}
-              </div>
-            )}
           </button>
         )}
         {!editing && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {lineQty > 1 && (
               <button
                 onClick={onSplit}
-                className="text-xs font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition"
+                className="flex items-center gap-1 text-xs font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition"
                 title="Split into two lines"
               >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
                 Split
               </button>
             )}
             <button
+              onClick={() => setEditing(true)}
+              className="text-muted-foreground hover:text-foreground p-1.5 rounded transition"
+              title="Edit item"
+              aria-label="Edit item"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button
               onClick={onDelete}
-              className="text-muted-foreground hover:text-destructive p-1 -m-1 text-sm"
+              className="text-muted-foreground hover:text-destructive p-1.5 rounded transition"
               title="Delete"
               aria-label="Delete item"
             >
-              ✕
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
         )}
@@ -765,36 +802,21 @@ function PersonTotalRow({
   onChange: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [editingTip, setEditingTip] = useState(false);
+  const [tipModalOpen, setTipModalOpen] = useState(false);
   const [tipVal, setTipVal] = useState(String(person.tipPercent));
-  const saveInFlightRef = useRef(false);
-
-  useEffect(() => {
-    if (!editingTip) setTipVal(String(person.tipPercent));
-  }, [person.tipPercent, editingTip]);
 
   const updateUser = useUpdateBillUser({
     mutation: {
       onSuccess: () => {
-        setEditingTip(false);
-        saveInFlightRef.current = false;
+        setTipModalOpen(false);
         onChange();
-      },
-      onError: () => {
-        saveInFlightRef.current = false;
       },
     },
   });
 
   const saveTip = () => {
-    if (saveInFlightRef.current) return;
     const pct = parseFloat(tipVal);
-    if (isNaN(pct) || pct < 0) {
-      setTipVal(String(person.tipPercent));
-      setEditingTip(false);
-      return;
-    }
-    saveInFlightRef.current = true;
+    if (isNaN(pct) || pct < 0) return;
     updateUser.mutate({
       billId,
       userId: person.billUserId,
@@ -810,6 +832,11 @@ function PersonTotalRow({
     });
   };
 
+  const openTipModal = () => {
+    setTipVal(String(person.tipPercent));
+    setTipModalOpen(true);
+  };
+
   const initials = person.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -822,98 +849,122 @@ function PersonTotalRow({
   const hasItems = person.items.length > 0;
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="p-3 flex items-center gap-3">
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
-          style={{ backgroundColor: person.color }}
-        >
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="font-medium text-foreground truncate">{person.name}</span>
-            <span className="text-base font-bold text-primary tabular-nums">
-              {fmt(person.total)}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground tabular-nums mt-0.5 flex items-center gap-1 flex-wrap">
-            <span>{fmt(person.subtotal)} items</span>
-            {person.taxShare > 0 && <><span>·</span><span>{fmt(person.taxShare)} tax</span></>}
-            <span>·</span>
-            {editingTip ? (
-              <span className="flex items-center gap-1">
-                <input
-                  autoFocus
-                  value={tipVal}
-                  onChange={(e) => setTipVal(e.target.value)}
-                  onBlur={saveTip}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.currentTarget.blur(); }
-                    if (e.key === "Escape") { saveInFlightRef.current = true; setEditingTip(false); setTipVal(String(person.tipPercent)); }
-                  }}
-                  inputMode="decimal"
-                  className="w-10 text-center border border-primary rounded px-1 py-0 text-xs focus:outline-none"
-                />
-                <span>% tip</span>
-              </span>
-            ) : (
-              <button
-                onClick={() => { setEditingTip(true); setTipVal(String(person.tipPercent)); }}
-                className={`underline decoration-dotted hover:text-foreground transition ${person.tipIsCustom ? "text-primary font-semibold" : ""}`}
-                title="Click to set custom tip %"
-              >
-                {fmt(person.tipAmount)} tip ({fmtPct(person.tipPercent)}%{person.tipIsCustom ? " custom" : ""})
-              </button>
-            )}
-            {person.tipIsCustom && !editingTip && (
-              <button
-                onClick={resetTip}
-                className="text-muted-foreground hover:text-foreground transition"
-                title="Reset to bill default tip"
-              >
-                ↺
-              </button>
-            )}
-          </div>
-        </div>
-        {hasItems && (
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-muted-foreground hover:text-foreground transition text-sm px-1"
-            aria-label={expanded ? "Collapse" : "Expand"}
+    <>
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-3 flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
+            style={{ backgroundColor: person.color }}
           >
-            {expanded ? "▲" : "▼"}
-          </button>
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-medium text-foreground truncate">{person.name}</span>
+              <span className="text-base font-bold text-primary tabular-nums">
+                {fmt(person.total)}
+              </span>
+            </div>
+          </div>
+          {hasItems && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-muted-foreground hover:text-foreground transition text-sm px-1 shrink-0"
+              aria-label={expanded ? "Collapse" : "Expand"}
+            >
+              {expanded ? "▲" : "▼"}
+            </button>
+          )}
+        </div>
+
+        {hasItems && expanded && (
+          <div className="border-t border-border px-3 py-2 space-y-2">
+            {person.items.map((item) => {
+              const splitLabel =
+                item.splitWithNames.length === 0
+                  ? "not split"
+                  : `split with ${item.splitWithNames.join(", ")}`;
+              return (
+                <div key={item.billLineId} className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-foreground font-medium truncate">
+                      {item.description}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {fmt(item.lineTotal)} · {splitLabel}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
+                    {fmt(item.share)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         )}
+
+        <div className="border-t border-border px-3 py-2.5 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Items</span>
+            <span className="text-xs font-semibold text-foreground tabular-nums">{fmt(person.subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Tax share</span>
+            <span className="text-xs font-semibold text-foreground tabular-nums">{fmt(person.taxShare)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              Tip ({fmtPct(person.tipPercent)}%)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xs font-semibold tabular-nums ${person.tipIsCustom ? "text-primary" : "text-foreground"}`}>
+                {fmt(person.tipAmount)}
+              </span>
+              <button
+                onClick={openTipModal}
+                className="text-muted-foreground hover:text-foreground transition p-0.5 rounded"
+                title="Set custom tip %"
+                aria-label="Edit tip percentage"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              {person.tipIsCustom && (
+                <button
+                  onClick={resetTip}
+                  className="text-muted-foreground hover:text-foreground transition p-0.5 rounded"
+                  title="Reset to bill default tip"
+                  aria-label="Reset tip to default"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.8"/></svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {hasItems && expanded && (
-        <div className="border-t border-border px-3 py-2 space-y-2">
-          {person.items.map((item) => {
-            const splitLabel =
-              item.splitWithNames.length === 0
-                ? "not split"
-                : `split with ${item.splitWithNames.join(", ")}`;
-            return (
-              <div key={item.billLineId} className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-foreground font-medium truncate">
-                    {item.description}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {fmt(item.lineTotal)} · {splitLabel}
-                  </div>
-                </div>
-                <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
-                  {fmt(item.share)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      {tipModalOpen && (
+        <Modal title="Custom Tip %" onClose={() => setTipModalOpen(false)}>
+          <p className="text-sm text-muted-foreground">
+            Enter a tip percentage for {person.name} (e.g. 20 for 20%). Reset to restore the bill default.
+          </p>
+          <input
+            autoFocus
+            value={tipVal}
+            onChange={(e) => setTipVal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveTip()}
+            inputMode="decimal"
+            placeholder="15"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base text-center focus:outline-none focus:border-primary"
+          />
+          <ModalButtons
+            onCancel={() => setTipModalOpen(false)}
+            onConfirm={saveTip}
+            confirmLabel="Set Tip %"
+          />
+        </Modal>
       )}
-    </div>
+    </>
   );
 }
 

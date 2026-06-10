@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { billLinesTable, billLineMembersTable, billMembersTable } from "@workspace/db";
-import { eq, and, inArray, asc } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyBillChanged } from "../lib/sseManager.js";
 
 const router = Router({ mergeParams: true });
@@ -11,7 +11,9 @@ function parseBillId(req: { params: Record<string, unknown> }): number {
 }
 
 async function getBillLinesWithAssignments(billId: number) {
-  const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId)).orderBy(asc(billLinesTable.id));
+  const lines = await db.select().from(billLinesTable)
+    .where(eq(billLinesTable.billId, billId))
+    .orderBy(sql`COALESCE(${billLinesTable.position}, ${billLinesTable.id}) ASC`);
   const lineIds = lines.map((l) => l.id);
   const assignments = lineIds.length > 0
     ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, lineIds))
@@ -22,6 +24,31 @@ async function getBillLinesWithAssignments(billId: number) {
   }));
 }
 
+async function computePosition(billId: number, afterLineId?: number | null): Promise<number> {
+  if (afterLineId != null) {
+    const [afterLine] = await db.select({ pos: sql<number>`COALESCE(${billLinesTable.position}, ${billLinesTable.id}::float)` })
+      .from(billLinesTable)
+      .where(and(eq(billLinesTable.id, afterLineId), eq(billLinesTable.billId, billId)))
+      .limit(1);
+    if (afterLine) {
+      const afterPos = afterLine.pos;
+      const [nextLine] = await db.select({ pos: sql<number>`COALESCE(${billLinesTable.position}, ${billLinesTable.id}::float)` })
+        .from(billLinesTable)
+        .where(and(
+          eq(billLinesTable.billId, billId),
+          sql`COALESCE(${billLinesTable.position}, ${billLinesTable.id}::float) > ${afterPos}`,
+        ))
+        .orderBy(sql`COALESCE(${billLinesTable.position}, ${billLinesTable.id}::float) ASC`)
+        .limit(1);
+      return nextLine ? (afterPos + nextLine.pos) / 2 : afterPos + 1;
+    }
+  }
+  const [row] = await db.select({ m: sql<number>`COALESCE(MAX(COALESCE(${billLinesTable.position}, ${billLinesTable.id}::float)), 0)` })
+    .from(billLinesTable)
+    .where(eq(billLinesTable.billId, billId));
+  return (row?.m ?? 0) + 1;
+}
+
 router.get("/", async (req, res) => {
   const billId = parseBillId(req);
   const lines = await getBillLinesWithAssignments(billId);
@@ -30,17 +57,19 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const billId = parseBillId(req);
-  const { description, quantity, unitPrice, total } = req.body;
+  const { description, quantity, unitPrice, total, afterLineId } = req.body;
   if (!description) {
     res.status(400).json({ error: "description is required" });
     return;
   }
+  const position = await computePosition(billId, afterLineId ?? null);
   const [line] = await db.insert(billLinesTable).values({
     billId,
     description,
     quantity: String(quantity ?? 1),
     unitPrice: String(unitPrice ?? 0),
     total: String(total ?? 0),
+    position,
   }).returning();
   notifyBillChanged(billId);
   res.status(201).json({ ...line, assignedUserIds: [] });

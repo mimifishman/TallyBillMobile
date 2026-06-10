@@ -529,6 +529,7 @@ export default function BillDetailScreen() {
         quantity: splitQty,
         unitPrice: lineUnitPrice,
         total: splitTotal,
+        afterLineId: splitLineId,
       },
     });
   };

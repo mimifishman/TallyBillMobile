@@ -64,6 +64,8 @@ export interface Bill {
   tipPercent: number;
   joinCode: string;
   createdAt: string;
+  /** Object storage path of the scanned receipt image */
+  receiptImagePath?: string | null;
   /** True when every line item on the bill has been assigned to at least one person */
   settled?: boolean;
   /** True when the authenticated user is the owner of this bill */
@@ -79,6 +81,7 @@ export interface BillLine {
   quantity: number;
   unitPrice: number;
   total: number;
+  position?: number | null;
   assignedUserIds: number[];
   createdAt: string;
 }
@@ -127,6 +130,8 @@ export interface PatchBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+  /** Object storage path of the scanned receipt image */
+  receiptImagePath?: string | null;
 }
 
 export interface JoinBillRequest {
@@ -149,6 +154,7 @@ export interface CreateBillLineRequest {
   quantity: number;
   unitPrice: number;
   total: number;
+  afterLineId?: number | null;
 }
 
 export interface PersonTotalItem {
@@ -175,12 +181,6 @@ export interface PersonTotal {
   items: PersonTotalItem[];
 }
 
-export interface UnsplitLine {
-  id: number;
-  description: string;
-  total: number;
-}
-
 export interface BillTotals {
   billSubtotal: number;
   taxPercent: number;
@@ -192,8 +192,6 @@ export interface BillTotals {
   perPerson: PersonTotal[];
   /** True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person */
   settled: boolean;
-  /** Line items that have not been assigned to anyone */
-  unsplitLines: UnsplitLine[];
 }
 
 export interface OcrLineItem {

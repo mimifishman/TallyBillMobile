@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, numeric, timestamp, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { billsTable } from "./bills";
@@ -10,6 +10,7 @@ export const billLinesTable = pgTable("bill_lines", {
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull().default("1"),
   unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull().default("0"),
+  position: doublePrecision("position"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

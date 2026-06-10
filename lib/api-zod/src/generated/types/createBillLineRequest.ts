@@ -11,4 +11,5 @@ export interface CreateBillLineRequest {
   quantity: number;
   unitPrice: number;
   total: number;
+  afterLineId?: number | null;
 }

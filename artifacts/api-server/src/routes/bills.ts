@@ -8,7 +8,7 @@ import {
   billLineMembersTable,
   usersTable,
 } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, asc, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth.js";
 import { requireBillAccess, type BillAccessRequest } from "../middlewares/billAccess.js";
 import { generateJoinCode } from "../lib/auth.js";
@@ -17,7 +17,7 @@ import { subscribe, unsubscribe, notifyBillChanged } from "../lib/sseManager.js"
 const router = Router();
 
 async function getBillLines(billId: number) {
-  const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId));
+  const lines = await db.select().from(billLinesTable).where(eq(billLinesTable.billId, billId)).orderBy(sql`COALESCE(${billLinesTable.position}, ${billLinesTable.id}::float) ASC`);
   const lineIds = lines.map((l) => l.id);
   const assignments = lineIds.length > 0
     ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, lineIds))

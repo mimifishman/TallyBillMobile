@@ -968,6 +968,9 @@ components:
           type: number
         total:
           type: number
+        position:
+          type: number
+          nullable: true
         assignedUserIds:
           type: array
           items:
@@ -996,6 +999,9 @@ components:
           type: number
         total:
           type: number
+        afterLineId:
+          type: integer
+          nullable: true
       required:
         - description
         - quantity
