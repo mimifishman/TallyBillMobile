@@ -297,7 +297,7 @@ export default function ScanScreen() {
           </View>
           <Text style={[styles.pickTitle, { color: colors.foreground }]}>Scan a Receipt</Text>
           <Text style={[styles.pickSub, { color: colors.mutedForeground }]}>
-            Take a photo or choose from your library. Works with receipts in any language.
+            Point your camera at the line items section of your receipt. Works with English and Hebrew receipts.
           </Text>
           <TouchableOpacity
             style={[styles.pickBtn, { backgroundColor: colors.primary }]}
