@@ -1,12 +1,13 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { useOcrReceipt, customFetch } from "@workspace/api-client-react";
+import { useOcrReceipt, useOcrTranslate, customFetch } from "@workspace/api-client-react";
 import { uploadFileToStorage } from "../utils/objectStorageExpo";
 
 export type ScanStatus = "idle" | "scanning" | "ready" | "error";
 
 export interface ParsedItem {
   description: string;
+  translatedDescription?: string;
   quantity: number;
   unitPrice: number;
   total: number;
@@ -20,12 +21,15 @@ interface ScanState {
   items: ParsedItem[];
   errorMessage: string | null;
   receiptImagePath: string | null;
+  translating: boolean;
+  translateError: string | null;
 }
 
 interface ScanContextValue extends ScanState {
   startScan: (billId: number, uri: string, imageWidth: number) => void;
   reset: () => void;
   setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>>;
+  translateItems: (targetLanguage: string) => Promise<void>;
 }
 
 const MAX_WIDTH = 1800;
@@ -74,10 +78,13 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     items: [],
     errorMessage: null,
     receiptImagePath: null,
+    translating: false,
+    translateError: null,
   });
 
   const generationRef = useRef(0);
   const ocrMutation = useOcrReceipt();
+  const translateMutation = useOcrTranslate();
 
   const startScan = useCallback(
     (billId: number, uri: string, imageWidth: number) => {
@@ -91,6 +98,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         items: [],
         errorMessage: null,
         receiptImagePath: null,
+        translating: false,
+        translateError: null,
       });
 
       preprocessImage(uri, imageWidth)
@@ -147,7 +156,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => {
     generationRef.current += 1;
-    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null });
+    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, translating: false, translateError: null });
   }, []);
 
   const setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>> = useCallback(
@@ -160,8 +169,46 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const translateItems = useCallback(
+    async (targetLanguage: string) => {
+      setState((prev) => ({ ...prev, translating: true, translateError: null }));
+      try {
+        const descriptions = state.items.map((item) => item.description);
+        await new Promise<void>((resolve, reject) => {
+          translateMutation.mutate(
+            { data: { descriptions, targetLanguage } },
+            {
+              onSuccess: (data) => {
+                setState((prev) => ({
+                  ...prev,
+                  translating: false,
+                  translateError: null,
+                  items: prev.items.map((item, i) => ({
+                    ...item,
+                    translatedDescription: data.translations[i] ?? item.description,
+                  })),
+                }));
+                resolve();
+              },
+              onError: (err: Error) => {
+                setState((prev) => ({
+                  ...prev,
+                  translating: false,
+                  translateError: err.message || "Translation failed. Original names kept.",
+                }));
+                reject(err);
+              },
+            },
+          );
+        });
+      } catch {
+      }
+    },
+    [state.items, translateMutation],
+  );
+
   return (
-    <ScanContext.Provider value={{ ...state, startScan, reset, setItems }}>
+    <ScanContext.Provider value={{ ...state, startScan, reset, setItems, translateItems }}>
       {children}
     </ScanContext.Provider>
   );

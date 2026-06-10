@@ -23,6 +23,7 @@ interface BillMember {
 interface LineItemRowProps {
   id: number;
   description: string;
+  originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
   total: number;
@@ -39,6 +40,7 @@ interface LineItemRowProps {
 export function LineItemRow({
   id,
   description,
+  originalDescription,
   quantity,
   unitPrice,
   total,
@@ -141,6 +143,11 @@ export function LineItemRow({
                 {description}
               </Text>
             </View>
+            {!!originalDescription && (
+              <Text style={[styles.originalDescription, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {originalDescription}
+              </Text>
+            )}
             <Text style={[styles.itemTotal, { color: colors.mutedForeground }]}>
               {currencySymbol ? `${currencySymbol} ` : ""}{Number(total).toFixed(2)}
               {quantity > 1 ? (
@@ -244,6 +251,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     lineHeight: 20,
     flexShrink: 1,
+  },
+  originalDescription: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 15,
+    paddingLeft: 28,
   },
   itemTotal: {
     fontSize: 13,

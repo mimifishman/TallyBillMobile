@@ -35,6 +35,8 @@ import type {
   LoginRequest,
   OcrReceiptBody,
   OcrResult,
+  OcrTranslateRequest,
+  OcrTranslateResponse,
   PatchBillRequest,
   RegisterRequest,
   SuccessResponse,
@@ -2088,6 +2090,92 @@ export const useOcrReceipt = <
   TContext
 > => {
   return useMutation(getOcrReceiptMutationOptions(options));
+};
+
+/**
+ * @summary Translate scanned receipt item descriptions into a target language
+ */
+export const getOcrTranslateUrl = () => {
+  return `/api/ocr/translate`;
+};
+
+export const ocrTranslate = async (
+  ocrTranslateRequest: OcrTranslateRequest,
+  options?: RequestInit,
+): Promise<OcrTranslateResponse> => {
+  return customFetch<OcrTranslateResponse>(getOcrTranslateUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ocrTranslateRequest),
+  });
+};
+
+export const getOcrTranslateMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ocrTranslate>>,
+    TError,
+    { data: BodyType<OcrTranslateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ocrTranslate>>,
+  TError,
+  { data: BodyType<OcrTranslateRequest> },
+  TContext
+> => {
+  const mutationKey = ["ocrTranslate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ocrTranslate>>,
+    { data: BodyType<OcrTranslateRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ocrTranslate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type OcrTranslateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ocrTranslate>>
+>;
+export type OcrTranslateMutationBody = BodyType<OcrTranslateRequest>;
+export type OcrTranslateMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Translate scanned receipt item descriptions into a target language
+ */
+export const useOcrTranslate = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ocrTranslate>>,
+    TError,
+    { data: BodyType<OcrTranslateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ocrTranslate>>,
+  TError,
+  { data: BodyType<OcrTranslateRequest> },
+  TContext
+> => {
+  return useMutation(getOcrTranslateMutationOptions(options));
 };
 
 /**

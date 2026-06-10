@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PersonTotal } from "./personTotal";
+import type { UnsplitLine } from "./unsplitLine";
 
 export interface BillTotals {
   billSubtotal: number;
@@ -18,4 +19,6 @@ export interface BillTotals {
   perPerson: PersonTotal[];
   /** True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person */
   settled: boolean;
+  /** Line items that have not been assigned to anyone */
+  unsplitLines: UnsplitLine[];
 }

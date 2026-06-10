@@ -16,11 +16,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { useBulkCreateBillLines } from "@workspace/api-client-react";
 import { useScan } from "@/context/ScanContext";
+import { LanguagePicker } from "@/components/LanguagePicker";
 
 const THUMBNAIL_HEIGHT = 300;
+const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 
 const SCAN_MESSAGES = [
   "Preparing image…",
@@ -122,6 +125,17 @@ export default function ScanScreen() {
   const scan = useScan();
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
+  const [showOriginals, setShowOriginals] = useState(true);
+
+  const hasTranslations = scan.items.some((i) => i.translatedDescription != null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PREF_LANGUAGE_KEY).then((val) => {
+      if (val) setPreferredLanguage(val);
+    });
+  }, []);
 
   const isScanning = scan.status === "scanning";
   const isReady = scan.status === "ready";
@@ -177,7 +191,15 @@ export default function ScanScreen() {
     }
     bulkCreateMutation.mutate({
       billId,
-      data: { lines: selected.map(({ description, quantity, unitPrice, total }) => ({ description, quantity, unitPrice, total })) },
+      data: {
+        lines: selected.map(({ description, translatedDescription, quantity, unitPrice, total }) => ({
+          description: translatedDescription ?? description,
+          originalDescription: translatedDescription ? description : null,
+          quantity,
+          unitPrice,
+          total,
+        })),
+      },
     });
   };
 
@@ -188,6 +210,21 @@ export default function ScanScreen() {
 
   const handleMinimize = () => {
     router.back();
+  };
+
+  const handleTranslatePress = () => {
+    setShowLanguagePicker(true);
+  };
+
+  const handleLanguageConfirm = async (language: string) => {
+    setShowLanguagePicker(false);
+    setPreferredLanguage(language);
+    await AsyncStorage.setItem(PREF_LANGUAGE_KEY, language);
+    try {
+      await scan.translateItems(language);
+      setShowOriginals(true);
+    } catch {
+    }
   };
 
   return (
@@ -205,19 +242,42 @@ export default function ScanScreen() {
           </TouchableOpacity>
         )}
         {step === "review" && !isScanning && (
-          <TouchableOpacity
-            onPress={handleConfirm}
-            disabled={bulkCreateMutation.isPending}
-            style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
-          >
-            {bulkCreateMutation.isPending ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.confirmBtnText}>Add {scan.items.filter(i => i.selected).length} Items</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleTranslatePress}
+              disabled={scan.translating}
+              style={[styles.translateBtn, { borderColor: colors.border }]}
+            >
+              {scan.translating ? (
+                <ActivityIndicator color={colors.foreground} size="small" />
+              ) : (
+                <>
+                  <Feather name="globe" size={14} color={colors.foreground} />
+                  <Text style={[styles.translateBtnText, { color: colors.foreground }]}>Translate</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleConfirm}
+              disabled={bulkCreateMutation.isPending}
+              style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
+            >
+              {bulkCreateMutation.isPending ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.confirmBtnText}>Add {scan.items.filter(i => i.selected).length} Items</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </View>
+
+      {scan.translateError ? (
+        <View style={[styles.errorBanner, { backgroundColor: colors.destructive + "18", borderColor: colors.destructive + "40" }]}>
+          <Feather name="alert-circle" size={14} color={colors.destructive} />
+          <Text style={[styles.errorBannerText, { color: colors.destructive }]}>{scan.translateError}</Text>
+        </View>
+      ) : null}
 
       {isScanning && scan.capturedUri ? (
         <View style={styles.scanContainer}>
@@ -237,7 +297,7 @@ export default function ScanScreen() {
           </View>
           <Text style={[styles.pickTitle, { color: colors.foreground }]}>Scan a Receipt</Text>
           <Text style={[styles.pickSub, { color: colors.mutedForeground }]}>
-            Take a photo or choose from your library. Works with English and Hebrew receipts.
+            Take a photo or choose from your library. Works with receipts in any language.
           </Text>
           <TouchableOpacity
             style={[styles.pickBtn, { backgroundColor: colors.primary }]}
@@ -260,12 +320,27 @@ export default function ScanScreen() {
           keyExtractor={(_, i) => String(i)}
           contentContainerStyle={[styles.reviewList, { paddingBottom: insets.bottom + 20 }]}
           ListHeaderComponent={
-            <Text style={[styles.reviewHint, { color: colors.mutedForeground }]}>
-              Tap items to deselect. All selected items will be added to the bill.
-            </Text>
+            <View style={styles.reviewHeader}>
+              <Text style={[styles.reviewHint, { color: colors.mutedForeground }]}>
+                Tap items to deselect. All selected items will be added to the bill.
+              </Text>
+              {hasTranslations && (
+                <TouchableOpacity
+                  onPress={() => setShowOriginals((v) => !v)}
+                  style={[styles.toggleOriginals, { borderColor: colors.border }]}
+                >
+                  <Feather name={showOriginals ? "eye-off" : "eye"} size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.toggleOriginalsText, { color: colors.mutedForeground }]}>
+                    {showOriginals ? "Hide originals" : "Show originals"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           }
           renderItem={({ item, index }) => {
             const isEditing = editingIndex === index;
+            const displayName = item.translatedDescription ?? item.description;
+            const originalName = item.translatedDescription ? item.description : null;
             return (
               <View
                 style={[
@@ -298,7 +373,7 @@ export default function ScanScreen() {
                       style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
                       value={item.description}
                       onChangeText={(text) =>
-                        scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text } : it))
+                        scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text, translatedDescription: undefined } : it))
                       }
                       onBlur={() => setEditingIndex(null)}
                       autoFocus
@@ -312,9 +387,16 @@ export default function ScanScreen() {
                       activeOpacity={0.6}
                       style={styles.reviewItemNameBtn}
                     >
-                      <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
-                        {item.description}
-                      </Text>
+                      <View style={styles.reviewItemNameCol}>
+                        <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
+                          {displayName}
+                        </Text>
+                        {originalName && showOriginals && (
+                          <Text style={[styles.reviewItemOriginal, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {originalName}
+                          </Text>
+                        )}
+                      </View>
                       <Feather name="edit-2" size={11} color={colors.mutedForeground} style={styles.editIcon} />
                     </TouchableOpacity>
                   )}
@@ -334,6 +416,13 @@ export default function ScanScreen() {
           }}
         />
       )}
+
+      <LanguagePicker
+        visible={showLanguagePicker}
+        selectedLanguage={preferredLanguage}
+        onConfirm={handleLanguageConfirm}
+        onClose={() => setShowLanguagePicker(false)}
+      />
     </View>
   );
 }
@@ -351,8 +440,34 @@ const styles = StyleSheet.create({
   closeBtn: { padding: 4 },
   minimizeBtn: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  translateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    minWidth: 42,
+    justifyContent: "center",
+  },
+  translateBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   confirmBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   confirmBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  errorBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
 
   scanContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28, gap: 20 },
   thumbnailWrapper: { width: "100%", height: THUMBNAIL_HEIGHT, borderRadius: 16, overflow: "hidden" },
@@ -380,14 +495,28 @@ const styles = StyleSheet.create({
   pickBtnGhost: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, borderWidth: 1.5, paddingVertical: 14, paddingHorizontal: 32, width: "100%", justifyContent: "center" },
   pickBtnGhostText: { fontSize: 15, fontFamily: "Inter_500Medium" },
   reviewList: { paddingHorizontal: 16, paddingTop: 16, gap: 8 },
-  reviewHint: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 12, textAlign: "center" },
+  reviewHeader: { gap: 10, marginBottom: 4 },
+  reviewHint: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+  toggleOriginals: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "center",
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  toggleOriginalsText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   reviewItem: { flexDirection: "row", alignItems: "center", borderRadius: 10, borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
   checkboxHitArea: { padding: 4 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   reviewItemMiddle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 },
   quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 },
   reviewItemNameBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
-  reviewItemName: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
+  reviewItemNameCol: { flex: 1, gap: 2 },
+  reviewItemName: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  reviewItemOriginal: { fontSize: 11, fontFamily: "Inter_400Regular" },
   editIcon: { marginTop: 1 },
   reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 },
   priceHitArea: { padding: 4 },

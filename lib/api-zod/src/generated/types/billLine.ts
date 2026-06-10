@@ -10,6 +10,8 @@ export interface BillLine {
   id: number;
   billId: number;
   description: string;
+  /** The original (untranslated) item description if the item was translated from a foreign-language receipt */
+  originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
   total: number;

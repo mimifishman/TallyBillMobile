@@ -57,7 +57,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const billId = parseBillId(req);
-  const { description, quantity, unitPrice, total, afterLineId } = req.body;
+  const { description, originalDescription, quantity, unitPrice, total, afterLineId } = req.body;
   if (!description) {
     res.status(400).json({ error: "description is required" });
     return;
@@ -66,6 +66,7 @@ router.post("/", async (req, res) => {
   const [line] = await db.insert(billLinesTable).values({
     billId,
     description,
+    originalDescription: originalDescription ?? null,
     quantity: String(quantity ?? 1),
     unitPrice: String(unitPrice ?? 0),
     total: String(total ?? 0),
@@ -83,9 +84,10 @@ router.post("/bulk", async (req, res) => {
     return;
   }
   const insertedLines = await db.insert(billLinesTable).values(
-    lines.map((l: { description: string; quantity: number; unitPrice: number; total: number }) => ({
+    lines.map((l: { description: string; originalDescription?: string | null; quantity: number; unitPrice: number; total: number }) => ({
       billId,
       description: l.description,
+      originalDescription: l.originalDescription ?? null,
       quantity: String(l.quantity ?? 1),
       unitPrice: String(l.unitPrice ?? 0),
       total: String(l.total ?? 0),

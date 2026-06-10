@@ -209,6 +209,12 @@ export const GetBillByCodeResponse = zod.object({
       id: zod.number(),
       billId: zod.number(),
       description: zod.string(),
+      originalDescription: zod
+        .string()
+        .nullish()
+        .describe(
+          "The original (untranslated) item description if the item was translated from a foreign-language receipt",
+        ),
       quantity: zod.number(),
       unitPrice: zod.number(),
       total: zod.number(),
@@ -281,6 +287,12 @@ export const GetBillResponse = zod.object({
       id: zod.number(),
       billId: zod.number(),
       description: zod.string(),
+      originalDescription: zod
+        .string()
+        .nullish()
+        .describe(
+          "The original (untranslated) item description if the item was translated from a foreign-language receipt",
+        ),
       quantity: zod.number(),
       unitPrice: zod.number(),
       total: zod.number(),
@@ -434,6 +446,12 @@ export const GetBillLinesResponseItem = zod.object({
   id: zod.number(),
   billId: zod.number(),
   description: zod.string(),
+  originalDescription: zod
+    .string()
+    .nullish()
+    .describe(
+      "The original (untranslated) item description if the item was translated from a foreign-language receipt",
+    ),
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
@@ -452,6 +470,12 @@ export const CreateBillLineParams = zod.object({
 
 export const CreateBillLineBody = zod.object({
   description: zod.string(),
+  originalDescription: zod
+    .string()
+    .nullish()
+    .describe(
+      "The original (untranslated) item description if translated from a foreign-language receipt",
+    ),
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
@@ -469,6 +493,12 @@ export const BulkCreateBillLinesBody = zod.object({
   lines: zod.array(
     zod.object({
       description: zod.string(),
+      originalDescription: zod
+        .string()
+        .nullish()
+        .describe(
+          "The original (untranslated) item description if translated from a foreign-language receipt",
+        ),
       quantity: zod.number(),
       unitPrice: zod.number(),
       total: zod.number(),
@@ -487,6 +517,12 @@ export const UpdateBillLineParams = zod.object({
 
 export const UpdateBillLineBody = zod.object({
   description: zod.string(),
+  originalDescription: zod
+    .string()
+    .nullish()
+    .describe(
+      "The original (untranslated) item description if translated from a foreign-language receipt",
+    ),
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
@@ -497,6 +533,12 @@ export const UpdateBillLineResponse = zod.object({
   id: zod.number(),
   billId: zod.number(),
   description: zod.string(),
+  originalDescription: zod
+    .string()
+    .nullish()
+    .describe(
+      "The original (untranslated) item description if the item was translated from a foreign-language receipt",
+    ),
   quantity: zod.number(),
   unitPrice: zod.number(),
   total: zod.number(),
@@ -637,6 +679,15 @@ export const GetBillTotalsResponse = zod.object({
     .describe(
       "True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person",
     ),
+  unsplitLines: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        description: zod.string(),
+        total: zod.number(),
+      }),
+    )
+    .describe("Line items that have not been assigned to anyone"),
 });
 
 /**
@@ -659,6 +710,24 @@ export const OcrReceiptResponse = zod.object({
   taxAmount: zod.number().nullish(),
   tipAmount: zod.number().nullish(),
   currency: zod.string().nullish(),
+});
+
+/**
+ * @summary Translate scanned receipt item descriptions into a target language
+ */
+export const OcrTranslateBody = zod.object({
+  descriptions: zod
+    .array(zod.string())
+    .describe("Array of item description strings to translate"),
+  targetLanguage: zod
+    .string()
+    .describe('Target language name (e.g. \"French\", \"Spanish\")'),
+});
+
+export const OcrTranslateResponse = zod.object({
+  translations: zod
+    .array(zod.string())
+    .describe("Translated descriptions in the same order as the input"),
 });
 
 /**

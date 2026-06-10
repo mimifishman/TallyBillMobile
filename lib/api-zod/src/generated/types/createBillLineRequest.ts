@@ -8,6 +8,8 @@
 
 export interface CreateBillLineRequest {
   description: string;
+  /** The original (untranslated) item description if translated from a foreign-language receipt */
+  originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
   total: number;

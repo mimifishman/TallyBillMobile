@@ -18,6 +18,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
+import { LanguagePicker } from "@/components/LanguagePicker";
+
+const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 
 export default function SettingsScreen() {
   const colors = useColors();
@@ -33,6 +36,15 @@ export default function SettingsScreen() {
   const [guestNameInput, setGuestNameInput] = useState(guestName ?? "");
   const [guestNameChanged, setGuestNameChanged] = useState(false);
   const [savingGuestName, setSavingGuestName] = useState(false);
+
+  const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PREF_LANGUAGE_KEY).then((val) => {
+      if (val) setPreferredLanguage(val);
+    });
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -80,6 +92,12 @@ export default function SettingsScreen() {
     await saveGuestName(guestNameInput.trim());
     setGuestNameChanged(false);
     setSavingGuestName(false);
+  };
+
+  const handleLanguageSelect = async (language: string) => {
+    setPreferredLanguage(language);
+    setShowLanguagePicker(false);
+    await AsyncStorage.setItem(PREF_LANGUAGE_KEY, language);
   };
 
   const handleLogout = () => {
@@ -228,6 +246,28 @@ export default function SettingsScreen() {
         </View>
       )}
 
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>RECEIPT SCANNER</Text>
+        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => setShowLanguagePicker(true)}
+          >
+            <Feather name="globe" size={18} color={colors.foreground} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.menuItemText, { color: colors.foreground }]}>Preferred receipt language</Text>
+              {preferredLanguage && (
+                <Text style={[styles.menuItemSub, { color: colors.mutedForeground }]}>{preferredLanguage}</Text>
+              )}
+            </View>
+            <Text style={[styles.menuItemValue, { color: preferredLanguage ? colors.primary : colors.mutedForeground }]}>
+              {preferredLanguage ?? "Not set"}
+            </Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {user && !isGuest && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
@@ -287,6 +327,13 @@ export default function SettingsScreen() {
       )}
 
       <Text style={[styles.version, { color: colors.mutedForeground }]}>TallyBill v1.0</Text>
+
+      <LanguagePicker
+        visible={showLanguagePicker}
+        selectedLanguage={preferredLanguage}
+        onConfirm={handleLanguageSelect}
+        onClose={() => setShowLanguagePicker(false)}
+      />
     </ScrollView>
   );
 }
@@ -351,7 +398,9 @@ const styles = StyleSheet.create({
     gap: 12,
     borderBottomWidth: 1,
   },
-  menuItemText: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
+  menuItemText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  menuItemSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  menuItemValue: { fontSize: 13, fontFamily: "Inter_400Regular" },
   version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", paddingVertical: 8 },
   devBtn: {
     flexDirection: "row",

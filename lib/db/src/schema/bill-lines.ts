@@ -7,6 +7,7 @@ export const billLinesTable = pgTable("bill_lines", {
   id: serial("id").primaryKey(),
   billId: integer("bill_id").notNull().references(() => billsTable.id, { onDelete: "cascade" }),
   description: text("description").notNull(),
+  originalDescription: text("original_description"),
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull().default("1"),
   unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull().default("0"),

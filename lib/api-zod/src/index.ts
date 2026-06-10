@@ -16,10 +16,13 @@ export type {
   LoginRequest,
   OcrLineItem,
   OcrResult,
+  OcrTranslateRequest,
+  OcrTranslateResponse,
   PersonTotal,
   RegisterRequest,
   ToggleBillLineUser200,
   UpdateBillMemberRequest,
   UpdateBillRequest,
+  UnsplitLine,
   User,
 } from "./generated/types";

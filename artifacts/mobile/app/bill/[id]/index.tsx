@@ -526,6 +526,7 @@ export default function BillDetailScreen() {
       billId,
       data: {
         description: line.description,
+        originalDescription: line.originalDescription ?? null,
         quantity: splitQty,
         unitPrice: lineUnitPrice,
         total: splitTotal,
@@ -721,6 +722,7 @@ export default function BillDetailScreen() {
                 key={line.id}
                 id={line.id}
                 description={line.description}
+                originalDescription={(line as typeof line & { originalDescription?: string | null }).originalDescription}
                 quantity={parseFloat(String(line.quantity))}
                 unitPrice={parseFloat(String(line.unitPrice))}
                 total={parseFloat(String(line.total))}
@@ -962,7 +964,9 @@ export default function BillDetailScreen() {
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Split Quantity</Text>
             {splitLine && (
               <Text style={[styles.splitHint, { color: colors.mutedForeground }]}>
-                "{splitLine.description}" has ×{parseFloat(String(splitLine.quantity))} units. How many to split off into a new row?
+                "{splitLine.description}"
+                {splitLine.originalDescription ? ` (${splitLine.originalDescription})` : ""}
+                {" "}has ×{parseFloat(String(splitLine.quantity))} units. How many to split off into a new row?
               </Text>
             )}
             <TextInput

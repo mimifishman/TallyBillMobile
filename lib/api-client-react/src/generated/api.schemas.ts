@@ -78,6 +78,8 @@ export interface BillLine {
   id: number;
   billId: number;
   description: string;
+  /** The original (untranslated) item description if the item was translated from a foreign-language receipt */
+  originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
   total: number;
@@ -151,10 +153,24 @@ export interface UpdateBillMemberRequest {
 
 export interface CreateBillLineRequest {
   description: string;
+  /** The original (untranslated) item description if translated from a foreign-language receipt */
+  originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
   total: number;
   afterLineId?: number | null;
+}
+
+export interface OcrTranslateRequest {
+  /** Array of item description strings to translate */
+  descriptions: string[];
+  /** Target language name (e.g. "French", "Spanish") */
+  targetLanguage: string;
+}
+
+export interface OcrTranslateResponse {
+  /** Translated descriptions in the same order as the input */
+  translations: string[];
 }
 
 export interface PersonTotalItem {
@@ -181,6 +197,12 @@ export interface PersonTotal {
   items: PersonTotalItem[];
 }
 
+export interface UnsplitLine {
+  id: number;
+  description: string;
+  total: number;
+}
+
 export interface BillTotals {
   billSubtotal: number;
   taxPercent: number;
@@ -192,6 +214,8 @@ export interface BillTotals {
   perPerson: PersonTotal[];
   /** True when the bill has at least one person, at least one line item, and every line item is assigned to at least one person */
   settled: boolean;
+  /** Line items that have not been assigned to anyone */
+  unsplitLines: UnsplitLine[];
 }
 
 export interface OcrLineItem {
