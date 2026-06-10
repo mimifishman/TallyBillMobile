@@ -13,6 +13,7 @@ import {
   useUpdateBillLine,
   useDeleteBillLine,
   useToggleBillLineUser,
+  useUpdateBillUser,
   type Bill,
   type BillDetail,
   type BillLine,
@@ -158,6 +159,9 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemTotal, setNewItemTotal] = useState("");
 
+  const [splitLineId, setSplitLineId] = useState<number | null>(null);
+  const [splitQtyInput, setSplitQtyInput] = useState("");
+
   const subtotal = useMemo(
     () => lines.reduce((s, l) => s + num(l.total), 0),
     [lines],
@@ -190,6 +194,52 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     setNewItemTotal("");
     setShowAddItem(false);
   };
+
+  const handleConfirmSplit = () => {
+    if (splitLineId === null) return;
+    const line = lines.find((l) => l.id === splitLineId);
+    if (!line) return;
+
+    const currentQty = parseFloat(String(line.quantity));
+    const splitQty = parseFloat(splitQtyInput);
+
+    if (isNaN(splitQty) || splitQty <= 0 || splitQty >= currentQty) {
+      alert(`Enter a number between 0 and ${currentQty} (exclusive).`);
+      return;
+    }
+
+    const lineUnitPrice = parseFloat(String(line.unitPrice));
+    const lineTotal = parseFloat(String(line.total));
+    const splitTotal = Math.round(splitQty * lineUnitPrice * 100) / 100;
+    const remainderTotal = Math.round((lineTotal - splitTotal) * 100) / 100;
+    const remainderQty = currentQty - splitQty;
+
+    setSplitLineId(null);
+    setSplitQtyInput("");
+
+    updateLine.mutate({
+      billId,
+      lineId: splitLineId,
+      data: {
+        description: line.description,
+        quantity: remainderQty,
+        unitPrice: lineUnitPrice,
+        total: remainderTotal,
+      },
+    });
+
+    addLine.mutate({
+      billId,
+      data: {
+        description: line.description,
+        quantity: splitQty,
+        unitPrice: lineUnitPrice,
+        total: splitTotal,
+      },
+    });
+  };
+
+  const hasUnassigned = totals && !totals.settled;
 
   return (
     <div className="min-h-screen pb-24">
@@ -233,6 +283,16 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             actionLabel="+ Add item"
             onAction={() => setShowAddItem(true)}
           />
+
+          {hasUnassigned && (
+            <div className="mt-3 flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3">
+              <span className="text-lg leading-none">⚠️</span>
+              <span className="text-sm font-semibold">
+                Some items aren't assigned yet — totals will update as you assign them.
+              </span>
+            </div>
+          )}
+
           {lines.length === 0 ? (
             <div className="border-2 border-dashed border-border rounded-xl py-10 px-6 text-center mt-3">
               <p className="text-sm text-muted-foreground">
@@ -267,6 +327,10 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                       },
                     })
                   }
+                  onSplit={() => {
+                    setSplitLineId(line.id);
+                    setSplitQtyInput("");
+                  }}
                 />
               ))}
             </div>
@@ -284,14 +348,11 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                   key={p.billUserId}
                   person={p}
                   currency={bill.currency ?? null}
+                  billId={billId}
+                  onChange={onChange}
                 />
               ))}
             </div>
-            {!totals.settled && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Some items aren't assigned yet — totals will update as you assign them.
-              </p>
-            )}
           </section>
         )}
 
@@ -336,6 +397,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           <ModalButtons
             onCancel={() => setShowAddPerson(false)}
             onConfirm={handleAddPerson}
+            confirmLabel="Add"
           />
         </Modal>
       )}
@@ -359,9 +421,39 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           <ModalButtons
             onCancel={() => setShowAddItem(false)}
             onConfirm={handleAddItem}
+            confirmLabel="Add"
           />
         </Modal>
       )}
+
+      {splitLineId !== null && (() => {
+        const line = lines.find((l) => l.id === splitLineId);
+        const currentQty = line ? parseFloat(String(line.quantity)) : 0;
+        return (
+          <Modal title="Split item" onClose={() => setSplitLineId(null)}>
+            <p className="text-sm text-muted-foreground">
+              How many units to split off?{" "}
+              <span className="font-medium text-foreground">
+                ({currentQty} total)
+              </span>
+            </p>
+            <input
+              autoFocus
+              value={splitQtyInput}
+              onChange={(e) => setSplitQtyInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleConfirmSplit()}
+              inputMode="decimal"
+              placeholder={`e.g. 1 (max ${currentQty - 0.01})`}
+              className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
+            />
+            <ModalButtons
+              onCancel={() => setSplitLineId(null)}
+              onConfirm={handleConfirmSplit}
+              confirmLabel="Split"
+            />
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
@@ -498,6 +590,7 @@ function LineRow({
   onToggle,
   onDelete,
   onUpdate,
+  onSplit,
 }: {
   line: BillLine;
   users: BillMember[];
@@ -505,6 +598,7 @@ function LineRow({
   onToggle: (billUserId: number) => void;
   onDelete: () => void;
   onUpdate: (patch: { description: string; quantity: number; total: number }) => void;
+  onSplit: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState(line.description);
@@ -531,6 +625,8 @@ function LineRow({
     setEditing(false);
   };
 
+  const lineQty = num(line.quantity);
+
   return (
     <div className="bg-card border border-border rounded-xl p-3 space-y-2">
       <div className="flex items-start gap-2">
@@ -545,7 +641,7 @@ function LineRow({
               <input
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
-                inputMode="numeric"
+                inputMode="decimal"
                 placeholder="Qty"
                 className="w-16 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
               />
@@ -575,44 +671,79 @@ function LineRow({
                 {formatMoney(num(line.total), currency)}
               </span>
             </div>
-            {num(line.quantity) > 1 && (
+            {lineQty !== 1 && (
               <div className="text-xs text-muted-foreground mt-0.5">
-                {num(line.quantity)} × {formatMoney(num(line.unitPrice), currency)}
+                {lineQty} × {formatMoney(num(line.unitPrice), currency)}
               </div>
             )}
           </button>
         )}
         {!editing && (
-          <button
-            onClick={onDelete}
-            className="text-muted-foreground hover:text-destructive p-1 -m-1 text-sm"
-            title="Delete"
-            aria-label="Delete item"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-1">
+            {lineQty > 1 && (
+              <button
+                onClick={onSplit}
+                className="text-xs font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition"
+                title="Split into two lines"
+              >
+                Split
+              </button>
+            )}
+            <button
+              onClick={onDelete}
+              className="text-muted-foreground hover:text-destructive p-1 -m-1 text-sm"
+              title="Delete"
+              aria-label="Delete item"
+            >
+              ✕
+            </button>
+          </div>
         )}
       </div>
 
       {users.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {users.map((u) => {
-            const on = assigned.has(u.id);
-            return (
-              <button
-                key={u.id}
-                onClick={() => onToggle(u.id)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition"
-                style={{
-                  backgroundColor: on ? u.color : "transparent",
-                  borderColor: u.color,
-                  color: on ? "#fff" : u.color,
-                }}
-              >
-                <span>{u.name}</span>
-              </button>
-            );
-          })}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex gap-1">
+            <button
+              onClick={() => {
+                users.forEach((u) => {
+                  if (!assigned.has(u.id)) onToggle(u.id);
+                });
+              }}
+              className="text-xs font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:bg-muted transition"
+            >
+              All
+            </button>
+            <button
+              onClick={() => {
+                users.forEach((u) => {
+                  if (assigned.has(u.id)) onToggle(u.id);
+                });
+              }}
+              className="text-xs font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:bg-muted transition"
+            >
+              None
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {users.map((u) => {
+              const on = assigned.has(u.id);
+              return (
+                <button
+                  key={u.id}
+                  onClick={() => onToggle(u.id)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition"
+                  style={{
+                    backgroundColor: on ? u.color : "transparent",
+                    borderColor: u.color,
+                    color: on ? "#fff" : u.color,
+                  }}
+                >
+                  <span>{u.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -622,10 +753,60 @@ function LineRow({
 function PersonTotalRow({
   person,
   currency,
+  billId,
+  onChange,
 }: {
   person: PersonTotal;
   currency: string | null;
+  billId: number;
+  onChange: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [editingTip, setEditingTip] = useState(false);
+  const [tipVal, setTipVal] = useState(String(person.tipPercent));
+  const saveInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!editingTip) setTipVal(String(person.tipPercent));
+  }, [person.tipPercent, editingTip]);
+
+  const updateUser = useUpdateBillUser({
+    mutation: {
+      onSuccess: () => {
+        setEditingTip(false);
+        saveInFlightRef.current = false;
+        onChange();
+      },
+      onError: () => {
+        saveInFlightRef.current = false;
+      },
+    },
+  });
+
+  const saveTip = () => {
+    if (saveInFlightRef.current) return;
+    const pct = parseFloat(tipVal);
+    if (isNaN(pct) || pct < 0) {
+      setTipVal(String(person.tipPercent));
+      setEditingTip(false);
+      return;
+    }
+    saveInFlightRef.current = true;
+    updateUser.mutate({
+      billId,
+      userId: person.billUserId,
+      data: { tipPercentOverride: pct },
+    });
+  };
+
+  const resetTip = () => {
+    updateUser.mutate({
+      billId,
+      userId: person.billUserId,
+      data: { tipPercentOverride: null },
+    });
+  };
+
   const initials = person.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -633,29 +814,102 @@ function PersonTotalRow({
     .slice(0, 2)
     .toUpperCase();
   const fmt = (n: number) => formatMoney(n, currency);
+  const fmtPct = (n: number) => String(Math.round(n * 100) / 100);
+
+  const hasItems = person.items.length > 0;
+
   return (
-    <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
-        style={{ backgroundColor: person.color }}
-      >
-        {initials}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="font-medium text-foreground truncate">{person.name}</span>
-          <span className="text-base font-bold text-primary tabular-nums">
-            {fmt(person.total)}
-          </span>
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="p-3 flex items-center gap-3">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
+          style={{ backgroundColor: person.color }}
+        >
+          {initials}
         </div>
-        <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
-          {fmt(person.subtotal)} items
-          {person.taxShare > 0 && <> · {fmt(person.taxShare)} tax</>}
-          {person.tipAmount > 0 && (
-            <> · {fmt(person.tipAmount)} tip{person.tipIsCustom ? " (custom)" : ""}</>
-          )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="font-medium text-foreground truncate">{person.name}</span>
+            <span className="text-base font-bold text-primary tabular-nums">
+              {fmt(person.total)}
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground tabular-nums mt-0.5 flex items-center gap-1 flex-wrap">
+            <span>{fmt(person.subtotal)} items</span>
+            {person.taxShare > 0 && <><span>·</span><span>{fmt(person.taxShare)} tax</span></>}
+            <span>·</span>
+            {editingTip ? (
+              <span className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={tipVal}
+                  onChange={(e) => setTipVal(e.target.value)}
+                  onBlur={saveTip}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.currentTarget.blur(); }
+                    if (e.key === "Escape") { saveInFlightRef.current = true; setEditingTip(false); setTipVal(String(person.tipPercent)); }
+                  }}
+                  inputMode="decimal"
+                  className="w-10 text-center border border-primary rounded px-1 py-0 text-xs focus:outline-none"
+                />
+                <span>% tip</span>
+              </span>
+            ) : (
+              <button
+                onClick={() => { setEditingTip(true); setTipVal(String(person.tipPercent)); }}
+                className={`underline decoration-dotted hover:text-foreground transition ${person.tipIsCustom ? "text-primary font-semibold" : ""}`}
+                title="Click to set custom tip %"
+              >
+                {fmt(person.tipAmount)} tip ({fmtPct(person.tipPercent)}%{person.tipIsCustom ? " custom" : ""})
+              </button>
+            )}
+            {person.tipIsCustom && !editingTip && (
+              <button
+                onClick={resetTip}
+                className="text-muted-foreground hover:text-foreground transition"
+                title="Reset to bill default tip"
+              >
+                ↺
+              </button>
+            )}
+          </div>
         </div>
+        {hasItems && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-muted-foreground hover:text-foreground transition text-sm px-1"
+            aria-label={expanded ? "Collapse" : "Expand"}
+          >
+            {expanded ? "▲" : "▼"}
+          </button>
+        )}
       </div>
+
+      {hasItems && expanded && (
+        <div className="border-t border-border px-3 py-2 space-y-2">
+          {person.items.map((item) => {
+            const splitLabel =
+              item.splitWithNames.length === 0
+                ? "not split"
+                : `split with ${item.splitWithNames.join(", ")}`;
+            return (
+              <div key={item.billLineId} className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-foreground font-medium truncate">
+                    {item.description}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {fmt(item.lineTotal)} · {splitLabel}
+                  </div>
+                </div>
+                <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
+                  {fmt(item.share)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -736,9 +990,11 @@ function Modal({
 function ModalButtons({
   onCancel,
   onConfirm,
+  confirmLabel = "Add",
 }: {
   onCancel: () => void;
   onConfirm: () => void;
+  confirmLabel?: string;
 }) {
   return (
     <div className="flex gap-2 pt-1">
@@ -752,7 +1008,7 @@ function ModalButtons({
         onClick={onConfirm}
         className="flex-1 bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold"
       >
-        Add
+        {confirmLabel}
       </button>
     </div>
   );
