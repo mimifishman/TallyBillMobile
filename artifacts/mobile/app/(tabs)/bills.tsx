@@ -263,6 +263,7 @@ export default function BillsScreen() {
               joinCode={item.joinCode}
               participants={item.users ?? []}
               status={item.settled ? "settled" : "open"}
+              isOwner={isOwner}
               onPress={() => router.push(`/bill/${item.id}`)}
             />
           );

@@ -19,6 +19,7 @@ interface BillCardProps {
   joinCode: string;
   participants?: BillCardParticipant[] | null;
   status?: "open" | "settled";
+  isOwner?: boolean;
   onPress: () => void;
 }
 
@@ -30,6 +31,7 @@ export function BillCard({
   joinCode,
   participants,
   status = "open",
+  isOwner = false,
   onPress,
 }: BillCardProps) {
   const colors = useColors();
@@ -77,18 +79,26 @@ export function BillCard({
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </View>
 
-        {participants && participants.length > 0 ? (
+        {(participants && participants.length > 0) || isOwner ? (
           <View style={styles.peopleRow}>
-            {participants.slice(0, 5).map((p, i) => (
-              <View key={i} style={i > 0 ? styles.overlapBadge : undefined}>
-                <PersonBadge name={p.name} color={p.color} size="sm" />
-              </View>
-            ))}
-            {participants.length > 5 ? (
-              <View style={[styles.moreBadge, { backgroundColor: colors.muted, borderColor: colors.card }]}>
-                <Text style={[styles.moreText, { color: colors.mutedForeground }]}>
-                  +{participants.length - 5}
-                </Text>
+            <View style={styles.avatarGroup}>
+              {participants && participants.slice(0, 5).map((p, i) => (
+                <View key={i} style={i > 0 ? styles.overlapBadge : undefined}>
+                  <PersonBadge name={p.name} color={p.color} size="sm" />
+                </View>
+              ))}
+              {participants && participants.length > 5 ? (
+                <View style={[styles.moreBadge, { backgroundColor: colors.muted, borderColor: colors.card }]}>
+                  <Text style={[styles.moreText, { color: colors.mutedForeground }]}>
+                    +{participants.length - 5}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            {isOwner ? (
+              <View style={[styles.ownerBadge, { backgroundColor: colors.primarySoft }]}>
+                <Feather name="star" size={10} color={colors.primary} />
+                <Text style={[styles.ownerText, { color: colors.primary }]}>Owner</Text>
               </View>
             ) : null}
           </View>
@@ -139,8 +149,18 @@ const styles = StyleSheet.create({
   metaDot: { fontSize: 12 },
   codeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   codeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  peopleRow: { flexDirection: "row", alignItems: "center", paddingLeft: 52 },
+  peopleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingLeft: 52 },
+  avatarGroup: { flexDirection: "row", alignItems: "center" },
   overlapBadge: { marginLeft: -10 },
+  ownerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  ownerText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   moreBadge: {
     marginLeft: -10,
     width: 28,
