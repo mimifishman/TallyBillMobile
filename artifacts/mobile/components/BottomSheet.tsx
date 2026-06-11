@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -21,24 +21,29 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <BlurView intensity={20} style={styles.overlay} tint="dark">
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <Animated.View 
-          entering={SlideInDown.springify().damping(20).stiffness(200)}
-          exiting={SlideOutDown.duration(200)}
-          style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.kavWrapper}
         >
-          <View style={styles.handleWrap}>
-            <View style={[styles.handle, { backgroundColor: "#E5E0D8" }]} />
-          </View>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
-            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.muted }]}>
-              <Feather name="x" size={20} color={colors.foreground} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
-        </Animated.View>
+          <Animated.View 
+            entering={SlideInDown.springify().damping(20).stiffness(200)}
+            exiting={SlideOutDown.duration(200)}
+            style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}
+          >
+            <View style={styles.handleWrap}>
+              <View style={[styles.handle, { backgroundColor: "#E5E0D8" }]} />
+            </View>
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+              <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.muted }]}>
+                <Feather name="x" size={20} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {children}
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
       </BlurView>
     </Modal>
   );
@@ -47,6 +52,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  kavWrapper: { width: "100%" },
   sheet: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

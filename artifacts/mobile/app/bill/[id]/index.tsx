@@ -8,7 +8,6 @@ import {
   Alert,
   AppState,
   Image,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -828,9 +827,7 @@ export default function BillDetailScreen() {
       </BottomSheet>
 
       <BottomSheet visible={showEditHeader} onClose={() => setShowEditHeader(false)} title="Edit Bill Details">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <View style={styles.sheetContent}>
+        <View style={styles.sheetContent}>
               <View style={styles.sheetFieldGroup}>
                 <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TITLE</Text>
                 <TextInput
@@ -893,13 +890,11 @@ export default function BillDetailScreen() {
                 <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Discard</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
       </BottomSheet>
 
       <BottomSheet visible={showAddItem} onClose={() => setShowAddItem(false)} title="Add Item">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={styles.sheetContent}>
+        <View style={styles.sheetContent}>
             <TextInput
               style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
               placeholder="e.g. Spicy tuna roll, dessert, drinks"
@@ -942,7 +937,6 @@ export default function BillDetailScreen() {
               <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
       </BottomSheet>
 
       {(scan.status === "scanning" || scan.status === "ready" || scan.status === "error") && scan.billId === billId && (
