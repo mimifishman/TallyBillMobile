@@ -8,4 +8,6 @@ psql "$DATABASE_URL" -f lib/db/migrations/0004_rename_bill_tables.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0005_guest_bills.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0006_bill_line_position.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0007_original_description.sql
+psql "$DATABASE_URL" -f lib/db/migrations/0008_circles.sql
+psql "$DATABASE_URL" -f lib/db/migrations/0009_unique_names.sql
 pnpm --filter db push --force

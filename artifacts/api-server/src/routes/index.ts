@@ -9,6 +9,7 @@ import ocrRouter from "./ocr.js";
 import currencyRouter from "./currency.js";
 import meRouter from "./me.js";
 import storageRouter from "./globalStorage.js";
+import circlesRouter from "./circles.js";
 import { requireBillAccess } from "../middlewares/billAccess.js";
 
 const router: IRouter = Router();
@@ -23,5 +24,6 @@ router.use("/bills/:billId/totals", requireBillAccess, totalsRouter);
 router.use("/bills/:billId/storage", requireBillAccess, storageRouter);
 router.use("/ocr", ocrRouter);
 router.use("/currency", currencyRouter);
+router.use("/circles", circlesRouter);
 
 export default router;

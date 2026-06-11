@@ -7,8 +7,10 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 function NativeTabLayout() {
+  const { user } = useAuth();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="bills">
@@ -19,6 +21,12 @@ function NativeTabLayout() {
         <Icon sf={{ default: "person.badge.plus", selected: "person.badge.plus" }} />
         <Label>Join</Label>
       </NativeTabs.Trigger>
+      {user ? (
+        <NativeTabs.Trigger name="circles">
+          <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+          <Label>Circles</Label>
+        </NativeTabs.Trigger>
+      ) : null}
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
@@ -38,6 +46,7 @@ function ActiveDot({ color }: { color: string }) {
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
+  const { user } = useAuth();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
@@ -109,6 +118,31 @@ function ClassicTabLayout() {
               ) : (
                 <Ionicons
                   name={focused ? "person-add" : "person-add-outline"}
+                  size={22}
+                  color={color}
+                />
+              )}
+              {focused ? <ActiveDot color={colors.primary} /> : null}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="circles"
+        options={{
+          title: "My Circles",
+          tabBarButton: user ? undefined : () => null,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={styles.iconWrap}>
+              {isIOS ? (
+                <SymbolView
+                  name={focused ? "person.2.fill" : "person.2"}
+                  tintColor={color}
+                  size={22}
+                />
+              ) : (
+                <Ionicons
+                  name={focused ? "people" : "people-outline"}
                   size={22}
                   color={color}
                 />

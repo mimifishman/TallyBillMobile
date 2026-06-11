@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AddCircleMemberRequest,
   AuthResponse,
   Bill,
   BillDetail,
@@ -25,9 +26,12 @@ import type {
   BillTotals,
   BulkCreateBillLinesBody,
   ChangePasswordRequest,
+  Circle,
+  CircleMember,
   CreateBillLineRequest,
   CreateBillMemberRequest,
   CreateBillRequest,
+  CreateCircleRequest,
   CurrencyResponse,
   ErrorResponse,
   HealthStatus,
@@ -44,6 +48,7 @@ import type {
   ToggleBillLineUserBody,
   UpdateBillMemberRequest,
   UpdateBillRequest,
+  UpdateCircleRequest,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2251,4 +2256,339 @@ export function useDetectCurrency<
   };
 
   return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// ─── Circles ─────────────────────────────────────────────────────────────────
+
+export const getGetCirclesUrl = () => {
+  return `/api/circles`;
+};
+
+export const getCircles = async (
+  options?: RequestInit,
+): Promise<Circle[]> => {
+  return customFetch<Circle[]>(getGetCirclesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCirclesQueryKey = () => {
+  return [`/api/circles`] as const;
+};
+
+export const getGetCirclesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCircles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getCircles>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetCirclesQueryKey();
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCircles>>> = ({ signal }) =>
+    getCircles({ signal, ...requestOptions });
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCircles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export function useGetCircles<
+  TData = Awaited<ReturnType<typeof getCircles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getCircles>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCirclesQueryOptions(options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// Create Circle
+
+export const createCircle = async (
+  createCircleRequest: CreateCircleRequest,
+  options?: RequestInit,
+): Promise<Circle> => {
+  return customFetch<Circle>(getGetCirclesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCircleRequest),
+  });
+};
+
+export const getCreateCircleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircle>>,
+    TError,
+    { data: CreateCircleRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const mutationKey = ["createCircle"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCircle>>,
+    { data: CreateCircleRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+    return createCircle(data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export function useCreateCircle<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircle>>,
+    TError,
+    { data: CreateCircleRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCircle>>,
+  TError,
+  { data: CreateCircleRequest },
+  TContext
+> {
+  return useMutation(getCreateCircleMutationOptions(options));
+}
+
+// Update Circle
+
+export const getUpdateCircleUrl = (id: number) => {
+  return `/api/circles/${id}`;
+};
+
+export const updateCircle = async (
+  id: number,
+  updateCircleRequest: UpdateCircleRequest,
+  options?: RequestInit,
+): Promise<Circle> => {
+  return customFetch<Circle>(getUpdateCircleUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCircleRequest),
+  });
+};
+
+export const getUpdateCircleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCircle>>,
+    TError,
+    { id: number; data: UpdateCircleRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const mutationKey = ["updateCircle"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCircle>>,
+    { id: number; data: UpdateCircleRequest }
+  > = (props) => {
+    const { id, data } = props ?? {};
+    return updateCircle(id, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export function useUpdateCircle<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCircle>>,
+    TError,
+    { id: number; data: UpdateCircleRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCircle>>,
+  TError,
+  { id: number; data: UpdateCircleRequest },
+  TContext
+> {
+  return useMutation(getUpdateCircleMutationOptions(options));
+}
+
+// Delete Circle
+
+export const deleteCircle = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUpdateCircleUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCircleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCircle>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const mutationKey = ["deleteCircle"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCircle>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+    return deleteCircle(id, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export function useDeleteCircle<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCircle>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCircle>>,
+  TError,
+  { id: number },
+  TContext
+> {
+  return useMutation(getDeleteCircleMutationOptions(options));
+}
+
+// Add Circle Member
+
+export const getAddCircleMemberUrl = (id: number) => {
+  return `/api/circles/${id}/members`;
+};
+
+export const addCircleMember = async (
+  id: number,
+  addCircleMemberRequest: AddCircleMemberRequest,
+  options?: RequestInit,
+): Promise<CircleMember> => {
+  return customFetch<CircleMember>(getAddCircleMemberUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addCircleMemberRequest),
+  });
+};
+
+export const getAddCircleMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addCircleMember>>,
+    TError,
+    { id: number; data: AddCircleMemberRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const mutationKey = ["addCircleMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addCircleMember>>,
+    { id: number; data: AddCircleMemberRequest }
+  > = (props) => {
+    const { id, data } = props ?? {};
+    return addCircleMember(id, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export function useAddCircleMember<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addCircleMember>>,
+    TError,
+    { id: number; data: AddCircleMemberRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addCircleMember>>,
+  TError,
+  { id: number; data: AddCircleMemberRequest },
+  TContext
+> {
+  return useMutation(getAddCircleMemberMutationOptions(options));
+}
+
+// Remove Circle Member
+
+export const getRemoveCircleMemberUrl = (id: number, memberId: number) => {
+  return `/api/circles/${id}/members/${memberId}`;
+};
+
+export const removeCircleMember = async (
+  id: number,
+  memberId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveCircleMemberUrl(id, memberId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveCircleMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeCircleMember>>,
+    TError,
+    { id: number; memberId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const mutationKey = ["removeCircleMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeCircleMember>>,
+    { id: number; memberId: number }
+  > = (props) => {
+    const { id, memberId } = props ?? {};
+    return removeCircleMember(id, memberId, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export function useRemoveCircleMember<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeCircleMember>>,
+    TError,
+    { id: number; memberId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeCircleMember>>,
+  TError,
+  { id: number; memberId: number },
+  TContext
+> {
+  return useMutation(getRemoveCircleMemberMutationOptions(options));
 }

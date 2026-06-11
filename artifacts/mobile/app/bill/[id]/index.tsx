@@ -35,9 +35,11 @@ import {
   useToggleBillLineUser,
   usePatchBill,
   useDeleteBill,
+  useGetCircles,
   getGetBillQueryKey,
   getGetBillsQueryKey,
   getGetBillTotalsQueryKey,
+  getGetCirclesQueryKey,
   customFetch,
 } from "@workspace/api-client-react";
 import colors_data from "@/constants/colors";
@@ -73,6 +75,8 @@ export default function BillDetailScreen() {
 
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
+  const [showCirclePicker, setShowCirclePicker] = useState(false);
+  const [addingFromCircleId, setAddingFromCircleId] = useState<number | null>(null);
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemTotal, setNewItemTotal] = useState("");
@@ -94,6 +98,13 @@ export default function BillDetailScreen() {
     query: {
       queryKey: getGetBillQueryKey(billId),
       refetchOnWindowFocus: true,
+    },
+  });
+
+  const { data: circles } = useGetCircles({
+    query: {
+      queryKey: getGetCirclesQueryKey(),
+      enabled: !!user,
     },
   });
 
@@ -412,15 +423,46 @@ export default function BillDetailScreen() {
   };
 
   const handleAddPerson = () => {
-    if (!newPersonName.trim()) return;
+    const trimmed = newPersonName.trim();
+    if (!trimmed) return;
+    const isDuplicate = (data?.users ?? []).some(
+      (u: { name: string }) => u.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isDuplicate) {
+      Alert.alert("Name already on bill", `"${trimmed}" is already on this bill.`);
+      return;
+    }
     const existingCount = data?.users?.length ?? 0;
     const color = PEOPLE_COLORS[existingCount % PEOPLE_COLORS.length]!;
     addPersonMutation.mutate({
       billId,
-      data: { name: newPersonName.trim(), color },
+      data: { name: trimmed, color },
     });
     setNewPersonName("");
     setShowAddPerson(false);
+  };
+
+  const handleAddFromCircle = (circleId: number) => {
+    const circle = circles?.find((c) => c.id === circleId);
+    if (!circle) return;
+    setShowCirclePicker(false);
+    setAddingFromCircleId(null);
+
+    const existingNames = new Set(
+      (data?.users ?? []).map((u: { name: string }) => u.name.toLowerCase().trim())
+    );
+    const toAdd = circle.members.filter(
+      (m) => !existingNames.has(m.name.toLowerCase().trim())
+    );
+    if (toAdd.length === 0) {
+      Alert.alert("Already added", "All members of this circle are already on the bill.");
+      return;
+    }
+    const baseCount = data?.users?.length ?? 0;
+    toAdd.forEach((member, index) => {
+      const color = PEOPLE_COLORS[(baseCount + index) % PEOPLE_COLORS.length]!;
+      addPersonMutation.mutate({ billId, data: { name: member.name, color } });
+    });
   };
 
   const handleDeletePerson = (userId: number, name: string) => {
@@ -653,10 +695,21 @@ export default function BillDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PEOPLE</Text>
-            <TouchableOpacity onPress={() => setShowAddPerson(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
-              <Feather name="plus" size={14} color={colors.primary} />
-              <Text style={[styles.addBtnText, { color: colors.primary }]}>Add</Text>
-            </TouchableOpacity>
+            <View style={styles.itemActions}>
+              {user && circles && circles.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setShowCirclePicker(true)}
+                  style={[styles.addBtn, { backgroundColor: colors.muted }]}
+                >
+                  <Feather name="users" size={14} color={colors.primary} />
+                  <Text style={[styles.addBtnText, { color: colors.primary }]}>Circle</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setShowAddPerson(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
+                <Feather name="plus" size={14} color={colors.primary} />
+                <Text style={[styles.addBtnText, { color: colors.primary }]}>Add</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {users.length === 0 ? (
@@ -974,6 +1027,54 @@ export default function BillDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
+      <Modal visible={showCirclePicker} transparent animationType="fade">
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowCirclePicker(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add from Circle</Text>
+            {circles && circles.length > 0 ? (
+              circles.map((circle, index) => (
+                <TouchableOpacity
+                  key={circle.id}
+                  style={[
+                    styles.circlePickerRow,
+                    {
+                      borderColor: colors.border,
+                      borderTopWidth: index === 0 ? 0 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    setAddingFromCircleId(circle.id);
+                    handleAddFromCircle(circle.id);
+                  }}
+                  disabled={addingFromCircleId === circle.id}
+                >
+                  <View style={[styles.circlePickerIcon, { backgroundColor: colors.primary + "22" }]}>
+                    <Feather name="users" size={16} color={colors.primary} />
+                  </View>
+                  <View style={styles.circlePickerInfo}>
+                    <Text style={[styles.circlePickerName, { color: colors.foreground }]}>{circle.name}</Text>
+                    <Text style={[styles.circlePickerCount, { color: colors.mutedForeground }]}>
+                      {circle.members.length === 1 ? "1 person" : `${circle.members.length} people`}
+                    </Text>
+                  </View>
+                  {addingFromCircleId === circle.id ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  )}
+                </TouchableOpacity>
+              ))
+            ) : null}
+            <TouchableOpacity
+              onPress={() => setShowCirclePicker(false)}
+              style={[styles.modalCancelBtn, { borderColor: colors.border, marginTop: 4 }]}
+            >
+              <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <Modal visible={showReceiptModal} transparent animationType="fade" onRequestClose={() => setShowReceiptModal(false)}>
         <View style={styles.receiptModalOverlay}>
           <TouchableOpacity
@@ -1147,4 +1248,20 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "80%",
   },
+  circlePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: 12,
+  },
+  circlePickerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  circlePickerInfo: { flex: 1, gap: 1 },
+  circlePickerName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  circlePickerCount: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });

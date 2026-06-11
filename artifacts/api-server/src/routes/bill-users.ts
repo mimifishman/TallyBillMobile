@@ -23,7 +23,17 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "name and color are required" });
     return;
   }
-  const [member] = await db.insert(billMembersTable).values({ billId, name, color }).returning();
+  const trimmedName = String(name).trim();
+  const [existing] = await db
+    .select({ id: billMembersTable.id })
+    .from(billMembersTable)
+    .where(and(eq(billMembersTable.billId, billId), eq(billMembersTable.name, trimmedName)))
+    .limit(1);
+  if (existing) {
+    res.status(409).json({ error: `"${trimmedName}" is already on this bill` });
+    return;
+  }
+  const [member] = await db.insert(billMembersTable).values({ billId, name: trimmedName, color }).returning();
   notifyBillChanged(billId);
   res.status(201).json(member);
 });
