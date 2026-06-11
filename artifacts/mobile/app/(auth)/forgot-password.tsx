@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -14,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { RADIUS } from "@/constants/styles";
 
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
@@ -30,10 +32,7 @@ export default function ForgotPasswordScreen() {
     setEmailError("");
     setOauthProvider(null);
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail) {
-      setEmailError("Please enter your email address");
-      return;
-    }
+    if (!normalizedEmail) { setEmailError("Please enter your email address"); return; }
 
     setIsPending(true);
     try {
@@ -61,208 +60,112 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 40 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => router.back()}
-          >
-            <Feather name="arrow-left" size={20} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Forgot Password</Text>
-          <View style={styles.backBtn} />
+    <View style={styles.flex}>
+      <LinearGradient colors={["#F59E0B", "#D97706"]} style={styles.gradient}>
+        <View style={{ height: insets.top + 16 }} />
+        <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Feather name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
+        </TouchableOpacity>
+        <View style={styles.brandArea}>
+          <Text style={styles.wordmark}>TallyBill</Text>
+          <Text style={styles.tagline}>Forgot something? No worries.</Text>
         </View>
+      </LinearGradient>
 
-        <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
-          <Feather name="mail" size={32} color={colors.primary} />
-        </View>
-
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Enter your email address and we'll send you a 6-digit code to reset your password.
-        </Text>
-
-        {oauthProvider ? (
-          <View style={[styles.oauthCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.oauthIconWrap, { backgroundColor: "rgba(31,136,61,0.1)" }]}>
-              <Feather name="shield" size={28} color={colors.primary} />
-            </View>
-            <Text style={[styles.oauthTitle, { color: colors.foreground }]}>
-              No password needed
-            </Text>
-            <Text style={[styles.oauthSub, { color: colors.mutedForeground }]}>
-              This account signs in with {oauthProvider}. Tap below to go back and use the{" "}
-              <Text style={{ fontFamily: "Inter_600SemiBold" }}>
-                Continue with {oauthProvider}
-              </Text>{" "}
-              button.
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-              onPress={() => router.replace("/(auth)/login")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryBtnText}>Back to Sign In</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => { setOauthProvider(null); setEmail(""); }}
-              style={styles.linkBtn}
-            >
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-                Try a different email
-              </Text>
-            </TouchableOpacity>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          style={[styles.formSheet, { backgroundColor: colors.card }]}
+          contentContainerStyle={[styles.formCard, { paddingBottom: insets.bottom + 40 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
+            <Feather name="mail" size={28} color={colors.primary} />
           </View>
-        ) : (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Email Address</Text>
-            <View style={[styles.inputWrap, { borderColor: emailError ? colors.destructive : colors.border }]}>
-              <Feather name="mail" size={18} color={colors.mutedForeground} />
-              <TextInput
-                style={[styles.input, { color: colors.foreground }]}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.mutedForeground}
-                value={email}
-                onChangeText={(v) => { setEmail(v); setEmailError(""); }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoFocus
-                returnKeyType="send"
-                onSubmitEditing={handleSendCode}
-              />
-            </View>
-            {!!emailError && (
-              <View style={[styles.errorBox, { backgroundColor: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.2)" }]}>
-                <Feather name="alert-circle" size={15} color="#dc2626" />
-                <Text style={styles.errorText}>{emailError}</Text>
+
+          <Text style={[styles.formTitle, { color: colors.foreground }]}>Reset your password</Text>
+          <Text style={[styles.formSub, { color: colors.mutedForeground }]}>
+            Enter your email and we'll send you a 6-digit code.
+          </Text>
+
+          {oauthProvider ? (
+            <View style={[styles.oauthCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
+                <Feather name="shield" size={28} color={colors.primary} />
               </View>
-            )}
-          </View>
-        )}
-
-        {!oauthProvider && (
-          <>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isPending ? 0.7 : 1 }]}
-              onPress={handleSendCode}
-              disabled={isPending}
-              activeOpacity={0.8}
-            >
-              {isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryBtnText}>Send Reset Code</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => router.back()} style={styles.linkBtn}>
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-                Remembered it?{" "}
-                <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Sign In</Text>
+              <Text style={[styles.oauthTitle, { color: colors.foreground }]}>No password needed</Text>
+              <Text style={[styles.oauthSub, { color: colors.mutedForeground }]}>
+                This account signs in with {oauthProvider}. Tap below to use the{" "}
+                <Text style={{ fontFamily: "Inter_600SemiBold" }}>Continue with {oauthProvider}</Text> button.
               </Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => router.replace("/(auth)/login")} activeOpacity={0.8}>
+                <Text style={styles.primaryBtnText}>Back to Sign In</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setOauthProvider(null); setEmail(""); }} style={styles.linkBtn}>
+                <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Try a different email</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.formContent]}>
+              <View style={[styles.inputWrap, { borderColor: emailError ? colors.destructive : colors.border }]}>
+                <Feather name="mail" size={18} color={colors.mutedForeground} />
+                <TextInput
+                  style={[styles.input, { color: colors.foreground }]}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={email}
+                  onChangeText={(v) => { setEmail(v); setEmailError(""); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                  returnKeyType="send"
+                  onSubmitEditing={handleSendCode}
+                />
+              </View>
+              {!!emailError && (
+                <View style={[styles.errorBox, { backgroundColor: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.2)" }]}>
+                  <Feather name="alert-circle" size={15} color={colors.destructive} />
+                  <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isPending ? 0.7 : 1 }]} onPress={handleSendCode} disabled={isPending} activeOpacity={0.8}>
+                {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Send Reset Code</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => router.back()} style={styles.linkBtn}>
+                <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Remembered it? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Sign In</Text></Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 20 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  iconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-  },
-  sub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 21,
-    paddingHorizontal: 8,
-  },
-  card: { borderRadius: 16, borderWidth: 1, padding: 20 },
-  oauthCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-    alignItems: "center",
-    gap: 12,
-  },
-  oauthIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
+  gradient: { paddingBottom: 40 },
+  backBtnGradient: { position: "absolute", top: 16, left: 20, zIndex: 10, padding: 4 },
+  brandArea: { alignItems: "center", paddingTop: 20, paddingBottom: 8, gap: 8 },
+  wordmark: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
+  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
+  formSheet: { borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, marginTop: -RADIUS.xl },
+  formCard: { paddingHorizontal: 24, paddingTop: 32, gap: 24 },
+  iconCircle: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+  formTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
+  formSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21, marginTop: -12 },
+  formContent: { gap: 12 },
+  oauthCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: 24, alignItems: "center", gap: 12 },
   oauthTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  oauthSub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 21,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 10,
-  },
+  oauthSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21 },
+  inputWrap: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 14, gap: 10 },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 12,
-  },
-  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#dc2626" },
-  primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: "center", width: "100%" },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: RADIUS.sm, borderWidth: 1, padding: 12 },
+  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
+  primaryBtn: { borderRadius: RADIUS.full, paddingVertical: 17, alignItems: "center", width: "100%" },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
   linkBtn: { alignItems: "center", paddingVertical: 4 },
   linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
 });

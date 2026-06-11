@@ -19,6 +19,7 @@ import Animated, {
   withRepeat,
   withTiming,
   FadeInDown,
+  ZoomIn,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -40,6 +41,9 @@ import {
   getOrCreateGuestOwnerId,
   type GuestBillRef,
 } from "@/utils/guestBillStore";
+import { PressableScale } from "@/components/PressableScale";
+import * as Haptics from "expo-haptics";
+import { RADIUS, SHADOWS } from "@/constants/styles";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -106,20 +110,21 @@ function PulsingFab({
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
-    <AnimatedTouchable
-      style={[styles.fab, { backgroundColor: bg, bottom }, animStyle]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <Feather name="plus" size={26} color="#fff" />
-    </AnimatedTouchable>
+    <Animated.View entering={ZoomIn.springify().damping(15)} style={[styles.fabWrapper, { bottom }]}>
+      <PressableScale
+        style={[styles.fab, { backgroundColor: bg }, animStyle]}
+        onPress={onPress}
+      >
+        <Feather name="plus" size={28} color="#fff" />
+      </PressableScale>
+    </Animated.View>
   );
 }
 
 export default function BillsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, guestName } = useAuth();
   const queryClient = useQueryClient();
 
   const [guestBills, setGuestBills] = useState<GuestBillItem[]>([]);
@@ -136,14 +141,24 @@ export default function BillsScreen() {
         queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
       },
       onError: () => {
-        Alert.alert("Couldn't delete", "We couldn't delete this bill. Please try again.");
+        Alert.alert("Hmm, something went wrong", "We couldn't delete this bill. Give it another shot.");
       },
     },
   });
 
   const handleDeleteAuthBill = useCallback(
     (billId: number) => {
-      confirmDeleteBill(() => deleteBillMutation.mutate({ billId }));
+      Alert.alert("Delete Bill?", "Are you sure you want to delete this bill?", [
+        { text: "Actually, keep it", style: "cancel" },
+        { 
+          text: "Yeah, remove", 
+          style: "destructive", 
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            deleteBillMutation.mutate({ billId });
+          }
+        },
+      ]);
     },
     [deleteBillMutation],
   );
@@ -180,11 +195,12 @@ export default function BillsScreen() {
       "Remove from your list",
       "This removes the bill from your view. The bill itself will not be deleted.",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "Actually, keep it", style: "cancel" },
         {
-          text: "Remove",
+          text: "Yeah, remove",
           style: "destructive",
           onPress: async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             await removeGuestBill(billId);
             setGuestBills((prev) => prev.filter((b) => b.id !== billId));
           },
@@ -198,16 +214,17 @@ export default function BillsScreen() {
       "Remove from your list",
       "This removes the bill from your view. The bill itself will not be deleted.",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "Actually, keep it", style: "cancel" },
         {
-          text: "Remove",
+          text: "Yeah, remove",
           style: "destructive",
           onPress: async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             try {
               await customFetch(`/api/bills/${billId}/leave`, { method: "DELETE" });
               queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
             } catch {
-              Alert.alert("Error", "Couldn't remove the bill. Please try again.");
+              Alert.alert("Hmm, something went wrong", "Couldn't remove the bill. Give it another shot.");
             }
           },
         },
@@ -222,10 +239,9 @@ export default function BillsScreen() {
     }, [user, refetch, loadGuestBills]),
   );
 
-  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 65;
+  const fabBottom = Platform.OS === "web" ? 100 : insets.bottom + 85;
   const listPadding = {
-    paddingBottom: insets.bottom + 100,
-    paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
+    paddingBottom: insets.bottom + 120,
   };
 
   const isGuest_ = !user;
@@ -233,9 +249,20 @@ export default function BillsScreen() {
   const isLoading = isGuest_ ? guestLoading : authLoading;
   const isRefreshing = isGuest_ ? guestRefreshing : isRefetching;
   const isEmpty = !isLoading && bills.length === 0;
+  
+  const displayName = user ? (user.firstName || user.displayName) : guestName || "Guest";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 20 }]}>
+        <Text style={[styles.greeting, { color: colors.foreground }]}>Good morning, {displayName} 👋</Text>
+        {!isLoading && !isEmpty && (
+          <Text style={[styles.subline, { color: colors.mutedForeground }]}>
+            {bills.length} open {bills.length === 1 ? 'bill' : 'bills'}
+          </Text>
+        )}
+      </View>
+
       <FlatList
         data={bills}
         keyExtractor={(item) => String(item.id)}
@@ -306,10 +333,7 @@ export default function BillsScreen() {
           ) : (
             <Animated.View entering={FadeInDown.duration(400)} style={styles.empty}>
               <EmptyBillsIllustration size={220} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No bills yet</Text>
-              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
-                Tap the + button to start your first bill and split it with friends
-              </Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No bills yet — someone's gotta start the tab.</Text>
             </Animated.View>
           )
         }
@@ -327,12 +351,26 @@ export default function BillsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { paddingHorizontal: 16, paddingTop: 12 },
+  header: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  greeting: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+  subline: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    marginTop: 4,
+  },
+  list: { paddingHorizontal: 20, paddingTop: 8 },
   deleteAction: {
     justifyContent: "center",
     alignItems: "center",
     width: 80,
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
     marginBottom: 12,
     gap: 4,
   },
@@ -341,27 +379,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
-  skeletonWrap: { paddingTop: 8 },
-  empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32, gap: 10 },
-  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 },
-  emptySub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  fab: {
+  skeletonWrap: { paddingTop: 8, gap: 12 },
+  empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32, gap: 16 },
+  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", marginTop: 8, textAlign: "center", lineHeight: 26 },
+  fabWrapper: {
     position: "absolute",
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    right: 24,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#16A34A",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    ...SHADOWS.raised,
+  },
+  fab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

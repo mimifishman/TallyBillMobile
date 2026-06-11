@@ -8,6 +8,7 @@ import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 function NativeTabLayout() {
   const { user } = useAuth();
@@ -37,9 +38,9 @@ function NativeTabLayout() {
 
 function ActiveDot({ color }: { color: string }) {
   return (
-    <View style={styles.dotWrap} pointerEvents="none">
+    <Animated.View entering={FadeIn} style={styles.dotWrap} pointerEvents="none">
       <View style={[styles.dot, { backgroundColor: color }]} />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -57,6 +58,7 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
+        tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.background,
@@ -89,12 +91,12 @@ function ClassicTabLayout() {
                 <SymbolView
                   name={focused ? "doc.text.fill" : "doc.text"}
                   tintColor={color}
-                  size={22}
+                  size={26}
                 />
               ) : (
                 <Ionicons
                   name={focused ? "document-text" : "document-text-outline"}
-                  size={22}
+                  size={26}
                   color={color}
                 />
               )}
@@ -113,12 +115,12 @@ function ClassicTabLayout() {
                 <SymbolView
                   name="person.badge.plus"
                   tintColor={color}
-                  size={22}
+                  size={26}
                 />
               ) : (
                 <Ionicons
                   name={focused ? "person-add" : "person-add-outline"}
-                  size={22}
+                  size={26}
                   color={color}
                 />
               )}
@@ -138,12 +140,12 @@ function ClassicTabLayout() {
                 <SymbolView
                   name={focused ? "person.2.fill" : "person.2"}
                   tintColor={color}
-                  size={22}
+                  size={26}
                 />
               ) : (
                 <Ionicons
                   name={focused ? "people" : "people-outline"}
-                  size={22}
+                  size={26}
                   color={color}
                 />
               )}
@@ -162,12 +164,12 @@ function ClassicTabLayout() {
                 <SymbolView
                   name={focused ? "gearshape.fill" : "gearshape"}
                   tintColor={color}
-                  size={22}
+                  size={26}
                 />
               ) : (
                 <Ionicons
                   name={focused ? "settings" : "settings-outline"}
-                  size={22}
+                  size={26}
                   color={color}
                 />
               )}
@@ -187,13 +189,13 @@ const styles = StyleSheet.create({
   },
   dotWrap: {
     position: "absolute",
-    bottom: -8,
+    bottom: -12,
     left: 0,
     right: 0,
     alignItems: "center",
   },
   dot: {
-    width: 4,
+    width: 28,
     height: 4,
     borderRadius: 2,
   },
@@ -205,3 +207,4 @@ export default function TabLayout() {
   }
   return <ClassicTabLayout />;
 }
+

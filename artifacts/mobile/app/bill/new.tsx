@@ -26,6 +26,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { appendGuestBill, registerJoinCode } from "@/utils/guestBillStore";
 import { pickColor } from "@/utils/pickColor";
+import { RADIUS } from "@/constants/styles";
+import * as Haptics from "expo-haptics";
 
 const today = new Date().toISOString().split("T")[0]!;
 
@@ -72,18 +74,19 @@ export default function NewBillScreen() {
           } catch {
           }
         }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
         router.replace(`/bill/${bill.id}`);
       },
       onError: (err: Error) => {
-        Alert.alert("Error", err.message || "Failed to create bill");
+        Alert.alert("Hmm, something went wrong", err.message || "Couldn't create the bill. Give it another shot.");
       },
     },
   });
 
   const handleCreate = () => {
     if (!title.trim()) {
-      Alert.alert("Error", "Please enter a bill title");
+      Alert.alert("What are we splitting?", "Give the bill a name first.");
       return;
     }
     createMutation.mutate({
@@ -108,89 +111,103 @@ export default function NewBillScreen() {
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>New Bill</Text>
-        <TouchableOpacity
-          onPress={handleCreate}
-          disabled={createMutation.isPending}
-          style={[styles.createBtn, { backgroundColor: colors.primary }]}
-        >
-          {createMutation.isPending ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.createBtnText}>Create</Text>
-          )}
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>TITLE *</Text>
-          <TextInput
-            style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
-            placeholder="e.g. Dinner at Mario's"
-            placeholderTextColor={colors.mutedForeground}
-            value={title}
-            onChangeText={setTitle}
-          />
-        </View>
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionCardTitle, { color: colors.mutedForeground }]}>BILL DETAILS</Text>
 
-        <View style={styles.row}>
-          <View style={[styles.formGroup, styles.flex]}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>DATE</Text>
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>TITLE *</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="YYYY-MM-DD"
+              placeholder="e.g. Sushi with the gang"
               placeholderTextColor={colors.mutedForeground}
-              value={date}
-              onChangeText={setDate}
+              value={title}
+              onChangeText={setTitle}
             />
           </View>
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>CURRENCY (OPTIONAL)</Text>
-            <CurrencyPicker value={currency} onChange={setCurrency} />
-          </View>
-        </View>
 
-        <View style={styles.row}>
-          <View style={[styles.formGroup, styles.flex]}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>TAX %</Text>
-            <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
-              <Feather name="percent" size={14} color={colors.mutedForeground} />
+          <View style={styles.row}>
+            <View style={[styles.formGroup, styles.flex]}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>DATE</Text>
               <TextInput
-                style={[styles.inputInner, { color: colors.foreground }]}
-                placeholder="0"
+                style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder="YYYY-MM-DD"
                 placeholderTextColor={colors.mutedForeground}
-                value={taxPercent}
-                onChangeText={setTaxPercent}
-                keyboardType="numeric"
+                value={date}
+                onChangeText={setDate}
               />
             </View>
-          </View>
-
-          <View style={[styles.formGroup, styles.flex]}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>TIP %</Text>
-            <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
-              <Feather name="heart" size={14} color={colors.mutedForeground} />
-              <TextInput
-                style={[styles.inputInner, { color: colors.foreground }]}
-                placeholder="0"
-                placeholderTextColor={colors.mutedForeground}
-                value={tipPercent}
-                onChangeText={setTipPercent}
-                keyboardType="numeric"
-              />
+            <View style={styles.formGroup}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>CURRENCY</Text>
+              <CurrencyPicker value={currency} onChange={setCurrency} />
             </View>
           </View>
         </View>
 
-        <View style={[styles.hintCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-          <Feather name="info" size={14} color={colors.mutedForeground} />
-          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-            Enter tax and tip as percentages (e.g. 8 for 8%). Amounts are calculated from the subtotal. You can adjust each person's tip on the totals screen.
-          </Text>
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionCardTitle, { color: colors.mutedForeground }]}>SPLIT SETTINGS</Text>
+
+          <View style={styles.row}>
+            <View style={[styles.formGroup, styles.flex]}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>TAX %</Text>
+              <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
+                <Feather name="percent" size={14} color={colors.mutedForeground} />
+                <TextInput
+                  style={[styles.inputInner, { color: colors.foreground }]}
+                  placeholder="e.g. 8.5"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={taxPercent}
+                  onChangeText={setTaxPercent}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={[styles.formGroup, styles.flex]}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>TIP %</Text>
+              <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
+                <Feather name="heart" size={14} color={colors.mutedForeground} />
+                <TextInput
+                  style={[styles.inputInner, { color: colors.foreground }]}
+                  placeholder="Leave 'em smiling"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={tipPercent}
+                  onChangeText={setTipPercent}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={[styles.helperRow, { backgroundColor: colors.primarySoft }]}>
+            <Feather name="info" size={13} color={colors.primary} />
+            <Text style={[styles.helperText, { color: colors.primaryDark }]}>
+              Shared proportionally across all items
+            </Text>
+          </View>
         </View>
+
+        <TouchableOpacity
+          style={[styles.createBtn, { backgroundColor: colors.primary, opacity: createMutation.isPending ? 0.85 : 1 }]}
+          onPress={handleCreate}
+          disabled={createMutation.isPending}
+          activeOpacity={0.85}
+        >
+          {createMutation.isPending ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Feather name="file-text" size={20} color="#fff" />
+              <Text style={styles.createBtnText}>Start the bill</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -206,16 +223,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap: 12,
   },
-  backBtn: { padding: 4 },
-  headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  createBtn: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  createBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  content: { paddingHorizontal: 16, paddingTop: 20, gap: 16 },
+  backBtn: { padding: 4, width: 40 },
+  headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  content: { paddingHorizontal: 20, paddingTop: 24, gap: 16 },
+  sectionCard: {
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    padding: 20,
+    gap: 16,
+  },
+  sectionCardTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.2,
+  },
   formGroup: { gap: 6 },
   label: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
   input: {
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
@@ -225,20 +251,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 13,
     gap: 8,
   },
   inputInner: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   row: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
-  hintCard: {
+  helperRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 12,
+    borderRadius: RADIUS.sm,
+    padding: 10,
   },
-  hintText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  helperText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  createBtn: {
+    borderRadius: RADIUS.full,
+    paddingVertical: 17,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 8,
+  },
+  createBtnText: { color: "#fff", fontSize: 17, fontFamily: "Inter_700Bold" },
 });

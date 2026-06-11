@@ -19,8 +19,18 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
 import { LanguagePicker } from "@/components/LanguagePicker";
+import { RADIUS } from "@/constants/styles";
 
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
+
+function IconBox({ name, color }: { name: React.ComponentProps<typeof Feather>["name"]; color: string }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.iconBox, { backgroundColor: colors.primarySoft }]}>
+      <Feather name={name} size={16} color={color} />
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const colors = useColors();
@@ -79,9 +89,9 @@ export default function SettingsScreen() {
       setLastName(trimmedLast);
       setDbProfile(trimmedFirst || null, trimmedLast || null);
       setNameChanged(false);
-      Alert.alert("Saved", "Your name has been updated");
+      Alert.alert("Saved", "Looking good! Your name has been updated.");
     } catch {
-      Alert.alert("Error", "Could not update your name. Please try again.");
+      Alert.alert("Hmm, something went wrong", "Could not update your name. Give it another shot.");
     } finally {
       setSavingName(false);
     }
@@ -101,10 +111,10 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("Sign out?", "You can always sign back in.", [
+      { text: "Actually, stay", style: "cancel" },
       {
-        text: "Sign Out",
+        text: "Sign out",
         style: "destructive",
         onPress: async () => {
           try {
@@ -143,12 +153,12 @@ export default function SettingsScreen() {
           </View>
         </View>
       ) : (
-        <View style={[styles.guestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
+        <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
             {guestName ? (
               <Text style={[styles.avatarText, { color: colors.mutedForeground }]}>{guestInitial}</Text>
             ) : (
-              <Feather name="user" size={20} color={colors.mutedForeground} />
+              <Feather name="user" size={22} color={colors.mutedForeground} />
             )}
           </View>
           <View style={styles.profileInfo}>
@@ -207,7 +217,7 @@ export default function SettingsScreen() {
           <View style={[styles.nameCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.nameCardLabel, { color: colors.foreground }]}>Your name</Text>
             <View style={styles.nameRow}>
-              <View style={[styles.nameInputWrap, { borderColor: nameChanged ? colors.primary : colors.border }]}>
+              <View style={[styles.nameInputWrap, { flex: 1, borderColor: nameChanged ? colors.primary : colors.border }]}>
                 <TextInput
                   style={[styles.nameInput, { color: colors.foreground }]}
                   placeholder="First Name"
@@ -217,7 +227,7 @@ export default function SettingsScreen() {
                   autoCapitalize="words"
                 />
               </View>
-              <View style={[styles.nameInputWrap, { borderColor: nameChanged ? colors.primary : colors.border }]}>
+              <View style={[styles.nameInputWrap, { flex: 1, borderColor: nameChanged ? colors.primary : colors.border }]}>
                 <TextInput
                   style={[styles.nameInput, { color: colors.foreground }]}
                   placeholder="Last Name"
@@ -252,8 +262,9 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}
             onPress={() => setShowLanguagePicker(true)}
+            activeOpacity={0.75}
           >
-            <Feather name="globe" size={18} color={colors.foreground} />
+            <IconBox name="globe" color={colors.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.menuItemText, { color: colors.foreground }]}>Preferred receipt language</Text>
               {preferredLanguage && (
@@ -276,14 +287,15 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.menuItem, { borderBottomColor: colors.border }]}
                 onPress={() => router.push("/(auth)/change-password")}
+                activeOpacity={0.75}
               >
-                <Feather name="lock" size={18} color={colors.foreground} />
+                <IconBox name="lock" color={colors.primary} />
                 <Text style={[styles.menuItemText, { color: colors.foreground }]}>Change Password</Text>
                 <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
               </TouchableOpacity>
             ) : clerkUser ? (
               <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
-                <Feather name="shield" size={18} color={colors.mutedForeground} />
+                <IconBox name="shield" color={colors.mutedForeground} />
                 <Text style={[styles.menuItemText, { color: colors.mutedForeground }]}>
                   {clerkUser.externalAccounts.some((a) => a.provider === "oauth_apple")
                     ? "Signed in with Apple"
@@ -291,14 +303,6 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             ) : null}
-            <TouchableOpacity
-              style={[styles.menuItem, { borderBottomColor: colors.border }]}
-              onPress={handleLogout}
-            >
-              <Feather name="log-out" size={18} color={colors.destructive} />
-              <Text style={[styles.menuItemText, { color: colors.destructive }]}>Sign Out</Text>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -328,6 +332,17 @@ export default function SettingsScreen() {
 
       <Text style={[styles.version, { color: colors.mutedForeground }]}>TallyBill v1.0</Text>
 
+      {user && (
+        <TouchableOpacity
+          style={[styles.signOutBtn, { borderColor: colors.destructive }]}
+          onPress={handleLogout}
+          activeOpacity={0.8}
+        >
+          <Feather name="log-out" size={18} color={colors.destructive} />
+          <Text style={[styles.signOutBtnText, { color: colors.destructive }]}>Sign out</Text>
+        </TouchableOpacity>
+      )}
+
       <LanguagePicker
         visible={showLanguagePicker}
         selectedLanguage={preferredLanguage}
@@ -340,74 +355,84 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 16, gap: 20 },
+  content: { paddingHorizontal: 20, paddingTop: 16, gap: 20 },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
-    padding: 16,
-    gap: 14,
-  },
-  guestCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
-    gap: 14,
+    padding: 20,
+    gap: 16,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#fff", fontSize: 20, fontFamily: "Inter_700Bold" },
+  avatarText: { color: "#fff", fontSize: 22, fontFamily: "Inter_700Bold" },
   profileInfo: { flex: 1 },
-  profileName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  profileEmail: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  signInBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  signInBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  profileName: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  profileEmail: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 2 },
+  signInBtn: { borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 9 },
+  signInBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
   section: { gap: 8 },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, paddingHorizontal: 4 },
-  nameCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 12 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, paddingHorizontal: 4 },
+  nameCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: 20, gap: 12 },
   nameCardLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   nameCardSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, marginTop: -4 },
   nameRow: { flexDirection: "row", gap: 10 },
   nameInputWrap: {
-    flex: 1,
     borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  nameInput: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  saveNameBtn: {
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
     paddingVertical: 12,
+  },
+  nameInput: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  saveNameBtn: {
+    borderRadius: RADIUS.full,
+    paddingVertical: 13,
     alignItems: "center",
   },
-  saveNameBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  menuCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  saveNameBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  menuCard: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: "hidden" },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 14,
     borderBottomWidth: 1,
   },
-  menuItemText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuItemText: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
   menuItemSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   menuItemValue: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", paddingVertical: 8 },
+  version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", paddingVertical: 4 },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: RADIUS.full,
+    paddingVertical: 16,
+    marginTop: 4,
+  },
+  signOutBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   devBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 16,
     paddingVertical: 13,
   },

@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useAuth as useClerkAuth, useSSO, useSignIn } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
+import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -18,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { RADIUS } from "@/constants/styles";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,9 +27,7 @@ function useWarmUpBrowser() {
   useEffect(() => {
     if (Platform.OS !== "android") return;
     void WebBrowser.warmUpAsync();
-    return () => {
-      void WebBrowser.coolDownAsync();
-    };
+    return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 }
 
@@ -48,9 +48,7 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [codeError, setCodeError] = useState("");
-  const [secondFactor, setSecondFactor] = useState<
-    "totp" | "phone_code" | "email_code" | null
-  >(null);
+  const [secondFactor, setSecondFactor] = useState<"totp" | "phone_code" | "email_code" | null>(null);
 
   const isPending = fetchStatus === "fetching";
 
@@ -74,20 +72,9 @@ export default function LoginScreen() {
     const routeError = (e: { code?: string; message?: string } | undefined) => {
       const code = (e?.code ?? "").toLowerCase();
       const msg = (e?.message ?? "").toLowerCase();
-      if (
-        code.includes("not_found") ||
-        code.includes("identifier") ||
-        msg.includes("couldn't find") ||
-        msg.includes("not found") ||
-        msg.includes("no account")
-      ) {
+      if (code.includes("not_found") || code.includes("identifier") || msg.includes("couldn't find") || msg.includes("not found") || msg.includes("no account")) {
         setEmailError("No account found with this email address.");
-      } else if (
-        code.includes("password") ||
-        code.includes("incorrect") ||
-        msg.includes("password") ||
-        msg.includes("incorrect")
-      ) {
+      } else if (code.includes("password") || code.includes("incorrect") || msg.includes("password") || msg.includes("incorrect")) {
         setPasswordError("Incorrect password. Please try again.");
       } else {
         setPasswordError("Could not sign in. Please try again.");
@@ -95,14 +82,8 @@ export default function LoginScreen() {
     };
 
     try {
-      const { error } = await signIn.password({
-        emailAddress: normalizedEmail,
-        password,
-      });
-      if (error) {
-        routeError(error);
-        return;
-      }
+      const { error } = await signIn.password({ emailAddress: normalizedEmail, password });
+      if (error) { routeError(error); return; }
     } catch (err: unknown) {
       const e = err as { errors?: Array<{ code?: string; message?: string }>; message?: string };
       routeError(e.errors?.[0] ?? { message: e.message });
@@ -116,24 +97,14 @@ export default function LoginScreen() {
       await signIn.mfa.sendEmailCode();
     } else if (signIn.status === "needs_second_factor") {
       const strategy = pickSecondFactor();
-      if (!strategy) {
-        setPasswordError(
-          "Two-factor authentication is required, but no supported method was found.",
-        );
-        return;
-      }
+      if (!strategy) { setPasswordError("Two-factor authentication is required, but no supported method was found."); return; }
       setSecondFactor(strategy);
       setVerificationCode("");
       setCodeError("");
-      if (strategy === "phone_code") {
-        await signIn.mfa.sendPhoneCode();
-      } else if (strategy === "email_code") {
-        await signIn.mfa.sendEmailCode();
-      }
+      if (strategy === "phone_code") await signIn.mfa.sendPhoneCode();
+      else if (strategy === "email_code") await signIn.mfa.sendEmailCode();
     } else {
-      if (__DEV__) {
-        console.warn("[signIn unexpected status]", signIn.status);
-      }
+      if (__DEV__) console.warn("[signIn unexpected status]", signIn.status);
       setPasswordError("Could not sign in. Please try again.");
     }
   };
@@ -143,29 +114,16 @@ export default function LoginScreen() {
     try {
       let result: { error: { message?: string } | null } | undefined;
       if (signIn.status === "needs_second_factor") {
-        if (secondFactor === "totp") {
-          result = await signIn.mfa.verifyTOTP({ code: verificationCode });
-        } else if (secondFactor === "phone_code") {
-          result = await signIn.mfa.verifyPhoneCode({ code: verificationCode });
-        } else if (secondFactor === "email_code") {
-          result = await signIn.mfa.verifyEmailCode({ code: verificationCode });
-        } else {
-          setCodeError(
-            "Two-factor authentication is required, but no supported method was found.",
-          );
-          return;
-        }
+        if (secondFactor === "totp") result = await signIn.mfa.verifyTOTP({ code: verificationCode });
+        else if (secondFactor === "phone_code") result = await signIn.mfa.verifyPhoneCode({ code: verificationCode });
+        else if (secondFactor === "email_code") result = await signIn.mfa.verifyEmailCode({ code: verificationCode });
+        else { setCodeError("Two-factor authentication is required, but no supported method was found."); return; }
       } else {
         result = await signIn.mfa.verifyEmailCode({ code: verificationCode });
       }
-      if (result?.error) {
-        setCodeError("Incorrect code. Please try again.");
-        return;
-      }
+      if (result?.error) { setCodeError("Incorrect code. Please try again."); return; }
       if (signIn.status === "complete") {
-        await signIn.finalize({
-          navigate: () => {},
-        });
+        await signIn.finalize({ navigate: () => {} });
         router.replace("/");
       } else {
         setCodeError("Incorrect code. Please try again.");
@@ -177,11 +135,8 @@ export default function LoginScreen() {
 
   const resendSecondFactorCode = async () => {
     if (signIn.status === "needs_second_factor") {
-      if (secondFactor === "phone_code") {
-        await signIn.mfa.sendPhoneCode();
-      } else if (secondFactor === "email_code") {
-        await signIn.mfa.sendEmailCode();
-      }
+      if (secondFactor === "phone_code") await signIn.mfa.sendPhoneCode();
+      else if (secondFactor === "email_code") await signIn.mfa.sendEmailCode();
     } else if (signIn.status === "needs_client_trust") {
       await signIn.mfa.sendEmailCode();
     }
@@ -198,9 +153,7 @@ export default function LoginScreen() {
         await setActive({ session: createdSessionId, navigate: async () => {} });
         router.replace("/");
       } catch (err: unknown) {
-        if (__DEV__) {
-          console.warn("[OAuth sign-in error]", err);
-        }
+        if (__DEV__) console.warn("[OAuth sign-in error]", err);
         const msg = (() => {
           if (err instanceof Error) return err.message.toLowerCase();
           if (typeof err === "object" && err !== null) {
@@ -212,9 +165,7 @@ export default function LoginScreen() {
         const cancelled = msg.includes("cancel") || msg.includes("dismiss") || msg === "";
         if (cancelled) return;
         const provider = strategy === "oauth_google" ? "Google" : "Apple";
-        setPasswordError(
-          `Could not sign in with ${provider}. Check your internet connection and try again.`,
-        );
+        setPasswordError(`Could not sign in with ${provider}. Check your internet connection and try again.`);
       }
     },
     [startSSOFlow],
@@ -225,95 +176,36 @@ export default function LoginScreen() {
     router.replace("/?prompt=1");
   };
 
-  if (clerkLoaded && isSignedIn) {
-    return <Redirect href="/" />;
-  }
+  if (clerkLoaded && isSignedIn) return <Redirect href="/" />;
 
-  const isVerifying =
-    signIn.status === "needs_client_trust" ||
-    signIn.status === "needs_second_factor";
+  const isVerifying = signIn.status === "needs_client_trust" || signIn.status === "needs_second_factor";
 
   if (isVerifying) {
-    const isTOTP =
-      signIn.status === "needs_second_factor" && secondFactor === "totp";
-    const isPhoneCode =
-      signIn.status === "needs_second_factor" && secondFactor === "phone_code";
-    const tagline = isTOTP
-      ? "Enter the code from your authenticator app"
-      : isPhoneCode
-        ? "Enter the code sent to your phone"
-        : "Enter the code sent to your email";
+    const isTOTP = signIn.status === "needs_second_factor" && secondFactor === "totp";
+    const isPhoneCode = signIn.status === "needs_second_factor" && secondFactor === "phone_code";
+    const tagline = isTOTP ? "Enter the code from your authenticator app" : isPhoneCode ? "Enter the code sent to your phone" : "Enter the code sent to your email";
     const canResend = !isTOTP;
     return (
-      <KeyboardAvoidingView
-        style={[styles.flex, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          style={[
-            styles.container,
-            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 },
-          ]}
-        >
-          <View style={styles.header}>
-            <View style={[styles.logoWrap, { backgroundColor: "rgba(31,136,61,0.1)" }]}>
-              <Feather name="shield" size={32} color={colors.primary} />
-            </View>
-            <Text style={[styles.appName, { color: colors.foreground }]}>Verify your identity</Text>
-            <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
-              {tagline}
-            </Text>
+      <KeyboardAvoidingView style={[styles.flex, { backgroundColor: colors.background }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={[styles.formCard, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
+          <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
+            <Feather name="shield" size={28} color={colors.primary} />
           </View>
-          <View style={styles.form}>
-            <View style={[styles.inputWrap, { borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Verify your identity</Text>
+          <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>{tagline}</Text>
+          <View style={styles.formContent}>
+            <View style={[styles.inputWrap, { borderColor: codeError ? colors.destructive : colors.border }]}>
               <Feather name="key" size={18} color={colors.mutedForeground} />
-              <TextInput
-                style={[styles.input, { color: colors.foreground }]}
-                placeholder="Verification code"
-                placeholderTextColor={colors.mutedForeground}
-                value={verificationCode}
-                onChangeText={setVerificationCode}
-                keyboardType="numeric"
-                autoFocus
-              />
+              <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Verification code" placeholderTextColor={colors.mutedForeground} value={verificationCode} onChangeText={setVerificationCode} keyboardType="numeric" autoFocus />
             </View>
-            {!!codeError && (
-              <Text style={[styles.errorText, { color: colors.destructive }]}>
-                {codeError}
-              </Text>
-            )}
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-              onPress={handleVerify}
-              disabled={isPending}
-              activeOpacity={0.8}
-            >
-              {isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryBtnText}>Verify</Text>
-              )}
+            {!!codeError && <Text style={[styles.errorText, { color: colors.destructive }]}>{codeError}</Text>}
+            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleVerify} disabled={isPending} activeOpacity={0.8}>
+              {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Verify</Text>}
             </TouchableOpacity>
-            {canResend && (
-              <TouchableOpacity
-                onPress={() => { void resendSecondFactorCode(); }}
-                style={styles.linkBtn}
-              >
-                <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-                  Resend code
-                </Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              onPress={() => { setSecondFactor(null); signIn.reset(); }}
-              style={styles.linkBtn}
-            >
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-                Start over
-              </Text>
-            </TouchableOpacity>
+            {canResend && <TouchableOpacity onPress={() => { void resendSecondFactorCode(); }} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Resend code</Text></TouchableOpacity>}
+            <TouchableOpacity onPress={() => { setSecondFactor(null); signIn.reset(); }} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Start over</Text></TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     );
   }
@@ -321,305 +213,128 @@ export default function LoginScreen() {
   const canGoBack = router.canGoBack();
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      {canGoBack && (
-        <TouchableOpacity
-          style={[styles.backBtn, { top: insets.top + 8 }]}
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    <View style={styles.flex}>
+      <LinearGradient colors={["#F59E0B", "#D97706"]} style={styles.gradient}>
+        <View style={{ height: insets.top + 16 }} />
+        {canGoBack && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Feather name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
+          </TouchableOpacity>
+        )}
+        <View style={styles.brandArea}>
+          <Text style={styles.wordmark}>TallyBill</Text>
+          <Text style={styles.tagline}>Split bills. Not friendships.</Text>
+        </View>
+      </LinearGradient>
+
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          style={[styles.formSheet, { backgroundColor: colors.card }]}
+          contentContainerStyle={[styles.formCard, { paddingBottom: insets.bottom + 32 }]}
+          keyboardShouldPersistTaps="handled"
         >
-          <Feather name="arrow-left" size={24} color={colors.foreground} />
-        </TouchableOpacity>
-      )}
-      <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <View style={[styles.logoWrap, { backgroundColor: "rgba(31,136,61,0.1)" }]}>
-            <Feather name="file-text" size={32} color={colors.primary} />
-          </View>
-          <Text style={[styles.appName, { color: colors.foreground }]}>TallyBill</Text>
-          <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
-            Split bills, not friendships
-          </Text>
-        </View>
+          <Text style={[styles.formTitle, { color: colors.foreground }]}>Welcome back!</Text>
+          <Text style={[styles.formSub, { color: colors.mutedForeground }]}>Your friends are waiting.</Text>
 
-        <View style={styles.socialSection}>
-          <TouchableOpacity
-            style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
-            onPress={() => { void handleOAuth("oauth_google"); }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.googleG}>G</Text>
-            <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
-              Continue with Google
-            </Text>
-          </TouchableOpacity>
-
-          {Platform.OS === "ios" && (
-            <TouchableOpacity
-              style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]}
-              onPress={() => { void handleOAuth("oauth_apple"); }}
-              activeOpacity={0.8}
-            >
-              <Feather name="smartphone" size={18} color="#fff" />
-              <Text style={[styles.socialBtnText, { color: "#fff" }]}>
-                Continue with Apple
-              </Text>
+          <View style={styles.socialSection}>
+            <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#fff" }]} onPress={() => { void handleOAuth("oauth_google"); }} activeOpacity={0.8}>
+              <Text style={styles.googleG}>G</Text>
+              <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Continue with Google</Text>
             </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.divider}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>
-            or sign in with email
-          </Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-        </View>
-
-        <View style={styles.form}>
-          <View style={[styles.inputWrap, { borderColor: emailError ? colors.destructive : colors.border }]}>
-            <Feather name="mail" size={18} color={colors.mutedForeground} />
-            <TextInput
-              style={[styles.input, { color: colors.foreground }]}
-              placeholder="Email"
-              placeholderTextColor={colors.mutedForeground}
-              value={email}
-              onChangeText={(t) => { setEmail(t); setEmailError(""); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-          {!!emailError && (
-            <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text>
-          )}
-
-          <View style={[styles.inputWrap, { borderColor: passwordError ? colors.destructive : colors.border }]}>
-            <Feather name="lock" size={18} color={colors.mutedForeground} />
-            <TextInput
-              style={[styles.input, { color: colors.foreground }]}
-              placeholder="Password"
-              placeholderTextColor={colors.mutedForeground}
-              value={password}
-              onChangeText={(t) => { setPassword(t); setPasswordError(""); }}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
-              <Feather
-                name={showPassword ? "eye-off" : "eye"}
-                size={18}
-                color={colors.mutedForeground}
-              />
-            </TouchableOpacity>
-          </View>
-          {!!passwordError && (
-            <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>
-          )}
-
-          <TouchableOpacity
-            onPress={() => router.push("/(auth)/forgot-password")}
-            style={styles.forgotBtn}
-          >
-            <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-            onPress={handleEmailLogin}
-            disabled={isPending}
-            activeOpacity={0.8}
-          >
-            {isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Sign In</Text>
+            {Platform.OS === "ios" && (
+              <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]} onPress={() => { void handleOAuth("oauth_apple"); }} activeOpacity={0.8}>
+                <Feather name="smartphone" size={18} color="#fff" />
+                <Text style={[styles.socialBtnText, { color: "#fff" }]}>Continue with Apple</Text>
+              </TouchableOpacity>
             )}
+          </View>
+
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or sign in with email</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          <View style={styles.formContent}>
+            <View style={[styles.inputWrap, { borderColor: emailError ? colors.destructive : colors.border }]}>
+              <Feather name="mail" size={18} color={colors.mutedForeground} />
+              <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Email" placeholderTextColor={colors.mutedForeground} value={email} onChangeText={(t) => { setEmail(t); setEmailError(""); }} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            </View>
+            {!!emailError && <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text>}
+
+            <View style={[styles.inputWrap, { borderColor: passwordError ? colors.destructive : colors.border }]}>
+              <Feather name="lock" size={18} color={colors.mutedForeground} />
+              <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Password" placeholderTextColor={colors.mutedForeground} value={password} onChangeText={(t) => { setPassword(t); setPasswordError(""); }} secureTextEntry={!showPassword} />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)}><Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
+            </View>
+            {!!passwordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>}
+
+            <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={styles.forgotBtn}>
+              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleEmailLogin} disabled={isPending} activeOpacity={0.8}>
+              {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Sign In</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={styles.linkBtn}>
+              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>No account? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Register</Text></Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.divider, { marginVertical: 20 }]}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          <TouchableOpacity style={[styles.ghostBtn, { borderColor: colors.border }]} onPress={handleGuest} activeOpacity={0.7}>
+            <Feather name="user" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.ghostBtnText, { color: colors.mutedForeground }]}>Continue without account</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(auth)/register")}
-            style={styles.linkBtn}
-          >
-            <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-              No account?{" "}
-              <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
-                Register
-              </Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.divider, { marginVertical: 20 }]}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.ghostBtn, { borderColor: colors.border }]}
-          onPress={handleGuest}
-          activeOpacity={0.7}
-        >
-          <Feather name="user" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.ghostBtnText, { color: colors.mutedForeground }]}>
-            Continue without account
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={[styles.guestNote, { color: colors.mutedForeground }]}>
-          Your bills stay here. Sign up to take them anywhere.
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Text style={[styles.guestNote, { color: colors.mutedForeground }]}>Your bills stay here. Sign up to take them anywhere.</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
+  gradient: { paddingBottom: 40 },
+  backBtn: { position: "absolute", top: 16, left: 20, zIndex: 10, padding: 4 },
+  brandArea: { alignItems: "center", paddingTop: 20, paddingBottom: 8, gap: 8 },
+  wordmark: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
+  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
+  formSheet: {
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    marginTop: -RADIUS.xl,
   },
-  backBtn: {
-    position: "absolute",
-    left: 16,
-    zIndex: 10,
-    padding: 4,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-    gap: 8,
-  },
-  logoWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  appName: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-  },
-  tagline: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  socialSection: {
-    gap: 10,
-  },
-  socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 10,
-  },
-  googleG: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#4285F4",
-  },
-  socialBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  form: {
-    gap: 12,
-  },
-  inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  primaryBtn: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  forgotBtn: {
-    alignSelf: "flex-end",
-    paddingVertical: 2,
-  },
-  forgotText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  linkBtn: {
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  linkText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  ghostBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  ghostBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-  },
-  guestNote: {
-    textAlign: "center",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 12,
-    paddingHorizontal: 20,
-    lineHeight: 18,
-  },
-  errorText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: -4,
-  },
-  destructive: {},
+  formCard: { paddingHorizontal: 24, paddingTop: 32, gap: 0 },
+  formTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  formSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 24 },
+  iconCircle: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 16 },
+  cardTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 6 },
+  cardSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 28 },
+  socialSection: { gap: 10 },
+  socialBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderRadius: RADIUS.full, paddingVertical: 15, gap: 10 },
+  googleG: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#4285F4" },
+  socialBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  divider: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 20 },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  formContent: { gap: 12 },
+  inputWrap: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 14, gap: 10 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  primaryBtn: { borderRadius: RADIUS.full, paddingVertical: 17, alignItems: "center", marginTop: 4 },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  forgotBtn: { alignSelf: "flex-end", paddingVertical: 2 },
+  forgotText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  linkBtn: { alignItems: "center", paddingVertical: 8 },
+  linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  ghostBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderRadius: RADIUS.full, paddingVertical: 15, gap: 8 },
+  ghostBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  guestNote: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 12, paddingHorizontal: 20, lineHeight: 18 },
+  errorText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: -4 },
 });

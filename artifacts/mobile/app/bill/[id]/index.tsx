@@ -19,6 +19,8 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { BottomSheet } from "@/components/BottomSheet";
+import { RADIUS } from "@/constants/styles";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton } from "@/components/Skeleton";
 import { useQueryClient } from "@tanstack/react-query";
@@ -804,116 +806,114 @@ export default function BillDetailScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={showAddPerson} transparent animationType="fade">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowAddPerson(false)}>
-          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Person</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Name"
-              placeholderTextColor={colors.mutedForeground}
-              value={newPersonName}
-              onChangeText={setNewPersonName}
-              autoFocus
-              onSubmitEditing={handleAddPerson}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setShowAddPerson(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleAddPerson} style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.modalConfirmText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet visible={showAddPerson} onClose={() => setShowAddPerson(false)} title="Add someone">
+        <View style={styles.sheetContent}>
+          <TextInput
+            style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+            placeholder="e.g. Jordan, Mom, The birthday person"
+            placeholderTextColor={colors.mutedForeground}
+            value={newPersonName}
+            onChangeText={setNewPersonName}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={handleAddPerson}
+          />
+          <TouchableOpacity onPress={handleAddPerson} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+            <Text style={styles.sheetPrimaryBtnText}>Add to Bill</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowAddPerson(false)} style={styles.sheetCancelBtn}>
+            <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
 
-      <Modal visible={showEditHeader} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-        <TouchableOpacity style={[styles.overlay, { justifyContent: "flex-start", paddingTop: insets.top + 4, paddingBottom: insets.bottom + 16 }]} activeOpacity={1} onPress={() => setShowEditHeader(false)}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Bill Details</Text>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.editModalScroll}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title</Text>
+      <BottomSheet visible={showEditHeader} onClose={() => setShowEditHeader(false)} title="Edit Bill Details">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={styles.sheetContent}>
+              <View style={styles.sheetFieldGroup}>
+                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TITLE</Text>
                 <TextInput
-                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                  placeholder="Bill title"
+                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+                  placeholder="e.g. Sushi with the gang"
                   placeholderTextColor={colors.mutedForeground}
                   value={editTitle}
                   onChangeText={setEditTitle}
                   autoFocus
                 />
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
+              </View>
+              <View style={styles.sheetFieldGroup}>
+                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>DATE</Text>
                 <TextInput
-                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={colors.mutedForeground}
                   value={editDate}
                   onChangeText={setEditDate}
                   autoCapitalize="none"
                 />
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Currency</Text>
-                <CurrencyPicker value={editCurrency} onChange={setEditCurrency} />
-                <View style={styles.taxTipRow}>
-                  <View style={styles.taxTipField}>
-                    <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tax %</Text>
-                    <TextInput
-                      style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                      placeholder="0"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={editTaxPercent}
-                      onChangeText={setEditTaxPercent}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={styles.taxTipField}>
-                    <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Tip %</Text>
-                    <TextInput
-                      style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                      placeholder="0"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={editTipPercent}
-                      onChangeText={setEditTipPercent}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-              </ScrollView>
-              <View style={styles.modalButtons}>
-                <TouchableOpacity onPress={() => setShowEditHeader(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
-                  <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleSaveHeader}
-                  disabled={patchBillMutation.isPending}
-                  style={[styles.modalConfirmBtn, { backgroundColor: colors.primary, opacity: patchBillMutation.isPending ? 0.6 : 1 }]}
-                >
-                  <Text style={styles.modalConfirmText}>{patchBillMutation.isPending ? "Saving..." : "Save"}</Text>
-                </TouchableOpacity>
               </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+              <View style={styles.sheetFieldGroup}>
+                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>CURRENCY</Text>
+                <CurrencyPicker value={editCurrency} onChange={setEditCurrency} />
+              </View>
+              <View style={styles.taxTipRow}>
+                <View style={styles.taxTipField}>
+                  <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TAX %</Text>
+                  <TextInput
+                    style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
+                    placeholder="e.g. 8.5"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={editTaxPercent}
+                    onChangeText={setEditTaxPercent}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.taxTipField}>
+                  <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TIP %</Text>
+                  <TextInput
+                    style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
+                    placeholder="Leave 'em smiling"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={editTipPercent}
+                    onChangeText={setEditTipPercent}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={handleSaveHeader}
+                disabled={patchBillMutation.isPending}
+                style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary, opacity: patchBillMutation.isPending ? 0.6 : 1 }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.sheetPrimaryBtnText}>{patchBillMutation.isPending ? "Saving…" : "Save Changes"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowEditHeader(false)} style={styles.sheetCancelBtn}>
+                <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Discard</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
-      </Modal>
+      </BottomSheet>
 
-      <Modal visible={showAddItem} transparent animationType="fade">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowAddItem(false)}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Item</Text>
+      <BottomSheet visible={showAddItem} onClose={() => setShowAddItem(false)} title="Add Item">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={styles.sheetContent}>
             <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Item description"
+              style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+              placeholder="e.g. Spicy tuna roll, dessert, drinks"
               placeholderTextColor={colors.mutedForeground}
               value={newItemDesc}
               onChangeText={setNewItemDesc}
               autoFocus
+              returnKeyType="next"
             />
             <View style={styles.addItemAmountRow}>
               <View style={styles.addItemQtyWrap}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Qty</Text>
+                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>QTY</Text>
                 <TextInput
-                  style={[styles.modalInput, styles.addItemQtyInput, { borderColor: colors.border, color: colors.foreground }]}
+                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
                   placeholder="1"
                   placeholderTextColor={colors.mutedForeground}
                   value={newItemQty}
@@ -922,28 +922,28 @@ export default function BillDetailScreen() {
                 />
               </View>
               <View style={styles.addItemTotalWrap}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Total amount</Text>
+                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TOTAL AMOUNT</Text>
                 <TextInput
-                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
                   placeholder="0.00"
                   placeholderTextColor={colors.mutedForeground}
                   value={newItemTotal}
                   onChangeText={setNewItemTotal}
                   keyboardType="numeric"
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddItem}
                 />
               </View>
             </View>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setShowAddItem(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleAddItem} style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.modalConfirmText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+            <TouchableOpacity onPress={handleAddItem} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+              <Text style={styles.sheetPrimaryBtnText}>Add Item</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowAddItem(false)} style={styles.sheetCancelBtn}>
+              <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </BottomSheet>
 
       {(scan.status === "scanning" || scan.status === "ready" || scan.status === "error") && scan.billId === billId && (
         <TouchableOpacity
@@ -994,85 +994,68 @@ export default function BillDetailScreen() {
         </TouchableOpacity>
       )}
 
-      <Modal visible={showSplitModal} transparent animationType="fade">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowSplitModal(false)}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Split Quantity</Text>
-            {splitLine && (
-              <Text style={[styles.splitHint, { color: colors.mutedForeground }]}>
-                "{splitLine.description}"
-                {splitLine.originalDescription ? ` (${splitLine.originalDescription})` : ""}
-                {" "}has ×{parseFloat(String(splitLine.quantity))} units. How many to split off into a new row?
-              </Text>
-            )}
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder={splitLineMaxQty > 0 ? `1 – ${splitLineMaxQty}` : ""}
-              placeholderTextColor={colors.mutedForeground}
-              value={splitQtyInput}
-              onChangeText={setSplitQtyInput}
-              keyboardType="number-pad"
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setShowSplitModal(false)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleConfirmSplit} style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.modalConfirmText}>Split</Text>
-              </TouchableOpacity>
-            </View>
+      <BottomSheet visible={showSplitModal} onClose={() => setShowSplitModal(false)} title="Split Quantity">
+        <View style={styles.sheetContent}>
+          {splitLine && (
+            <Text style={[styles.splitHint, { color: colors.mutedForeground }]}>
+              "{splitLine.description}"{splitLine.originalDescription ? ` (${splitLine.originalDescription})` : ""}{" "}
+              has ×{parseFloat(String(splitLine.quantity))} units. How many to split off into a new row?
+            </Text>
+          )}
+          <TextInput
+            style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center", fontSize: 22, fontFamily: "Inter_700Bold" }]}
+            placeholder={splitLineMaxQty > 0 ? `1 – ${splitLineMaxQty}` : ""}
+            placeholderTextColor={colors.mutedForeground}
+            value={splitQtyInput}
+            onChangeText={setSplitQtyInput}
+            keyboardType="number-pad"
+            autoFocus
+          />
+          <TouchableOpacity onPress={handleConfirmSplit} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+            <Text style={styles.sheetPrimaryBtnText}>Split it</Text>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+          <TouchableOpacity onPress={() => setShowSplitModal(false)} style={styles.sheetCancelBtn}>
+            <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
 
-      <Modal visible={showCirclePicker} transparent animationType="fade">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowCirclePicker(false)}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add from Circle</Text>
-            {circles && circles.length > 0 ? (
-              circles.map((circle, index) => (
-                <TouchableOpacity
-                  key={circle.id}
-                  style={[
-                    styles.circlePickerRow,
-                    {
-                      borderColor: colors.border,
-                      borderTopWidth: index === 0 ? 0 : 1,
-                    },
-                  ]}
-                  onPress={() => {
-                    setAddingFromCircleId(circle.id);
-                    handleAddFromCircle(circle.id);
-                  }}
-                  disabled={addingFromCircleId === circle.id}
-                >
-                  <View style={[styles.circlePickerIcon, { backgroundColor: colors.primary + "22" }]}>
-                    <Feather name="users" size={16} color={colors.primary} />
-                  </View>
-                  <View style={styles.circlePickerInfo}>
-                    <Text style={[styles.circlePickerName, { color: colors.foreground }]}>{circle.name}</Text>
-                    <Text style={[styles.circlePickerCount, { color: colors.mutedForeground }]}>
-                      {circle.members.length === 1 ? "1 person" : `${circle.members.length} people`}
-                    </Text>
-                  </View>
-                  {addingFromCircleId === circle.id ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                  )}
-                </TouchableOpacity>
-              ))
-            ) : null}
-            <TouchableOpacity
-              onPress={() => setShowCirclePicker(false)}
-              style={[styles.modalCancelBtn, { borderColor: colors.border, marginTop: 4 }]}
-            >
-              <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-            </TouchableOpacity>
+      <BottomSheet visible={showCirclePicker} onClose={() => setShowCirclePicker(false)} title="Add from Circle">
+        <View style={styles.sheetContent}>
+          {circles && circles.length > 0 ? (
+            circles.map((circle, index) => (
+              <TouchableOpacity
+                key={circle.id}
+                style={[
+                  styles.circlePickerRow,
+                  { borderColor: colors.border, borderTopWidth: index === 0 ? 0 : 1 },
+                ]}
+                onPress={() => { setAddingFromCircleId(circle.id); handleAddFromCircle(circle.id); }}
+                disabled={addingFromCircleId === circle.id}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.circlePickerIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Feather name="users" size={16} color={colors.primary} />
+                </View>
+                <View style={styles.circlePickerInfo}>
+                  <Text style={[styles.circlePickerName, { color: colors.foreground }]}>{circle.name}</Text>
+                  <Text style={[styles.circlePickerCount, { color: colors.mutedForeground }]}>
+                    {circle.members.length === 1 ? "1 person" : `${circle.members.length} people`}
+                  </Text>
+                </View>
+                {addingFromCircleId === circle.id ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
+            ))
+          ) : null}
+          <TouchableOpacity onPress={() => setShowCirclePicker(false)} style={[styles.sheetCancelBtn, { marginTop: 8 }]}>
+            <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Close</Text>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        </View>
+      </BottomSheet>
 
       <Modal visible={showReceiptModal} transparent animationType="fade" onRequestClose={() => setShowReceiptModal(false)}>
         <View style={styles.receiptModalOverlay}>
@@ -1111,13 +1094,13 @@ const styles = StyleSheet.create({
   headerTitleWrap: { flex: 1 },
   headerTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  totalsBtn: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-  totalsBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  totalsBtn: { borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 8 },
+  totalsBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" },
   content: { paddingHorizontal: 16, paddingTop: 16, gap: 24 },
   section: { gap: 12 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
-  addBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.0 },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
   addBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   itemActions: { flexDirection: "row", gap: 8 },
   emptyHint: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
@@ -1127,140 +1110,70 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderRadius: 12,
-    paddingVertical: 32,
+    borderRadius: RADIUS.lg,
+    paddingVertical: 36,
     paddingHorizontal: 24,
   },
   peopleScroll: { gap: 20, paddingVertical: 4, paddingHorizontal: 4 },
   billSummary: {
-    borderRadius: 12,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
-    padding: 14,
-    gap: 6,
+    padding: 16,
+    gap: 8,
   },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   summaryLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
   summaryValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   summaryDivider: { height: 1, marginVertical: 4 },
-  summaryTotalLabel: { fontFamily: "Inter_600SemiBold" },
-  summaryTotalValue: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalCard: {
-    width: "100%",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-    gap: 12,
-  },
-  modalTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4, marginBottom: 4 },
-  modalInput: {
+  summaryTotalLabel: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  summaryTotalValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  sheetContent: { gap: 14 },
+  sheetInput: {
     borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
-  modalButtons: { flexDirection: "row", gap: 10, marginTop: 4 },
-  modalCancelBtn: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  modalCancelText: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  modalConfirmBtn: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  modalConfirmText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  editModalScroll: { maxHeight: 400 },
-  taxTipRow: { flexDirection: "row", gap: 12, marginTop: 2 },
+  sheetFieldGroup: { gap: 6 },
+  sheetFieldLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.0 },
+  sheetPrimaryBtn: { borderRadius: RADIUS.full, paddingVertical: 16, alignItems: "center" },
+  sheetPrimaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  sheetCancelBtn: { alignItems: "center", paddingVertical: 8 },
+  sheetCancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  taxTipRow: { flexDirection: "row", gap: 12 },
   taxTipField: { flex: 1 },
   addItemAmountRow: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
-  addItemQtyWrap: { width: 72 },
-  addItemQtyInput: { textAlign: "center" },
+  addItemQtyWrap: { width: 80 },
   addItemTotalWrap: { flex: 1 },
-  splitHint: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  splitHint: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
   scanBanner: {
     position: "absolute",
     left: 16,
     right: 16,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 6,
   },
-  scanBannerText: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  receiptThumb: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-    gap: 12,
-  },
-  receiptThumbImage: {
-    width: 72,
-    height: 72,
-  },
-  receiptThumbLabel: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  receiptThumbText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  receiptModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.92)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  receiptModalClose: {
-    position: "absolute",
-    top: 52,
-    right: 20,
-    zIndex: 10,
-    padding: 8,
-  },
-  receiptModalImage: {
-    width: "100%",
-    height: "80%",
-  },
-  circlePickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    gap: 12,
-  },
-  circlePickerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  circlePickerInfo: { flex: 1, gap: 1 },
+  scanBannerText: { flex: 1, color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  receiptThumb: { flexDirection: "row", alignItems: "center", borderRadius: RADIUS.lg, borderWidth: 1, overflow: "hidden", gap: 12 },
+  receiptThumbImage: { width: 72, height: 72 },
+  receiptThumbLabel: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
+  receiptThumbText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  receiptModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.92)", justifyContent: "center", alignItems: "center" },
+  receiptModalClose: { position: "absolute", top: 52, right: 20, zIndex: 10, padding: 8 },
+  receiptModalImage: { width: "100%", height: "80%" },
+  circlePickerRow: { flexDirection: "row", alignItems: "center", paddingVertical: 14, gap: 14 },
+  circlePickerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  circlePickerInfo: { flex: 1, gap: 2 },
   circlePickerName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   circlePickerCount: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });

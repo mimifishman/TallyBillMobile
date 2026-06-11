@@ -1,39 +1,52 @@
 const colors = {
   light: {
-    text: "#1F2937",
-    tint: "#16A34A",
+    text: "#1C1917",
+    tint: "#F59E0B",
 
-    background: "#FAFAF9",
-    foreground: "#1F2937",
+    background: "#FAFAF8",
+    foreground: "#1C1917",
 
     card: "#FFFFFF",
-    cardForeground: "#1F2937",
+    cardForeground: "#1C1917",
 
-    primary: "#16A34A",
+    surface: "#FAFAF8",
+    surfaceRaised: "#FFFFFF",
+
+    primary: "#F59E0B",
     primaryForeground: "#FFFFFF",
-    primarySoft: "#DCFCE7",
+    primarySoft: "#FEF3C7",
+    primaryDark: "#D97706",
 
-    secondary: "#E5E7EB",
-    secondaryForeground: "#1F2937",
+    secondary: "#F5F3EF",
+    secondaryForeground: "#1C1917",
 
-    muted: "#F3F4F6",
-    mutedForeground: "#6B7280",
+    muted: "#F5F3EF",
+    mutedForeground: "#78716C",
 
-    accent: "#F97316",
+    accent: "#F59E0B",
     accentForeground: "#FFFFFF",
-    accentSoft: "#FFEDD5",
+    accentSoft: "#FEF3C7",
 
     destructive: "#DC2626",
     destructiveForeground: "#FFFFFF",
 
-    border: "#E5E7EB",
-    input: "#E5E7EB",
+    danger: "#DC2626",
+    success: "#16A34A",
+    warning: "#D97706",
+
+    textPrimary: "#1C1917",
+    textSecondary: "#78716C",
+
+    border: "#F0EDE8",
+    borderStrong: "#E5DDD5",
+    input: "#F0EDE8",
 
     settled: "#9CA3AF",
 
-    gradientPrimary: ["#16A34A", "#22C55E"] as [string, string],
-    gradientAccent: ["#F97316", "#FB923C"] as [string, string],
-    gradientHeader: ["#FAFAF9", "#F3F4F6"] as [string, string],
+    gradientPrimary: ["#F59E0B", "#FBBF24"] as [string, string],
+    gradientAccent: ["#F59E0B", "#FBBF24"] as [string, string],
+    gradientHeader: ["#FAFAF8", "#F5F3EF"] as [string, string],
+    gradientAmber: ["#F59E0B", "#D97706"] as [string, string],
 
     people: [
       "#E84393",
@@ -74,7 +87,12 @@ const colors = {
     ] as [string, string][],
   },
 
-  radius: 12,
+  radius: 20,
+  radiusSm: 8,
+  radiusMd: 16,
+  radiusLg: 20,
+  radiusXl: 28,
+  radiusFull: 999,
 };
 
 export default colors;

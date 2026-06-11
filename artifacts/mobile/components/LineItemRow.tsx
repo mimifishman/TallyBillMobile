@@ -13,6 +13,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
+import { RADIUS } from "@/constants/styles";
 
 interface BillMember {
   id: number;
@@ -60,6 +61,9 @@ export function LineItemRow({
   const [editTotal, setEditTotal] = useState(String(total));
   const [editQty, setEditQty] = useState(String(quantity));
 
+  const isFullyAssigned = billUsers.length > 0 && billUsers.every((u) => assignedUserIds.includes(u.id));
+  const hasAnyAssigned = assignedUserIds.length > 0;
+
   const handleEdit = () => {
     setEditDesc(description);
     setEditTotal(String(total));
@@ -75,22 +79,32 @@ export function LineItemRow({
   };
 
   const handleDelete = () => {
-    Alert.alert("Delete Item", `Remove "${description}"?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => onDelete(id) },
+    Alert.alert("Remove item?", `"${description}" will be removed from the bill.`, [
+      { text: "Actually, keep it", style: "cancel" },
+      { text: "Yeah, remove", style: "destructive", onPress: () => onDelete(id) },
     ]);
   };
 
   return (
     <Animated.View
       entering={FadeInDown.springify().damping(16).mass(0.6)}
-      style={[styles.container, { borderColor: colors.border }]}
+      style={[
+        styles.container,
+        { borderColor: colors.border },
+        hasAnyAssigned && { backgroundColor: colors.primarySoft },
+      ]}
     >
+      {isFullyAssigned && (
+        <View style={[styles.fullyAssignedBadge, { backgroundColor: colors.success }]}>
+          <Feather name="check" size={10} color="#fff" />
+        </View>
+      )}
+
       {editing ? (
         <View style={styles.editBlock}>
           <View style={styles.editRow}>
             <TextInput
-              style={[styles.editInput, { color: colors.foreground, borderColor: colors.border }]}
+              style={[styles.editInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
               value={editDesc}
               onChangeText={setEditDesc}
               placeholder="Item name"
@@ -102,7 +116,7 @@ export function LineItemRow({
             <View style={styles.editQtyWrap}>
               <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Qty</Text>
               <TextInput
-                style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border }]}
+                style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
                 value={editQty}
                 onChangeText={setEditQty}
                 keyboardType="number-pad"
@@ -111,7 +125,7 @@ export function LineItemRow({
               />
             </View>
             <TextInput
-              style={[styles.editInputSmall, { color: colors.foreground, borderColor: colors.border }]}
+              style={[styles.editInputSmall, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
               value={editTotal}
               onChangeText={setEditTotal}
               keyboardType="numeric"
@@ -119,11 +133,7 @@ export function LineItemRow({
               placeholderTextColor={colors.mutedForeground}
             />
             {quantity > 1 && (
-              <TouchableOpacity
-                onPress={() => onSplit(id)}
-                style={[styles.splitBtn, { borderColor: colors.primary }]}
-                accessibilityLabel="Split item quantity"
-              >
+              <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primary }]} accessibilityLabel="Split item quantity">
                 <Feather name="scissors" size={13} color={colors.primary} />
               </TouchableOpacity>
             )}
@@ -158,11 +168,7 @@ export function LineItemRow({
             </Text>
           </View>
           {quantity > 1 && (
-            <TouchableOpacity
-              onPress={() => onSplit(id)}
-              style={[styles.splitBtn, { borderColor: colors.primary }]}
-              accessibilityLabel="Split item quantity"
-            >
+            <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primary }]} accessibilityLabel="Split item quantity">
               <Feather name="scissors" size={13} color={colors.primary} />
               <Text style={[styles.splitBtnText, { color: colors.primary }]}>Split</Text>
             </TouchableOpacity>
@@ -195,10 +201,7 @@ export function LineItemRow({
               : billUsers.filter((u) => !assignedUserIds.includes(u.id)).map((u) => u.id);
             return (
               <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  onBulkToggleUsers(id, idsToToggle);
-                }}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onBulkToggleUsers(id, idsToToggle); }}
                 style={[styles.bulkBtn, { borderColor: colors.border }]}
                 accessibilityRole="button"
                 accessibilityLabel={allSelected ? "Deselect all people" : "Select all people"}
@@ -218,142 +221,45 @@ export function LineItemRow({
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 2,
-    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    gap: 10,
+    borderRadius: RADIUS.sm,
+    position: "relative",
   },
-  mainRow: {
-    flexDirection: "row",
+  fullyAssignedBadge: {
+    position: "absolute",
+    top: 10,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
-    gap: 8,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  qtyBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  qtyBadgeText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
-  desc: {
-    flex: 1,
-    gap: 2,
-  },
-  itemName: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    lineHeight: 20,
-    flexShrink: 1,
-  },
-  originalDescription: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 15,
-    paddingLeft: 28,
-  },
-  itemTotal: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  unitPrice: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  splitBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  splitBtnText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  iconBtn: {
-    padding: 6,
-  },
-  peopleRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    paddingLeft: 2,
-  },
-  editBlock: {
-    gap: 8,
-  },
-  editRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  editInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  editQtyWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  editQtyLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  editInputQty: {
-    width: 48,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
-  editInputSmall: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "right",
-  },
-  saveBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  saveBtnText: {
-    color: "#fff",
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  bulkBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: "dashed",
     justifyContent: "center",
+    zIndex: 2,
   },
-  bulkBtnText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-  },
+  mainRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  qtyBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  qtyBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  desc: { flex: 1, gap: 2 },
+  itemName: { fontSize: 14, fontFamily: "Inter_500Medium", lineHeight: 20, flexShrink: 1 },
+  originalDescription: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, paddingLeft: 28 },
+  itemTotal: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  unitPrice: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  splitBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 5 },
+  splitBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  iconBtn: { padding: 6 },
+  peopleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingLeft: 2 },
+  editBlock: { gap: 8 },
+  editRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  editInput: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular" },
+  editQtyWrap: { flexDirection: "row", alignItems: "center", gap: 4 },
+  editQtyLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  editInputQty: { width: 48, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  editInputSmall: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "right" },
+  saveBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.sm },
+  saveBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  bulkBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.full, borderWidth: 1, borderStyle: "dashed", justifyContent: "center" },
+  bulkBtnText: { fontSize: 11, fontFamily: "Inter_500Medium" },
 });

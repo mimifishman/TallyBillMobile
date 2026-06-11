@@ -4,7 +4,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,8 +24,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "@/components/PersonBadge";
+import { BottomSheet } from "@/components/BottomSheet";
 import { Skeleton } from "@/components/Skeleton";
 import { Confetti } from "@/components/Confetti";
+import { RADIUS, SHADOWS } from "@/constants/styles";
 import {
   useGetBillTotals,
   useGetBill,
@@ -45,11 +46,11 @@ export default function TotalsScreen() {
   const [editTipValue, setEditTipValue] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
-  const toggleExpanded = (id: number) => {
+  const toggleExpanded = (uid: number) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
       return next;
     });
   };
@@ -82,22 +83,14 @@ export default function TotalsScreen() {
     if (editingUserId === null) return;
     const pct = parseFloat(editTipValue);
     if (isNaN(pct) || pct < 0) {
-      Alert.alert("Invalid value", "Please enter a valid tip percentage (e.g. 15 for 15%)");
+      Alert.alert("Invalid value", "Enter a number like 15 for 15%");
       return;
     }
-    updateUserMutation.mutate({
-      billId,
-      userId: editingUserId,
-      data: { tipPercentOverride: pct },
-    });
+    updateUserMutation.mutate({ billId, userId: editingUserId, data: { tipPercentOverride: pct } });
   };
 
   const handleResetTip = (userId: number) => {
-    updateUserMutation.mutate({
-      billId,
-      userId,
-      data: { tipPercentOverride: null },
-    });
+    updateUserMutation.mutate({ billId, userId, data: { tipPercentOverride: null } });
   };
 
   const currencySymbol = getCurrencySymbol(billData?.bill.currency);
@@ -108,6 +101,8 @@ export default function TotalsScreen() {
   };
 
   const isSettled = totals?.settled === true;
+  const totalLines = totals ? totals.perPerson.reduce((sum, p) => sum + p.items.length, 0) : 0;
+  const totalPeople = totals?.perPerson.length ?? 0;
 
   const checkScale = useSharedValue(0);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -138,10 +133,10 @@ export default function TotalsScreen() {
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Bill Totals</Text>
         </View>
         <View style={[styles.content, { gap: 16 }]}>
-          <Skeleton height={140} borderRadius={16} />
+          <Skeleton height={160} borderRadius={20} />
           <Skeleton height={14} width={100} />
-          <Skeleton height={90} borderRadius={14} />
-          <Skeleton height={90} borderRadius={14} />
+          <Skeleton height={96} borderRadius={20} />
+          <Skeleton height={96} borderRadius={20} />
         </View>
       </View>
     );
@@ -159,41 +154,40 @@ export default function TotalsScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
         <View>
           <LinearGradient
-            colors={colors.gradientPrimary}
+            colors={["#F59E0B", "#D97706"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.grandCard}
           >
-            <Text style={styles.grandLabel}>Grand Total</Text>
+            <Text style={styles.grandLabel}>Total</Text>
             <Text style={styles.grandAmount}>{fmt(totals.grandTotal)}</Text>
+            {totalLines > 0 && totalPeople > 0 && (
+              <Text style={styles.grandSubline}>{totalLines} {totalLines === 1 ? "item" : "items"} · {totalPeople} {totalPeople === 1 ? "person" : "people"}</Text>
+            )}
             <View style={styles.grandBreakdown}>
               <Text style={styles.grandSub}>Subtotal: {fmt(totals.billSubtotal)}</Text>
               <Text style={styles.grandSub}>Tax ({fmtPct(totals.taxPercent)}%): {fmt(totals.taxAmount)}</Text>
-              <Text style={styles.grandSub}>
-                Tip (avg {fmtPct(totals.averageTipPercent)}%): {fmt(totals.tipAmount)}
-              </Text>
+              <Text style={styles.grandSub}>Tip (avg {fmtPct(totals.averageTipPercent)}%): {fmt(totals.tipAmount)}</Text>
             </View>
           </LinearGradient>
           {isSettled ? <Confetti trigger={confettiKey} count={36} /> : null}
         </View>
 
         {isSettled ? (
-          <Animated.View style={[styles.settledBanner, { backgroundColor: colors.primarySoft }, checkAnim]}>
-            <View style={[styles.checkCircle, { backgroundColor: colors.primary }]}>
+          <Animated.View style={[styles.settledBanner, { backgroundColor: "#D1FAE5" }, checkAnim]}>
+            <View style={[styles.checkCircle, { backgroundColor: colors.success }]}>
               <Feather name="check" size={16} color="#fff" />
             </View>
-            <Text style={[styles.settledText, { color: colors.primary }]}>All settled — every item is split!</Text>
+            <Text style={[styles.settledText, { color: "#065F46" }]}>All squared away! 🎉</Text>
           </Animated.View>
         ) : null}
 
         {totals.unsplitLines.length > 0 ? (
           <>
-            <View style={styles.warningBanner}>
+            <View style={[styles.warningBanner, { backgroundColor: "#FEF3C7" }]}>
               <Feather name="alert-circle" size={18} color="#B45309" />
               <Text style={styles.warningText}>
-                {totals.unsplitLines.length === 1
-                  ? "1 item hasn't been split yet"
-                  : `${totals.unsplitLines.length} items haven't been split yet`}
+                {totals.unsplitLines.length === 1 ? "1 item hasn't been split yet" : `${totals.unsplitLines.length} items haven't been split yet`}
               </Text>
             </View>
 
@@ -208,9 +202,7 @@ export default function TotalsScreen() {
                   ]}
                 >
                   <View style={styles.itemLeft}>
-                    <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
-                      {line.description}
-                    </Text>
+                    <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>{line.description}</Text>
                   </View>
                   <Text style={[styles.itemShare, { color: colors.foreground }]}>{fmt(line.total)}</Text>
                 </View>
@@ -225,20 +217,14 @@ export default function TotalsScreen() {
             <TouchableOpacity
               onPress={() => {
                 const allIds = totals.perPerson.filter((p) => p.items.length > 0).map((p) => p.billUserId);
-                const allExpanded = allIds.every((id) => expandedIds.has(id));
+                const allExpanded = allIds.every((uid) => expandedIds.has(uid));
                 setExpandedIds(allExpanded ? new Set() : new Set(allIds));
               }}
               style={[styles.expandAllBtn, { borderColor: colors.border }]}
             >
-              <Feather
-                name={totals.perPerson.filter((p) => p.items.length > 0).every((p) => expandedIds.has(p.billUserId)) ? "minimize-2" : "maximize-2"}
-                size={12}
-                color={colors.mutedForeground}
-              />
+              <Feather name={totals.perPerson.filter((p) => p.items.length > 0).every((p) => expandedIds.has(p.billUserId)) ? "minimize-2" : "maximize-2"} size={12} color={colors.mutedForeground} />
               <Text style={[styles.expandAllText, { color: colors.mutedForeground }]}>
-                {totals.perPerson.filter((p) => p.items.length > 0).every((p) => expandedIds.has(p.billUserId))
-                  ? "Collapse all"
-                  : "Expand all"}
+                {totals.perPerson.filter((p) => p.items.length > 0).every((p) => expandedIds.has(p.billUserId)) ? "Collapse all" : "Expand all"}
               </Text>
             </TouchableOpacity>
           )}
@@ -246,36 +232,28 @@ export default function TotalsScreen() {
 
         {totals.perPerson.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Add people and assign items to see per-person totals
-            </Text>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Add people and assign items to see per-person totals</Text>
           </View>
         ) : (
           totals.perPerson.map((person, idx) => (
             <Animated.View
               key={person.billUserId}
-              entering={FadeInDown.delay(idx * 50).springify().damping(14)}
-              style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              entering={FadeInDown.delay(idx * 60).springify().damping(14)}
+              style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }, SHADOWS.card]}
             >
               <TouchableOpacity
                 style={styles.personHeader}
                 onPress={() => person.items.length > 0 && toggleExpanded(person.billUserId)}
-                activeOpacity={person.items.length > 0 ? 0.7 : 1}
+                activeOpacity={person.items.length > 0 ? 0.75 : 1}
               >
                 <PersonBadge name={person.name} color={person.color} size="md" />
                 <View style={styles.personInfo}>
                   <Text style={[styles.personName, { color: colors.foreground }]}>{person.name}</Text>
-                  <Text style={[styles.personTotal, { color: colors.primary }]}>
-                    {fmt(person.total)}
-                  </Text>
+                  <Text style={[styles.personTotal, { color: colors.primary }]}>{fmt(person.total)}</Text>
                 </View>
                 {person.items.length > 0 && (
                   <View style={[styles.expandBtn, { backgroundColor: colors.primarySoft }]}>
-                    <Feather
-                      name={expandedIds.has(person.billUserId) ? "minus" : "plus"}
-                      size={14}
-                      color={colors.primary}
-                    />
+                    <Feather name={expandedIds.has(person.billUserId) ? "chevron-up" : "chevron-down"} size={16} color={colors.primary} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -283,23 +261,14 @@ export default function TotalsScreen() {
               {person.items.length > 0 && expandedIds.has(person.billUserId) ? (
                 <View style={[styles.itemsList, { borderTopColor: colors.border }]}>
                   {person.items.map((item) => {
-                    const splitLabel =
-                      item.splitWithNames.length === 0
-                        ? "not split"
-                        : `split with ${item.splitWithNames.join(", ")}`;
+                    const splitLabel = item.splitWithNames.length === 0 ? "not split" : `split with ${item.splitWithNames.join(", ")}`;
                     return (
                       <View key={item.billLineId} style={styles.itemRow}>
                         <View style={styles.itemLeft}>
-                          <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
-                            {item.description}
-                          </Text>
-                          <Text style={[styles.itemSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {fmt(item.lineTotal)} · {splitLabel}
-                          </Text>
+                          <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>{item.description}</Text>
+                          <Text style={[styles.itemSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{fmt(item.lineTotal)} · {splitLabel}</Text>
                         </View>
-                        <Text style={[styles.itemShare, { color: colors.foreground }]}>
-                          {fmt(item.share)}
-                        </Text>
+                        <Text style={[styles.itemShare, { color: colors.foreground }]}>{fmt(item.share)}</Text>
                       </View>
                     );
                   })}
@@ -309,24 +278,16 @@ export default function TotalsScreen() {
               <View style={[styles.breakdown, { borderTopColor: colors.border }]}>
                 <View style={styles.breakdownRow}>
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Items</Text>
-                  <Text style={[styles.breakdownValue, { color: colors.foreground }]}>
-                    {fmt(person.subtotal)}
-                  </Text>
+                  <Text style={[styles.breakdownValue, { color: colors.foreground }]}>{fmt(person.subtotal)}</Text>
                 </View>
                 <View style={styles.breakdownRow}>
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Tax share</Text>
-                  <Text style={[styles.breakdownValue, { color: colors.foreground }]}>
-                    {fmt(person.taxShare)}
-                  </Text>
+                  <Text style={[styles.breakdownValue, { color: colors.foreground }]}>{fmt(person.taxShare)}</Text>
                 </View>
                 <View style={styles.breakdownRow}>
-                  <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>
-                    Tip ({fmtPct(person.tipPercent)}%)
-                  </Text>
+                  <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Tip ({fmtPct(person.tipPercent)}%)</Text>
                   <View style={styles.tipRow}>
-                    <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>
-                      {fmt(person.tipAmount)}
-                    </Text>
+                    <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>{fmt(person.tipAmount)}</Text>
                     <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn}>
                       <Feather name="edit-2" size={13} color={colors.mutedForeground} />
                     </TouchableOpacity>
@@ -343,40 +304,38 @@ export default function TotalsScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={editingUserId !== null} transparent animationType="fade">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setEditingUserId(null)}>
-          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Custom Tip %</Text>
-            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-              Enter a tip percentage for this person (e.g. 20 for 20%). Reset to restore the bill default.
-            </Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-              placeholder="15"
-              placeholderTextColor={colors.mutedForeground}
-              value={editTipValue}
-              onChangeText={setEditTipValue}
-              keyboardType="numeric"
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setEditingUserId(null)} style={[styles.modalCancelBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleSaveTip} style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.modalConfirmText}>Set Tip %</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet
+        visible={editingUserId !== null}
+        onClose={() => setEditingUserId(null)}
+        title="Custom Tip %"
+      >
+        <View style={styles.tipSheetContent}>
+          <Text style={[styles.tipSheetSub, { color: colors.mutedForeground }]}>
+            Enter a percentage like 20 for 20%. Reset to restore the bill default.
+          </Text>
+          <TextInput
+            style={[styles.tipInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+            placeholder="e.g. 15"
+            placeholderTextColor={colors.mutedForeground}
+            value={editTipValue}
+            onChangeText={setEditTipValue}
+            keyboardType="numeric"
+            autoFocus
+          />
+          <TouchableOpacity onPress={handleSaveTip} style={[styles.tipSaveBtn, { backgroundColor: colors.primary }]}>
+            <Text style={styles.tipSaveBtnText}>Set Tip %</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setEditingUserId(null)} style={styles.tipCancelBtn}>
+            <Text style={[styles.tipCancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -389,100 +348,65 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   content: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
   grandCard: {
-    borderRadius: 18,
-    padding: 22,
+    borderRadius: RADIUS.xl,
+    padding: 24,
     alignItems: "center",
     gap: 6,
-    shadowColor: "#16A34A",
+    shadowColor: "#F59E0B",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 6,
   },
+  grandLabel: { color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: "Inter_500Medium" },
+  grandAmount: { color: "#fff", fontSize: 40, fontFamily: "Inter_700Bold", letterSpacing: -1 },
+  grandSubline: { color: "rgba(255,255,255,0.8)", fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 2 },
+  grandBreakdown: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 6 },
+  grandSub: { color: "rgba(255,255,255,0.9)", fontSize: 13, fontFamily: "Inter_500Medium" },
   settledBanner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
   },
-  checkCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  settledText: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-  },
-  grandLabel: { color: "rgba(255,255,255,0.95)", fontSize: 13, fontFamily: "Inter_500Medium" },
-  grandAmount: { color: "#fff", fontSize: 36, fontFamily: "Inter_700Bold" },
-  grandBreakdown: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 4 },
-  grandSub: { color: "rgba(255,255,255,0.95)", fontSize: 13, fontFamily: "Inter_500Medium" },
+  checkCircle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  settledText: { fontSize: 16, fontFamily: "Inter_700Bold" },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
-  expandAllBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2 },
+  expandAllBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 6 },
   expandAllText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   emptyContainer: { alignItems: "center", paddingVertical: 32 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  personCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
-  personHeader: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
-  expandBtn: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  personCard: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: "hidden" },
+  personHeader: { flexDirection: "row", alignItems: "center", padding: 16, gap: 14 },
+  expandBtn: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   personInfo: { flex: 1 },
   personName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  personTotal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  itemsList: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+  personTotal: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 1 },
+  itemsList: { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
   itemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   itemLeft: { flex: 1, gap: 2 },
   itemName: { fontSize: 14, fontFamily: "Inter_500Medium" },
   itemSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   itemShare: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  breakdown: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10, gap: 6 },
+  breakdown: { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
   breakdownRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   breakdownLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
   breakdownValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   editTipBtn: { padding: 4 },
-  warningBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: "#FEF3C7",
-  },
-  warningText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: "#B45309",
-    flex: 1,
-  },
-  unsplitCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-  },
-  unsplitHeader: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center", padding: 24 },
-  modalCard: { width: "100%", borderRadius: 16, borderWidth: 1, padding: 20, gap: 12 },
-  modalTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  modalInput: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, fontFamily: "Inter_400Regular", textAlign: "center" },
-  modalButtons: { flexDirection: "row", gap: 10, marginTop: 4 },
-  modalCancelBtn: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  modalCancelText: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  modalConfirmBtn: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  modalConfirmText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  warningBanner: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 16, borderRadius: RADIUS.lg },
+  warningText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#B45309", flex: 1 },
+  unsplitCard: { borderRadius: RADIUS.xl, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  unsplitHeader: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginBottom: 2 },
+  tipSheetContent: { gap: 16 },
+  tipSheetSub: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  tipInput: { borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 16, paddingVertical: 14, fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" },
+  tipSaveBtn: { borderRadius: RADIUS.full, paddingVertical: 15, alignItems: "center" },
+  tipSaveBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  tipCancelBtn: { alignItems: "center", paddingVertical: 8 },
+  tipCancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
 });

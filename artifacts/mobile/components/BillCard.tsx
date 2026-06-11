@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
+import { PressableScale } from "./PressableScale";
+import { RADIUS, SHADOWS } from "@/constants/styles";
 
 interface BillCardParticipant {
   name: string;
@@ -33,29 +34,17 @@ export function BillCard({
   onPress,
 }: BillCardProps) {
   const colors = useColors();
-  const accentColor = status === "settled" ? colors.settled : colors.accent;
-  const headerColors: [string, string] =
-    status === "settled"
-      ? [colors.card, colors.muted]
-      : [colors.card, colors.accentSoft];
+  const firstColor = participants && participants.length > 0 ? participants[0].color : colors.primary;
+  const accentColor = status === "settled" ? colors.settled : firstColor;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+    <PressableScale
+      style={[styles.card, SHADOWS.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={onPress}
-      activeOpacity={0.85}
     >
       <View style={[styles.statusBar, { backgroundColor: accentColor }]} />
-      <LinearGradient
-        colors={headerColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.body}
-      >
+      <View style={styles.body}>
         <View style={styles.topRow}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
-            <Feather name="file-text" size={18} color={colors.primary} />
-          </View>
           <View style={styles.info}>
             <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
             <View style={styles.meta}>
@@ -66,98 +55,102 @@ export function BillCard({
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{getCurrencySymbol(currency)}</Text>
                 </>
               ) : null}
+              <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
+              <Text style={[styles.codeText, { color: colors.mutedForeground }]}>{joinCode}</Text>
             </View>
           </View>
-          <View style={[styles.codeBadge, { backgroundColor: colors.muted }]}>
-            <Text style={[styles.codeText, { color: colors.mutedForeground }]}>{joinCode}</Text>
+          <View style={[styles.pillBadge, { backgroundColor: colors.muted }]}>
+            <Text style={[styles.pillBadgeText, { color: colors.mutedForeground }]}>
+              {participants?.length || 0} {(participants?.length || 0) === 1 ? 'person' : 'people'}
+            </Text>
           </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </View>
 
-        {(participants && participants.length > 0) || isOwner ? (
-          <View style={styles.peopleRow}>
-            <View style={styles.avatarGroup}>
-              {participants && participants.slice(0, 5).map((p, i) => (
-                <View key={i} style={i > 0 ? styles.overlapBadge : undefined}>
-                  <PersonBadge name={p.name} color={p.color} size="sm" />
-                </View>
-              ))}
-              {participants && participants.length > 5 ? (
-                <View style={[styles.moreBadge, { backgroundColor: colors.muted, borderColor: colors.card }]}>
-                  <Text style={[styles.moreText, { color: colors.mutedForeground }]}>
-                    +{participants.length - 5}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-            {isOwner ? (
-              <View style={[styles.ownerBadge, { backgroundColor: colors.primarySoft }]}>
-                <Feather name="star" size={10} color={colors.primary} />
-                <Text style={[styles.ownerText, { color: colors.primary }]}>Owner</Text>
+        <View style={styles.bottomRow}>
+          <View style={styles.avatarGroup}>
+            {participants && participants.slice(0, 5).map((p, i) => (
+              <View key={i} style={i > 0 ? styles.overlapBadge : undefined}>
+                <PersonBadge name={p.name} color={p.color} size="sm" />
+              </View>
+            ))}
+            {participants && participants.length > 5 ? (
+              <View style={[styles.moreBadge, { backgroundColor: colors.muted, borderColor: colors.card }]}>
+                <Text style={[styles.moreText, { color: colors.mutedForeground }]}>
+                  +{participants.length - 5}
+                </Text>
               </View>
             ) : null}
+            {(!participants || participants.length === 0) && (
+              <View style={[styles.emptyBadge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Feather name="user" size={12} color={colors.mutedForeground} />
+              </View>
+            )}
           </View>
-        ) : null}
-      </LinearGradient>
-    </TouchableOpacity>
+          
+          {isOwner ? (
+            <View style={[styles.ownerBadge, { backgroundColor: colors.primarySoft }]}>
+              <Feather name="star" size={10} color={colors.primary} />
+              <Text style={[styles.ownerText, { color: colors.primary }]}>Owner</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     marginBottom: 12,
     overflow: "hidden",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
   },
   statusBar: {
     width: 4,
   },
   body: {
     flex: 1,
-    padding: 14,
-    gap: 10,
+    padding: 20,
+    gap: 16,
   },
   topRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: 12,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  info: { flex: 1, gap: 4 },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  meta: { flexDirection: "row", alignItems: "center", gap: 6 },
+  metaText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  metaDot: { fontSize: 13 },
+  codeText: { fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  pillBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full },
+  pillBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  avatarGroup: { flexDirection: "row", alignItems: "center" },
+  overlapBadge: { marginLeft: -8 },
+  emptyBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  info: { flex: 1, gap: 2 },
-  title: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  sub: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  meta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  metaText: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  metaDot: { fontSize: 12 },
-  codeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  codeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  peopleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingLeft: 52 },
-  avatarGroup: { flexDirection: "row", alignItems: "center" },
-  overlapBadge: { marginLeft: -10 },
   ownerBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
   },
   ownerText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   moreBadge: {
-    marginLeft: -10,
+    marginLeft: -8,
     width: 28,
     height: 28,
     borderRadius: 14,
