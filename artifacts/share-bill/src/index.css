@@ -32,12 +32,12 @@
   --foreground: 215 25% 27%;        /* #1F2937 */
   --border: 220 13% 91%;            /* #E5E7EB */
   --input: 220 13% 91%;
-  --ring: 142 71% 38%;
+  --ring: 38 92% 50%;
   --card: 0 0% 100%;
   --card-foreground: 215 25% 27%;
   --popover: 0 0% 100%;
   --popover-foreground: 215 25% 27%;
-  --primary: 142 71% 38%;           /* #16A34A */
+  --primary: 38 92% 50%;            /* #F59E0B */
   --primary-foreground: 0 0% 100%;
   --secondary: 220 13% 91%;
   --secondary-foreground: 215 25% 27%;

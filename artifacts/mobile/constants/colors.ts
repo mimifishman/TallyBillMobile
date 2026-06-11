@@ -14,8 +14,9 @@ const colors = {
 
     primary: "#F59E0B",
     primaryForeground: "#FFFFFF",
-    primarySoft: "#FEF3C7",
     primaryDark: "#D97706",
+    primaryLight: "#FDE68A",
+    primarySoft: "#FEF3C7",
 
     secondary: "#F5F3EF",
     secondaryForeground: "#1C1917",
@@ -42,6 +43,7 @@ const colors = {
     input: "#F0EDE8",
 
     settled: "#9CA3AF",
+    settledActive: "#16A34A",
 
     gradientPrimary: ["#F59E0B", "#FBBF24"] as [string, string],
     gradientAccent: ["#F59E0B", "#FBBF24"] as [string, string],
@@ -53,7 +55,7 @@ const colors = {
       "#FF6B35",
       "#2D9CDB",
       "#9B59B6",
-      "#27AE60",
+      "#0D9488",
       "#F39C12",
       "#E74C3C",
       "#1ABC9C",
@@ -72,7 +74,7 @@ const colors = {
       ["#F97316", "#FBBF24"],
       ["#3B82F6", "#6366F1"],
       ["#8B5CF6", "#C084FC"],
-      ["#10B981", "#34D399"],
+      ["#0D9488", "#2DD4BF"],
       ["#F59E0B", "#FCD34D"],
       ["#EF4444", "#F87171"],
       ["#06B6D4", "#22D3EE"],

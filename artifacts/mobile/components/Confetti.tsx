@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-const COLORS = ["#16A34A", "#F97316", "#EC4899", "#3B82F6", "#FBBF24", "#8B5CF6"];
+const COLORS = ["#F59E0B", "#F97316", "#EC4899", "#3B82F6", "#FBBF24", "#8B5CF6"];
 
 interface ParticleProps {
   index: number;
