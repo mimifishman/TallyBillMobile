@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -71,8 +72,12 @@ export default function IndexScreen() {
       ]}
     >
       <View style={styles.hero}>
-        <View style={[styles.logoWrap, { backgroundColor: colors.primarySoft }]}>
-          <Feather name="file-text" size={40} color={colors.primary} />
+        <View style={[styles.logoWrap, { backgroundColor: colors.primary }]}>
+          <Image
+            source={require("@/assets/images/splash-icon.png")}
+            style={{ width: 60, height: 60 }}
+            resizeMode="contain"
+          />
         </View>
         <Text style={[styles.appName, { color: colors.foreground }]}>TallyBill</Text>
         {greeting ? (

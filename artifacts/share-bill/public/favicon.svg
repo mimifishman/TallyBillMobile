@@ -1,3 +1,16 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Receipt background -->
+  <rect x="3" y="1" width="26" height="30" rx="5" fill="#16A34A"/>
+  <!-- Split line -->
+  <line x1="16" y1="6" x2="16" y2="27" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <!-- Left item lines -->
+  <rect x="6" y="9" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
+  <rect x="6" y="14" width="6" height="2" rx="1" fill="white" opacity="0.9"/>
+  <rect x="6" y="19" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
+  <!-- Right item lines -->
+  <rect x="19" y="9" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
+  <rect x="19" y="14" width="6" height="2" rx="1" fill="white" opacity="0.9"/>
+  <rect x="19" y="19" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
+  <!-- Total bar -->
+  <rect x="6" y="24" width="20" height="2" rx="1" fill="white" opacity="0.6"/>
 </svg>
