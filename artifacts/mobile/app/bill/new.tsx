@@ -25,17 +25,9 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { appendGuestBill, registerJoinCode } from "@/utils/guestBillStore";
-import colors_data from "@/constants/colors";
+import { pickColor } from "@/utils/pickColor";
 
-const PEOPLE_COLORS = colors_data.light.people;
 const today = new Date().toISOString().split("T")[0]!;
-
-function pickColor(usedColors: string[] = []): string {
-  const usedSet = new Set(usedColors.map((c) => c.toLowerCase()));
-  const available = PEOPLE_COLORS.filter((c) => !usedSet.has(c.toLowerCase()));
-  const pool = available.length > 0 ? available : PEOPLE_COLORS;
-  return pool[Math.floor(Math.random() * pool.length)]!;
-}
 
 export default function NewBillScreen() {
   const colors = useColors();

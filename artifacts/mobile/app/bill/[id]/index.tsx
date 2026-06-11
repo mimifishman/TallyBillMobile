@@ -42,7 +42,7 @@ import {
   getGetCirclesQueryKey,
   customFetch,
 } from "@workspace/api-client-react";
-import colors_data from "@/constants/colors";
+import { pickColor } from "@/utils/pickColor";
 import { getCurrencySymbol } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
@@ -50,8 +50,6 @@ import { useAuth } from "@/context/AuthContext";
 import { removeGuestBill, listGuestBills, getCachedGuestOwnerId } from "@/utils/guestBillStore";
 import { getBillCode } from "@/lib/billCodeStore";
 import { useScan } from "@/context/ScanContext";
-
-const PEOPLE_COLORS = colors_data.light.people;
 
 export default function BillDetailScreen() {
   const colors = useColors();
@@ -432,8 +430,8 @@ export default function BillDetailScreen() {
       Alert.alert("Name already on bill", `"${trimmed}" is already on this bill.`);
       return;
     }
-    const existingCount = data?.users?.length ?? 0;
-    const color = PEOPLE_COLORS[existingCount % PEOPLE_COLORS.length]!;
+    const existingColors = (data?.users ?? []).map((u: { color: string }) => u.color);
+    const color = pickColor(existingColors);
     addPersonMutation.mutate({
       billId,
       data: { name: trimmed, color },
@@ -458,9 +456,10 @@ export default function BillDetailScreen() {
       Alert.alert("Already added", "All members of this circle are already on the bill.");
       return;
     }
-    const baseCount = data?.users?.length ?? 0;
-    toAdd.forEach((member, index) => {
-      const color = PEOPLE_COLORS[(baseCount + index) % PEOPLE_COLORS.length]!;
+    const usedColors = (data?.users ?? []).map((u: { color: string }) => u.color);
+    toAdd.forEach((member) => {
+      const color = pickColor(usedColors);
+      usedColors.push(color);
       addPersonMutation.mutate({ billId, data: { name: member.name, color } });
     });
   };
