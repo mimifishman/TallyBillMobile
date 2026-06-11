@@ -110,6 +110,15 @@ export default function IndexScreen() {
           <Feather name="user-plus" size={18} color={colors.foreground} />
           <Text style={[styles.ghostBtnText, { color: colors.foreground }]}>Join Bill</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.ghostBtn, { borderColor: colors.border }]}
+          onPress={() => router.push("/(tabs)/circles")}
+          activeOpacity={0.85}
+        >
+          <Feather name="plus-circle" size={18} color={colors.foreground} />
+          <Text style={[styles.ghostBtnText, { color: colors.foreground }]}>Add Circle</Text>
+        </TouchableOpacity>
       </View>
 
       {!user && (
