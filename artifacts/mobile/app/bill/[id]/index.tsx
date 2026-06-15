@@ -890,7 +890,6 @@ export default function BillDetailScreen() {
                 <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Discard</Text>
               </TouchableOpacity>
             </View>
-        </View>
       </BottomSheet>
 
       <BottomSheet visible={showAddItem} onClose={() => setShowAddItem(false)} title="Add Item">
