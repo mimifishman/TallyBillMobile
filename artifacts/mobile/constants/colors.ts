@@ -1,54 +1,59 @@
 const colors = {
   light: {
-    text: "#1C1917",
-    tint: "#F59E0B",
+    text: "#0F172A",
+    tint: "#10B981",
 
-    background: "#FAFAF8",
-    foreground: "#1C1917",
+    background: "#FAFAFA",
+    foreground: "#0F172A",
 
     card: "#FFFFFF",
-    cardForeground: "#1C1917",
+    cardForeground: "#0F172A",
 
-    surface: "#FAFAF8",
-    surfaceRaised: "#FFFFFF",
+    surface: "#FFFFFF",
+    surfaceRaised: "#F8FAFC",
 
-    primary: "#F59E0B",
+    primary: "#10B981",
     primaryForeground: "#FFFFFF",
-    primaryDark: "#D97706",
-    primaryLight: "#FDE68A",
-    primarySoft: "#FEF3C7",
+    primaryDark: "#059669",
+    primaryLight: "#6EE7B7",
+    primarySoft: "#D1FAE5",
 
-    secondary: "#F5F3EF",
-    secondaryForeground: "#1C1917",
+    secondary: "#F1F5F9",
+    secondaryForeground: "#0F172A",
 
-    muted: "#F5F3EF",
-    mutedForeground: "#78716C",
+    pop: "#FB7185",
+    popDark: "#F43F5E",
+    popSoft: "#FFE4E6",
+    popForeground: "#FFFFFF",
 
-    accent: "#F59E0B",
+    muted: "#F1F5F9",
+    mutedForeground: "#64748B",
+
+    accent: "#10B981",
     accentForeground: "#FFFFFF",
-    accentSoft: "#FEF3C7",
+    accentSoft: "#D1FAE5",
 
-    destructive: "#DC2626",
+    destructive: "#EF4444",
     destructiveForeground: "#FFFFFF",
 
-    danger: "#DC2626",
+    danger: "#EF4444",
     success: "#16A34A",
-    warning: "#D97706",
+    warning: "#F59E0B",
 
-    textPrimary: "#1C1917",
-    textSecondary: "#78716C",
+    textPrimary: "#0F172A",
+    textSecondary: "#64748B",
 
-    border: "#F0EDE8",
-    borderStrong: "#E5DDD5",
-    input: "#F0EDE8",
+    border: "#E2E8F0",
+    borderStrong: "#CBD5E1",
+    input: "#E2E8F0",
 
     settled: "#9CA3AF",
     settledActive: "#16A34A",
 
-    gradientPrimary: ["#F59E0B", "#FBBF24"] as [string, string],
-    gradientAccent: ["#F59E0B", "#FBBF24"] as [string, string],
-    gradientHeader: ["#FAFAF8", "#F5F3EF"] as [string, string],
-    gradientAmber: ["#F59E0B", "#D97706"] as [string, string],
+    gradientPrimary: ["#10B981", "#059669"] as [string, string],
+    gradientAccent: ["#10B981", "#059669"] as [string, string],
+    gradientHeader: ["#FAFAFA", "#F1F5F9"] as [string, string],
+    gradientAmber: ["#10B981", "#059669"] as [string, string],
 
     people: [
       "#E84393",

@@ -214,7 +214,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.flex}>
-      <LinearGradient colors={["#F59E0B", "#D97706"]} style={styles.gradient}>
+      <LinearGradient colors={["#10B981", "#059669"]} style={styles.gradient}>
         <View style={{ height: insets.top + 16 }} />
         {canGoBack && (
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>

@@ -26,8 +26,8 @@ export function EmptyBillsIllustration({ size = 200 }: { size?: number }) {
           <Stop offset="1" stopColor="#F3F4F6" />
         </LinearGradient>
         <LinearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#F59E0B" />
-          <Stop offset="1" stopColor="#FBBF24" />
+          <Stop offset="0" stopColor="#10B981" />
+          <Stop offset="1" stopColor="#3B82F6" />
         </LinearGradient>
       </Defs>
 
@@ -46,7 +46,7 @@ export function EmptyBillsIllustration({ size = 200 }: { size?: number }) {
       <Rect x="106" y="78" width="20" height="2.5" rx="1.25" fill="#E5E7EB" />
       <Rect x="106" y="85" width="24" height="2.5" rx="1.25" fill="#E5E7EB" />
       <Rect x="106" y="92" width="18" height="2.5" rx="1.25" fill="#E5E7EB" />
-      <Rect x="106" y="105" width="28" height="3" rx="1.5" fill="#F59E0B" />
+      <Rect x="106" y="105" width="28" height="3" rx="1.5" fill="#FB7185" />
 
       <Path
         d="M40 100 Q40 88 46 88 Q52 88 52 100 L52 145"

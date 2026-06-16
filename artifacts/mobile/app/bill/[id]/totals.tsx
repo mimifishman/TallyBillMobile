@@ -154,7 +154,7 @@ export default function TotalsScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
         <View>
           <LinearGradient
-            colors={["#F59E0B", "#D97706"]}
+            colors={["#10B981", "#059669"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.grandCard}
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
     gap: 6,
-    shadowColor: "#F59E0B",
+    shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
