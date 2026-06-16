@@ -60,7 +60,7 @@ export function Skeleton({ height = 14, width = "100%", borderRadius = 6, style 
     >
       {measuredWidth > 0 && (
         <AnimatedLinearGradient
-          colors={["transparent", "rgba(255,255,255,0.55)", "transparent"]}
+          colors={["transparent", colors.surfaceRaised + "CC", "transparent"]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={[

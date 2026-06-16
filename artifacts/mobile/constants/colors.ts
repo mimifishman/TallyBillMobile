@@ -50,6 +50,12 @@ const colors = {
     settled: "#9CA3AF",
     settledActive: "#16A34A",
 
+    settledBackground: "#D1FAE5",
+    settledForeground: "#065F46",
+
+    warningBackground: "#FEF3C7",
+    warningForeground: "#B45309",
+
     gradientPrimary: ["#10B981", "#059669"] as [string, string],
     gradientAccent: ["#10B981", "#059669"] as [string, string],
     gradientHeader: ["#FAFAFA", "#F1F5F9"] as [string, string],
@@ -71,6 +77,107 @@ const colors = {
       "#C0CA33",
       "#EC407A",
       "#78909C",
+      "#FF8F00",
+    ],
+
+    peopleGradients: [
+      ["#EC4899", "#F472B6"],
+      ["#F97316", "#FBBF24"],
+      ["#3B82F6", "#6366F1"],
+      ["#8B5CF6", "#C084FC"],
+      ["#0D9488", "#2DD4BF"],
+      ["#F59E0B", "#FCD34D"],
+      ["#EF4444", "#F87171"],
+      ["#06B6D4", "#22D3EE"],
+      ["#5C6BC0", "#7986CB"],
+      ["#FF7043", "#FF8A65"],
+      ["#26C6DA", "#4DD0E1"],
+      ["#8D6E63", "#A1887F"],
+      ["#C0CA33", "#DCE775"],
+      ["#EC407A", "#F48FB1"],
+      ["#78909C", "#90A4AE"],
+      ["#FF8F00", "#FFA000"],
+    ] as [string, string][],
+  },
+
+  dark: {
+    text: "#E6EDF3",
+    tint: "#34D399",
+
+    background: "#0B0F14",
+    foreground: "#E6EDF3",
+
+    card: "#161B22",
+    cardForeground: "#E6EDF3",
+
+    surface: "#161B22",
+    surfaceRaised: "#1C2128",
+
+    primary: "#34D399",
+    primaryForeground: "#FFFFFF",
+    primaryDark: "#10B981",
+    primaryLight: "#6EE7B7",
+    primarySoft: "#064E3B",
+
+    secondary: "#1C2128",
+    secondaryForeground: "#E6EDF3",
+
+    pop: "#FB7185",
+    popDark: "#F43F5E",
+    popSoft: "#4C0D1A",
+    popForeground: "#FFFFFF",
+
+    muted: "#1C2128",
+    mutedForeground: "#8B949E",
+
+    accent: "#34D399",
+    accentForeground: "#FFFFFF",
+    accentSoft: "#064E3B",
+
+    destructive: "#F87171",
+    destructiveForeground: "#FFFFFF",
+
+    danger: "#F87171",
+    success: "#34D399",
+    warning: "#FBBF24",
+
+    textPrimary: "#E6EDF3",
+    textSecondary: "#8B949E",
+
+    border: "#2D333B",
+    borderStrong: "#444C56",
+    input: "#2D333B",
+
+    settled: "#6B7280",
+    settledActive: "#34D399",
+
+    settledBackground: "#052E16",
+    settledForeground: "#34D399",
+
+    warningBackground: "#1C1200",
+    warningForeground: "#FCD34D",
+
+    gradientPrimary: ["#34D399", "#10B981"] as [string, string],
+    gradientAccent: ["#34D399", "#10B981"] as [string, string],
+    gradientHeader: ["#0B0F14", "#161B22"] as [string, string],
+    gradientAmber: ["#FBBF24", "#F59E0B"] as [string, string],
+
+    people: [
+      "#E84393",
+      "#FF6B35",
+      "#2D9CDB",
+      "#9B59B6",
+      "#14B8A6",
+      "#F39C12",
+      "#E74C3C",
+      "#1ABC9C",
+      "#7986CB",
+      "#FF7043",
+      "#26C6DA",
+      "#A07858",
+      "#C0CA33",
+      "#EC407A",
+      "#94A3B8",
       "#FF8F00",
     ],
 

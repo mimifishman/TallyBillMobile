@@ -952,7 +952,7 @@ export default function BillDetailScreen() {
               bottom: insets.bottom + 12,
               backgroundColor:
                 scan.status === "error"
-                  ? "#EF4444"
+                  ? colors.destructive
                   : scan.status === "ready"
                   ? colors.primary
                   : colors.foreground,

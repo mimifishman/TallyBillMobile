@@ -139,9 +139,9 @@ export default function ResetPasswordScreen() {
             />
           </View>
           {!!codeError && (
-            <View style={[styles.errorBox, { backgroundColor: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.2)" }]}>
-              <Feather name="alert-circle" size={15} color="#dc2626" />
-              <Text style={styles.errorText}>{codeError}</Text>
+            <View style={[styles.errorBox, { backgroundColor: colors.destructive + "14", borderColor: colors.destructive + "33" }]}>
+              <Feather name="alert-circle" size={15} color={colors.destructive} />
+              <Text style={[styles.errorText, { color: colors.destructive }]}>{codeError}</Text>
             </View>
           )}
 
@@ -184,9 +184,9 @@ export default function ResetPasswordScreen() {
           </View>
 
           {!!passwordError && (
-            <View style={[styles.errorBox, { backgroundColor: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.2)" }]}>
-              <Feather name="alert-circle" size={15} color="#dc2626" />
-              <Text style={styles.errorText}>{passwordError}</Text>
+            <View style={[styles.errorBox, { backgroundColor: colors.destructive + "14", borderColor: colors.destructive + "33" }]}>
+              <Feather name="alert-circle" size={15} color={colors.destructive} />
+              <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>
             </View>
           )}
         </View>
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 12,
   },
-  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#dc2626" },
+  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
   primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: "center" },
   primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   linkBtn: { alignItems: "center", paddingVertical: 4 },

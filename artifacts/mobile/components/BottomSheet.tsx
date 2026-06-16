@@ -31,7 +31,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}
           >
             <View style={styles.handleWrap}>
-              <View style={[styles.handle, { backgroundColor: "#E5E0D8" }]} />
+              <View style={[styles.handle, { backgroundColor: colors.border }]} />
             </View>
             <View style={styles.header}>
               <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>

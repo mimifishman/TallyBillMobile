@@ -172,9 +172,9 @@ export default function ChangePasswordScreen() {
           </View>
 
           {error && (
-            <View style={[styles.errorBox, { backgroundColor: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.2)" }]}>
-              <Feather name="alert-circle" size={15} color="#dc2626" />
-              <Text style={styles.errorText}>{error}</Text>
+            <View style={[styles.errorBox, { backgroundColor: colors.destructive + "14", borderColor: colors.destructive + "33" }]}>
+              <Feather name="alert-circle" size={15} color={colors.destructive} />
+              <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
             </View>
           )}
         </View>
@@ -253,7 +253,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#dc2626",
   },
   primaryBtn: {
     borderRadius: 14,

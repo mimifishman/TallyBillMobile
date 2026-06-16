@@ -154,7 +154,7 @@ export default function TotalsScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
         <View>
           <LinearGradient
-            colors={["#10B981", "#059669"]}
+            colors={colors.gradientPrimary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.grandCard}
@@ -174,19 +174,19 @@ export default function TotalsScreen() {
         </View>
 
         {isSettled ? (
-          <Animated.View style={[styles.settledBanner, { backgroundColor: "#D1FAE5" }, checkAnim]}>
+          <Animated.View style={[styles.settledBanner, { backgroundColor: colors.settledBackground }, checkAnim]}>
             <View style={[styles.checkCircle, { backgroundColor: colors.success }]}>
               <Feather name="check" size={16} color="#fff" />
             </View>
-            <Text style={[styles.settledText, { color: "#065F46" }]}>All squared away! 🎉</Text>
+            <Text style={[styles.settledText, { color: colors.settledForeground }]}>All squared away! 🎉</Text>
           </Animated.View>
         ) : null}
 
         {totals.unsplitLines.length > 0 ? (
           <>
-            <View style={[styles.warningBanner, { backgroundColor: "#FEF3C7" }]}>
-              <Feather name="alert-circle" size={18} color="#B45309" />
-              <Text style={styles.warningText}>
+            <View style={[styles.warningBanner, { backgroundColor: colors.warningBackground }]}>
+              <Feather name="alert-circle" size={18} color={colors.warningForeground} />
+              <Text style={[styles.warningText, { color: colors.warningForeground }]}>
                 {totals.unsplitLines.length === 1 ? "1 item hasn't been split yet" : `${totals.unsplitLines.length} items haven't been split yet`}
               </Text>
             </View>
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   tipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   editTipBtn: { padding: 4 },
   warningBanner: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 16, borderRadius: RADIUS.lg },
-  warningText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#B45309", flex: 1 },
+  warningText: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
   unsplitCard: { borderRadius: RADIUS.xl, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
   unsplitHeader: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginBottom: 2 },
   tipSheetContent: { gap: 16 },
