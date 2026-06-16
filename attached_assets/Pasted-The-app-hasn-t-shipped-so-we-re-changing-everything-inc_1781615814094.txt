@@ -1,0 +1,36 @@
+The app hasn't shipped, so we're changing everything — including the icon — to
+one consistent identity.
+
+```text
+I'm rebranding the TallyBill mobile app to a fun, cool look: emerald primary + a coral secondary "pop" color. The app hasn't been released, so change every asset including the icon. Please:
+
+1. In artifacts/mobile/constants/colors.ts, set the accent family to emerald:
+   - primary #10B981, primaryDark #059669, primaryLight #6EE7B7, primarySoft #D1FAE5, primaryForeground #FFFFFF
+   - tint / accent #10B981, accentSoft #D1FAE5
+   - gradientPrimary / gradientAccent ["#10B981", "#059669"]
+   - rename gradientAmber usages to ["#10B981", "#059669"]
+
+2. ADD a new secondary "pop" family (don't remove the existing neutral `secondary` surface token):
+   - pop #FB7185, popDark #F43F5E, popSoft #FFE4E6, popForeground #FFFFFF
+
+3. Switch the warm stone neutrals to cool slate:
+   - background #FAFAFA, foreground/textPrimary #0F172A, card #FFFFFF
+   - muted/secondary surface #F1F5F9, mutedForeground/textSecondary #64748B
+   - border/input #E2E8F0, borderStrong #CBD5E1
+   - gradientHeader ["#FAFAFA", "#F1F5F9"] (currently a warm stone gradient), surface #FFFFFF, surfaceRaised #F8FAFC
+   - success #16A34A, destructive/danger #EF4444, warning #F59E0B (leave settled/settledActive as-is — already gray/green)
+
+4. Search the whole mobile app for leftover hardcoded amber/orange ("#F59E0B", "#FBBF24", "#D97706", "#FDE68A", "#F97316") and replace with the matching emerald token. Fix the auth-screen LinearGradients (login.tsx, register.tsx, forgot-password.tsx) and the FAB shadowColor in bills.tsx. TWO EXCEPTIONS — do NOT blanket-replace these:
+   - The warning banner in app/bill/[id]/totals.tsx (bg "#FEF3C7", icon/text "#B45309" — the "items haven't been split yet" banner) is a legitimate warning. Leave it amber; amber is our warning color. (Same rule as the web app's unassigned-items warning.)
+   - components/Confetti.tsx (the COLORS array) and components/EmptyBillsIllustration.tsx are decorative and intentionally multi-color — don't flatten them to one emerald. Recolor to a festive brand set: emerald #10B981, coral #FB7185, plus three person colors (#3B82F6, #A855F7, #EAB308).
+
+5. Apply the color-usage rules:
+   - Emerald is the only primary-button / FAB / active-state / link color.
+   - Coral (pop) is used ONLY for: the Confetti + "settled" celebration, an unread/"new" badge, the tip input's focus state, and a highlight on the final total. Never as a second primary button.
+
+6. In app.json, change splash.backgroundColor to #10B981.
+
+7. Do NOT change any animations, haptics, swipe actions, skeletons, or layout — colors only.
+
+Then show me before/after screenshots of: the bills list, the login screen, a bill detail screen, and the per-person totals screen.
+```
