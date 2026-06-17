@@ -1,5 +1,5 @@
 import React from "react";
-import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, useWindowDimensions } from "react-native";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -13,10 +13,16 @@ interface BottomSheetProps {
   children: React.ReactNode;
 }
 
+const SHEET_MAX_RATIO = 0.85;
+const SHEET_CHROME_HEIGHT = 100;
+
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const colors = useColors();
+  const { height: windowHeight } = useWindowDimensions();
 
   if (!visible) return null;
+
+  const maxScrollHeight = windowHeight * SHEET_MAX_RATIO - SHEET_CHROME_HEIGHT;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -40,7 +46,12 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
                 <Feather name="x" size={20} color={colors.foreground} />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={{ maxHeight: maxScrollHeight }}
+              contentContainerStyle={styles.content}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {children}
             </ScrollView>
           </Animated.View>
@@ -60,7 +71,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    maxHeight: "85%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,

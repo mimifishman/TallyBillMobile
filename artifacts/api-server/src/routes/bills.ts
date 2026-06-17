@@ -235,7 +235,16 @@ router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     return;
   }
   const lines = await getBillLines(billId);
-  const users = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
+  const rawUsers = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
+  const linkedUserIds = [...new Set(rawUsers.map((u) => u.linkedUserId).filter((id): id is number => id != null))];
+  const linkedUsers = linkedUserIds.length > 0
+    ? await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, linkedUserIds))
+    : [];
+  const linkedUserEmailMap = new Map(linkedUsers.map((u) => [u.id, u.email]));
+  const users = rawUsers.map((u) => ({
+    ...u,
+    linkedUserEmail: u.linkedUserId != null ? (linkedUserEmailMap.get(u.linkedUserId) ?? null) : null,
+  }));
   const guestOwnerId = String(req.headers["x-guest-owner-id"] ?? "").trim();
   let isOwner: boolean;
   if (bill.isGuestBill) {

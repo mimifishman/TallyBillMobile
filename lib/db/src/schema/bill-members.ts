@@ -2,6 +2,7 @@ import { pgTable, serial, integer, text, numeric, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { billsTable } from "./bills";
+import { usersTable } from "./users";
 
 export const billMembersTable = pgTable("bill_members", {
   id: serial("id").primaryKey(),
@@ -9,6 +10,7 @@ export const billMembersTable = pgTable("bill_members", {
   name: text("name").notNull(),
   color: text("color").notNull(),
   tipPercentOverride: numeric("tip_percent_override", { precision: 10, scale: 4 }),
+  linkedUserId: integer("linked_user_id").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

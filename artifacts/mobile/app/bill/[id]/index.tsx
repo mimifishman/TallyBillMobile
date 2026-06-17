@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { PersonBadge } from "@/components/PersonBadge";
+import { EditBillMemberSheet } from "@/components/EditBillMemberSheet";
 import { LineItemRow } from "@/components/LineItemRow";
 import { EmptyNoPeopleIllustration } from "@/components/EmptyNoPeopleIllustration";
 import { EmptyNoItemsIllustration } from "@/components/EmptyNoItemsIllustration";
@@ -45,6 +46,7 @@ import {
   getGetBillTotalsQueryKey,
   getGetCirclesQueryKey,
   customFetch,
+  ApiError,
 } from "@workspace/api-client-react";
 import { pickColor } from "@/utils/pickColor";
 import { getCurrencySymbol } from "@/utils/currency";
@@ -77,6 +79,10 @@ export default function BillDetailScreen() {
 
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
+  const [showAddPersonLinkEmail, setShowAddPersonLinkEmail] = useState(false);
+  const [newPersonLinkEmail, setNewPersonLinkEmail] = useState("");
+  const [newPersonLinkEmailError, setNewPersonLinkEmailError] = useState<string | null>(null);
+  const [isAddingPerson, setIsAddingPerson] = useState(false);
   const [showCirclePicker, setShowCirclePicker] = useState(false);
   const [addingFromCircleId, setAddingFromCircleId] = useState<number | null>(null);
   const [showAddItem, setShowAddItem] = useState(false);
@@ -89,6 +95,14 @@ export default function BillDetailScreen() {
   const [editCurrency, setEditCurrency] = useState("");
   const [editTaxPercent, setEditTaxPercent] = useState("");
   const [editTipPercent, setEditTipPercent] = useState("");
+
+  const [editMember, setEditMember] = useState<{
+    id: number;
+    name: string;
+    color: string;
+    linkedUserId?: number | null;
+    linkedUserEmail?: string | null;
+  } | null>(null);
 
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitLineId, setSplitLineId] = useState<number | null>(null);
@@ -423,7 +437,7 @@ export default function BillDetailScreen() {
     });
   };
 
-  const handleAddPerson = () => {
+  const handleAddPerson = async () => {
     const trimmed = newPersonName.trim();
     if (!trimmed) return;
     const isDuplicate = (data?.users ?? []).some(
@@ -435,12 +449,42 @@ export default function BillDetailScreen() {
     }
     const existingColors = (data?.users ?? []).map((u: { color: string }) => u.color);
     const color = pickColor(existingColors);
-    addPersonMutation.mutate({
-      billId,
-      data: { name: trimmed, color },
-    });
-    setNewPersonName("");
-    setShowAddPerson(false);
+    const emailToLink = showAddPersonLinkEmail ? newPersonLinkEmail.trim() : "";
+
+    if (emailToLink) {
+      setIsAddingPerson(true);
+      try {
+        await customFetch(`/api/bills/${billId}/users`, {
+          method: "POST",
+          body: JSON.stringify({ name: trimmed, color, linkedEmail: emailToLink }),
+        });
+        invalidate();
+        setNewPersonName("");
+        setNewPersonLinkEmail("");
+        setShowAddPersonLinkEmail(false);
+        setNewPersonLinkEmailError(null);
+        setShowAddPerson(false);
+      } catch (err) {
+        const msg =
+          err instanceof ApiError && err.data && typeof (err.data as { error?: string }).error === "string"
+            ? (err.data as { error: string }).error
+            : "Something went wrong. Please try again.";
+        if (err instanceof ApiError && err.status === 422) {
+          setNewPersonLinkEmailError(msg);
+        } else {
+          Alert.alert("Couldn't add person", msg);
+        }
+      } finally {
+        setIsAddingPerson(false);
+      }
+    } else {
+      addPersonMutation.mutate({ billId, data: { name: trimmed, color } });
+      setNewPersonName("");
+      setNewPersonLinkEmail("");
+      setShowAddPersonLinkEmail(false);
+      setNewPersonLinkEmailError(null);
+      setShowAddPerson(false);
+    }
   };
 
   const handleAddFromCircle = (circleId: number) => {
@@ -479,6 +523,12 @@ export default function BillDetailScreen() {
       { text: "Cancel", style: "cancel" },
       { text: "Remove", style: "destructive", onPress: () => deletePersonMutation.mutate({ billId, userId }) },
     ]);
+  };
+
+  const handleBadgePress = (u: { id: number; name: string; color: string; linkedUserId?: number | null; linkedUserEmail?: string | null }, ownerView: boolean) => {
+    if (ownerView) {
+      setEditMember(u);
+    }
   };
 
   const handleAddItem = () => {
@@ -743,7 +793,7 @@ export default function BillDetailScreen() {
                     color={u.color}
                     size="lg"
                     showName
-                    onPress={() => handleDeletePerson(u.id, u.name)}
+                    onPress={isOwner || isGuestOwner ? () => handleBadgePress(u as { id: number; name: string; color: string; linkedUserId?: number | null; linkedUserEmail?: string | null }, true) : undefined}
                   />
                 </Animated.View>
               ))}
@@ -819,7 +869,17 @@ export default function BillDetailScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet visible={showAddPerson} onClose={() => setShowAddPerson(false)} title="Add someone">
+      <BottomSheet
+        visible={showAddPerson}
+        onClose={() => {
+          setShowAddPerson(false);
+          setNewPersonName("");
+          setNewPersonLinkEmail("");
+          setShowAddPersonLinkEmail(false);
+          setNewPersonLinkEmailError(null);
+        }}
+        title="Add someone"
+      >
         <View style={styles.sheetContent}>
           <TextInput
             style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
@@ -828,13 +888,71 @@ export default function BillDetailScreen() {
             value={newPersonName}
             onChangeText={setNewPersonName}
             autoFocus
-            returnKeyType="done"
-            onSubmitEditing={handleAddPerson}
+            autoCapitalize="words"
+            returnKeyType={showAddPersonLinkEmail ? "next" : "done"}
+            onSubmitEditing={() => { if (!showAddPersonLinkEmail) handleAddPerson(); }}
           />
-          <PressableScale onPress={handleAddPerson} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]}>
-            <Text style={styles.sheetPrimaryBtnText}>Add to Bill</Text>
+          {showAddPersonLinkEmail ? (
+            <View style={{ gap: 6 }}>
+              <TextInput
+                style={[styles.sheetInput, {
+                  borderColor: newPersonLinkEmailError ? (colors.destructive ?? "#EF4444") : colors.border,
+                  color: colors.foreground,
+                  backgroundColor: colors.muted,
+                }]}
+                placeholder="TallyBill email address"
+                placeholderTextColor={colors.mutedForeground}
+                value={newPersonLinkEmail}
+                onChangeText={(v) => { setNewPersonLinkEmail(v); setNewPersonLinkEmailError(null); }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleAddPerson}
+                autoFocus={false}
+              />
+              {newPersonLinkEmailError ? (
+                <Text style={[styles.linkEmailError, { color: colors.destructive ?? "#EF4444" }]}>
+                  {newPersonLinkEmailError}
+                </Text>
+              ) : null}
+              <TouchableOpacity
+                onPress={() => { setShowAddPersonLinkEmail(false); setNewPersonLinkEmail(""); setNewPersonLinkEmailError(null); }}
+              >
+                <Text style={[styles.linkEmailError, { color: colors.mutedForeground }]}>Cancel link</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setShowAddPersonLinkEmail(true)}
+              style={styles.addPersonLinkBtn}
+            >
+              <Feather name="link" size={13} color={colors.primary} />
+              <Text style={[styles.addPersonLinkText, { color: colors.primary }]}>
+                Link to TallyBill account (optional)
+              </Text>
+            </TouchableOpacity>
+          )}
+          <PressableScale
+            onPress={handleAddPerson}
+            disabled={isAddingPerson || !newPersonName.trim()}
+            style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary, opacity: isAddingPerson || !newPersonName.trim() ? 0.6 : 1 }]}
+          >
+            {isAddingPerson
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.sheetPrimaryBtnText}>Add to Bill</Text>
+            }
           </PressableScale>
-          <TouchableOpacity onPress={() => setShowAddPerson(false)} style={styles.sheetCancelBtn}>
+          <TouchableOpacity
+            onPress={() => {
+              setShowAddPerson(false);
+              setNewPersonName("");
+              setNewPersonLinkEmail("");
+              setShowAddPersonLinkEmail(false);
+              setNewPersonLinkEmailError(null);
+            }}
+            style={styles.sheetCancelBtn}
+          >
             <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
           </TouchableOpacity>
         </View>
@@ -1060,6 +1178,15 @@ export default function BillDetailScreen() {
         </View>
       </BottomSheet>
 
+      <EditBillMemberSheet
+        visible={!!editMember}
+        member={editMember}
+        billId={billId}
+        onClose={() => setEditMember(null)}
+        onSaved={invalidate}
+        onDeleted={invalidate}
+      />
+
       <Modal visible={showReceiptModal} transparent animationType="fade" onRequestClose={() => setShowReceiptModal(false)}>
         <View style={styles.receiptModalOverlay}>
           <TouchableOpacity
@@ -1153,6 +1280,9 @@ const styles = StyleSheet.create({
   sheetPrimaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }, // TODO: one-off
   sheetCancelBtn: { alignItems: "center", paddingVertical: SPACING.sm },
   sheetCancelBtnText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
+  addPersonLinkBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
+  addPersonLinkText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
+  linkEmailError: { fontSize: 12, fontFamily: "Inter_400Regular" },
   taxTipRow: { flexDirection: "row", gap: SPACING.md },
   taxTipField: { flex: 1 },
   addItemAmountRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
