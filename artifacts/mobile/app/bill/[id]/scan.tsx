@@ -315,6 +315,23 @@ export default function ScanScreen() {
             <Text style={[styles.pickBtnGhostText, { color: colors.foreground }]}>Choose from Library</Text>
           </TouchableOpacity>
         </View>
+      ) : scan.items.length === 0 ? (
+        <View style={styles.failedScanContainer}>
+          <View style={[styles.failedScanIconBox, { backgroundColor: colors.destructive + "15" }]}>
+            <Feather name="alert-circle" size={48} color={colors.destructive} />
+          </View>
+          <Text style={[styles.failedScanTitle, { color: colors.foreground }]}>No items found</Text>
+          <Text style={[styles.failedScanSub, { color: colors.mutedForeground }]}>
+            {scan.translateError ?? "We couldn't read any line items from the receipt. Try a clearer photo."}
+          </Text>
+          <TouchableOpacity
+            style={[styles.failedScanRetry, { backgroundColor: colors.primary }]}
+            onPress={() => scan.reset()}
+          >
+            <Feather name="refresh-cw" size={16} color="#fff" />
+            <Text style={styles.failedScanRetryText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={scan.items}
@@ -522,4 +539,11 @@ const styles = StyleSheet.create({
   reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 }, // TODO: one-off
   priceHitArea: { padding: SPACING.xs },
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
+
+  failedScanContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 36, gap: 16 },
+  failedScanIconBox: { width: 96, height: 96, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  failedScanTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
+  failedScanSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  failedScanRetry: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, marginTop: 4 },
+  failedScanRetryText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });

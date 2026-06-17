@@ -45,6 +45,13 @@ import { PressableScale } from "@/components/PressableScale";
 import * as Haptics from "expo-haptics";
 import { FONT_SIZE, RADIUS, SHADOWS, SPACING } from "@/constants/styles";
 
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface GuestBillItem extends GuestBillRef {
@@ -255,7 +262,7 @@ export default function BillsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 20 }]}>
-        <Text style={[styles.greeting, { color: colors.foreground }]}>Good morning, {displayName} 👋</Text>
+        <Text style={[styles.greeting, { color: colors.foreground }]}>{getGreeting()}, {displayName} 👋</Text>
         {!isLoading && !isEmpty && (
           <Text style={[styles.subline, { color: colors.mutedForeground }]}>
             {bills.length} open {bills.length === 1 ? 'bill' : 'bills'}

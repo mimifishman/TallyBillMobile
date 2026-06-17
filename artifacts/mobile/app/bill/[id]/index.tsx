@@ -27,6 +27,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { PersonBadge } from "@/components/PersonBadge";
 import { LineItemRow } from "@/components/LineItemRow";
+import { EmptyNoPeopleIllustration } from "@/components/EmptyNoPeopleIllustration";
+import { EmptyNoItemsIllustration } from "@/components/EmptyNoItemsIllustration";
 import {
   useGetBill,
   useCreateBillUser,
@@ -631,6 +633,7 @@ export default function BillDetailScreen() {
         <TouchableOpacity
           onPress={() => router.replace("/(tabs)/bills")}
           style={styles.headerBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
@@ -648,12 +651,13 @@ export default function BillDetailScreen() {
             style={styles.headerBtn}
             accessibilityLabel="Delete bill"
             disabled={deleteBillMutation.isPending}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
           </TouchableOpacity>
         )}
         {canEditHeader && (
-          <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details">
+          <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Feather name="edit-2" size={18} color={colors.foreground} />
           </TouchableOpacity>
         )}
@@ -662,11 +666,12 @@ export default function BillDetailScreen() {
             onPress={handleRemoveFromList}
             style={styles.headerBtn}
             accessibilityLabel="Remove from my list"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Feather name="log-out" size={18} color={colors.destructive ?? "#EF4444"} />
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn}>
+        <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Feather name="share-2" size={20} color={colors.foreground} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push(`/bill/${billId}/totals`)} style={[styles.totalsBtn, { backgroundColor: colors.primary }]}>
@@ -714,9 +719,11 @@ export default function BillDetailScreen() {
           </View>
 
           {users.length === 0 ? (
-            <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-              Add people to start splitting
-            </Text>
+            <Animated.View entering={FadeInDown.duration(400)} style={styles.emptyPeople}>
+              <EmptyNoPeopleIllustration size={120} />
+              <Text style={[styles.emptyStateTitle, { color: colors.foreground }]}>No one here yet</Text>
+              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>Add people to start splitting the bill</Text>
+            </Animated.View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peopleScroll}>
               {users.map((u, i) => (
@@ -756,12 +763,11 @@ export default function BillDetailScreen() {
           </View>
 
           {lines.length === 0 ? (
-            <View style={[styles.emptyItems, { borderColor: colors.border }]}>
-              <Feather name="file-text" size={28} color={colors.mutedForeground} />
-              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-                No items yet. Scan a receipt or add manually.
-              </Text>
-            </View>
+            <Animated.View entering={FadeInDown.duration(400)} style={[styles.emptyItems, { borderColor: colors.border }]}>
+              <EmptyNoItemsIllustration size={120} />
+              <Text style={[styles.emptyStateTitle, { color: colors.foreground }]}>No items yet</Text>
+              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>Scan a receipt or add items manually</Text>
+            </Animated.View>
           ) : (
             lines.map((line) => (
               <LineItemRow
@@ -1093,19 +1099,27 @@ const styles = StyleSheet.create({
   section: { gap: SPACING.md },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.0 }, // TODO: one-off
-  addBtn: { flexDirection: "row", alignItems: "center", gap: SPACING.xs, borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: 7 },
-  addBtnText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
-  itemActions: { flexDirection: "row", gap: SPACING.sm },
-  emptyHint: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", textAlign: "center" },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
+  addBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  itemActions: { flexDirection: "row", gap: 8 },
+  emptyHint: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+  emptyStateTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  emptyPeople: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+  },
   emptyItems: {
     alignItems: "center",
     justifyContent: "center",
-    gap: SPACING.sm,
+    gap: 6,
     borderWidth: 1.5,
     borderStyle: "dashed",
     borderRadius: RADIUS.lg,
-    paddingVertical: 36,
-    paddingHorizontal: SPACING.xxl,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
   },
   peopleScroll: { gap: SPACING.xl, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.xs },
   billSummary: {

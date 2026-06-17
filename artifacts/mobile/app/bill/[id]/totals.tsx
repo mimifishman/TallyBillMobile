@@ -3,6 +3,7 @@ import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -147,7 +148,7 @@ export default function TotalsScreen() {
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Bill Totals</Text>
@@ -290,11 +291,11 @@ export default function TotalsScreen() {
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Tip ({fmtPct(person.tipPercent)}%)</Text>
                   <View style={styles.tipRow}>
                     <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>{fmt(person.tipAmount)}</Text>
-                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn}>
+                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                       <Feather name="edit-2" size={13} color={colors.mutedForeground} />
                     </TouchableOpacity>
                     {person.tipIsCustom && (
-                      <TouchableOpacity onPress={() => handleResetTip(person.billUserId)} style={styles.editTipBtn}>
+                      <TouchableOpacity onPress={() => handleResetTip(person.billUserId)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                         <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
                       </TouchableOpacity>
                     )}
@@ -326,8 +327,16 @@ export default function TotalsScreen() {
             onFocus={() => setIsTipFocused(true)}
             onBlur={() => setIsTipFocused(false)}
           />
-          <PressableScale onPress={handleSaveTip} style={[styles.tipSaveBtn, { backgroundColor: colors.primary }]}>
-            <Text style={styles.tipSaveBtnText}>Set Tip %</Text>
+          <PressableScale
+            onPress={handleSaveTip}
+            disabled={updateUserMutation.isPending}
+            style={[styles.tipSaveBtn, { backgroundColor: colors.primary, opacity: updateUserMutation.isPending ? 0.7 : 1 }]}
+          >
+            {updateUserMutation.isPending ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.tipSaveBtnText}>Set Tip %</Text>
+            )}
           </PressableScale>
           <TouchableOpacity onPress={() => setEditingUserId(null)} style={styles.tipCancelBtn}>
             <Text style={[styles.tipCancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
