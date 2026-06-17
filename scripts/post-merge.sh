@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-pnpm install --frozen-lockfile
+pnpm install --prefer-offline
 psql "$DATABASE_URL" -f lib/db/migrations/0001_tax_tip_as_percent.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0002_bill_users_tip_percent_override.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0003_users_first_last_name.sql
@@ -12,4 +12,5 @@ psql "$DATABASE_URL" -f lib/db/migrations/0008_circles.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0009_unique_names.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0010_users_clerk_id_unique.sql
 psql "$DATABASE_URL" -f lib/db/migrations/0011_fix_bill_table_swap.sql
+psql "$DATABASE_URL" -f lib/db/migrations/0012_bill_members_linked_user_id.sql
 pnpm --filter db push --force
