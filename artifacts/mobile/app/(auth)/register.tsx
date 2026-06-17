@@ -246,7 +246,7 @@ export default function RegisterScreen() {
           <View style={styles.socialSection}>
             <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#fff" }]} onPress={() => { void handleOAuth("oauth_google"); }} activeOpacity={0.8}>
               <Text style={styles.googleG}>G</Text>
-              <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Continue with Google</Text>
+              <Text style={[styles.socialBtnText, { color: "#1F2937" }]}>Continue with Google</Text>
             </TouchableOpacity>
             {Platform.OS === "ios" && (
               <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]} onPress={() => { void handleOAuth("oauth_apple"); }} activeOpacity={0.8}>
