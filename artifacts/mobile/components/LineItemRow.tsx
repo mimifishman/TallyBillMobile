@@ -3,13 +3,20 @@ import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
   Alert,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
@@ -19,6 +26,34 @@ interface BillMember {
   id: number;
   name: string;
   color: string;
+}
+
+interface AnimatedPersonBadgeProps {
+  user: BillMember;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+function AnimatedPersonBadge({ user, isSelected, onPress }: AnimatedPersonBadgeProps) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        scale.value = withSequence(
+          withSpring(1.15, { stiffness: 500, damping: 10 }),
+          withSpring(1, { stiffness: 300, damping: 18 }),
+        );
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }}
+      onPress={onPress}
+    >
+      <Animated.View style={animStyle}>
+        <PersonBadge name={user.name} color={user.color} size="sm" selected={isSelected} />
+      </Animated.View>
+    </Pressable>
+  );
 }
 
 interface LineItemRowProps {
@@ -185,12 +220,10 @@ export function LineItemRow({
       {billUsers.length > 0 && (
         <View style={styles.peopleRow}>
           {billUsers.map((user) => (
-            <PersonBadge
+            <AnimatedPersonBadge
               key={user.id}
-              name={user.name}
-              color={user.color}
-              size="sm"
-              selected={assignedUserIds.includes(user.id)}
+              user={user}
+              isSelected={assignedUserIds.includes(user.id)}
               onPress={() => onToggleUser(id, user.id)}
             />
           ))}

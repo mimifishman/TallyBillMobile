@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import React from "react";
 import { Pressable } from "react-native";
 import Animated, {
@@ -27,7 +28,8 @@ export function PressableScale({ children, onPress, style, disabled }: Pressable
   return (
     <AnimatedPressable
       onPressIn={() => {
-        scale.value = withSpring(0.96, { stiffness: 400, damping: 25 });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        scale.value = withSpring(0.97, { stiffness: 400, damping: 25 });
         opacity.value = withSpring(0.88, { stiffness: 400, damping: 25 });
       }}
       onPressOut={() => {

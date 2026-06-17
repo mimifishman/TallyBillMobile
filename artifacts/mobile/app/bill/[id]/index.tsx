@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { BottomSheet } from "@/components/BottomSheet";
+import { PressableScale } from "@/components/PressableScale";
 import { RADIUS } from "@/constants/styles";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton } from "@/components/Skeleton";
@@ -320,7 +321,6 @@ export default function BillDetailScreen() {
           }
           return;
         }
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         invalidate();
       },
       onError: () => {
@@ -474,6 +474,7 @@ export default function BillDetailScreen() {
 
   const handleAddItem = () => {
     if (!newItemDesc.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const qty = Math.max(1, parseInt(newItemQty) || 1);
     const total = parseFloat(newItemTotal) || 0;
     const unitPrice = total / qty;
@@ -817,9 +818,9 @@ export default function BillDetailScreen() {
             returnKeyType="done"
             onSubmitEditing={handleAddPerson}
           />
-          <TouchableOpacity onPress={handleAddPerson} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+          <PressableScale onPress={handleAddPerson} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]}>
             <Text style={styles.sheetPrimaryBtnText}>Add to Bill</Text>
-          </TouchableOpacity>
+          </PressableScale>
           <TouchableOpacity onPress={() => setShowAddPerson(false)} style={styles.sheetCancelBtn}>
             <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
           </TouchableOpacity>
@@ -878,14 +879,13 @@ export default function BillDetailScreen() {
                   />
                 </View>
               </View>
-              <TouchableOpacity
+              <PressableScale
                 onPress={handleSaveHeader}
                 disabled={patchBillMutation.isPending}
                 style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary, opacity: patchBillMutation.isPending ? 0.6 : 1 }]}
-                activeOpacity={0.8}
               >
                 <Text style={styles.sheetPrimaryBtnText}>{patchBillMutation.isPending ? "Saving…" : "Save Changes"}</Text>
-              </TouchableOpacity>
+              </PressableScale>
               <TouchableOpacity onPress={() => setShowEditHeader(false)} style={styles.sheetCancelBtn}>
                 <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Discard</Text>
               </TouchableOpacity>
@@ -929,9 +929,9 @@ export default function BillDetailScreen() {
                 />
               </View>
             </View>
-            <TouchableOpacity onPress={handleAddItem} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+            <PressableScale onPress={handleAddItem} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]}>
               <Text style={styles.sheetPrimaryBtnText}>Add Item</Text>
-            </TouchableOpacity>
+            </PressableScale>
             <TouchableOpacity onPress={() => setShowAddItem(false)} style={styles.sheetCancelBtn}>
               <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
             </TouchableOpacity>
@@ -1004,9 +1004,9 @@ export default function BillDetailScreen() {
             keyboardType="number-pad"
             autoFocus
           />
-          <TouchableOpacity onPress={handleConfirmSplit} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+          <PressableScale onPress={handleConfirmSplit} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]}>
             <Text style={styles.sheetPrimaryBtnText}>Split it</Text>
-          </TouchableOpacity>
+          </PressableScale>
           <TouchableOpacity onPress={() => setShowSplitModal(false)} style={styles.sheetCancelBtn}>
             <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
           </TouchableOpacity>

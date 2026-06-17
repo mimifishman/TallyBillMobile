@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { RADIUS } from "@/constants/styles";
+import { PressableScale } from "@/components/PressableScale";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -212,9 +213,9 @@ export default function RegisterScreen() {
               <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Enter verification code" placeholderTextColor={colors.mutedForeground} value={verificationCode} onChangeText={(t) => { setVerificationCode(t); setCodeError(""); }} keyboardType="numeric" autoFocus />
             </View>
             {!!codeError && <Text style={[styles.errorText, { color: colors.destructive }]}>{codeError}</Text>}
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleVerify} disabled={isPending} activeOpacity={0.8}>
+            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleVerify} disabled={isPending}>
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Verify Email</Text>}
-            </TouchableOpacity>
+            </PressableScale>
             <TouchableOpacity onPress={() => signUp.verifications.sendEmailCode()} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Resend code</Text></TouchableOpacity>
             <TouchableOpacity onPress={abandonSignUp} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Wrong email? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Use a different email</Text></Text></TouchableOpacity>
           </View>
@@ -282,9 +283,9 @@ export default function RegisterScreen() {
             </View>
             {!!confirmPasswordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{confirmPasswordError}</Text>}
 
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleRegister} disabled={isPending} activeOpacity={0.8}>
+            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleRegister} disabled={isPending}>
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Create Account</Text>}
-            </TouchableOpacity>
+            </PressableScale>
 
             <TouchableOpacity onPress={() => router.back()} style={styles.linkBtn}>
               <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Already have an account? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Sign in</Text></Text>

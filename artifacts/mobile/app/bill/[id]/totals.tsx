@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { PressableScale } from "@/components/PressableScale";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -44,6 +45,7 @@ export default function TotalsScreen() {
   const queryClient = useQueryClient();
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editTipValue, setEditTipValue] = useState("");
+  const [isTipFocused, setIsTipFocused] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const toggleExpanded = (uid: number) => {
@@ -170,15 +172,15 @@ export default function TotalsScreen() {
               <Text style={styles.grandSub}>Tip (avg {fmtPct(totals.averageTipPercent)}%): {fmt(totals.tipAmount)}</Text>
             </View>
           </LinearGradient>
-          {isSettled ? <Confetti trigger={confettiKey} count={36} /> : null}
+          {isSettled ? <Confetti trigger={confettiKey} count={40} /> : null}
         </View>
 
         {isSettled ? (
-          <Animated.View style={[styles.settledBanner, { backgroundColor: colors.settledBackground }, checkAnim]}>
-            <View style={[styles.checkCircle, { backgroundColor: colors.success }]}>
+          <Animated.View style={[styles.settledBanner, { backgroundColor: colors.popSoft }, checkAnim]}>
+            <View style={[styles.checkCircle, { backgroundColor: colors.pop }]}>
               <Feather name="check" size={16} color="#fff" />
             </View>
-            <Text style={[styles.settledText, { color: colors.settledForeground }]}>All squared away! 🎉</Text>
+            <Text style={[styles.settledText, { color: colors.popDark }]}>All settled! 🎉</Text>
           </Animated.View>
         ) : null}
 
@@ -249,7 +251,7 @@ export default function TotalsScreen() {
                 <PersonBadge name={person.name} color={person.color} size="md" />
                 <View style={styles.personInfo}>
                   <Text style={[styles.personName, { color: colors.foreground }]}>{person.name}</Text>
-                  <Text style={[styles.personTotal, { color: colors.primary }]}>{fmt(person.total)}</Text>
+                  <Text style={[styles.personTotal, { color: colors.pop }]}>{fmt(person.total)}</Text>
                 </View>
                 {person.items.length > 0 && (
                   <View style={[styles.expandBtn, { backgroundColor: colors.primarySoft }]}>
@@ -314,17 +316,19 @@ export default function TotalsScreen() {
             Enter a percentage like 20 for 20%. Reset to restore the bill default.
           </Text>
           <TextInput
-            style={[styles.tipInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+            style={[styles.tipInput, { borderColor: isTipFocused ? colors.pop : colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
             placeholder="e.g. 15"
             placeholderTextColor={colors.mutedForeground}
             value={editTipValue}
             onChangeText={setEditTipValue}
             keyboardType="numeric"
             autoFocus
+            onFocus={() => setIsTipFocused(true)}
+            onBlur={() => setIsTipFocused(false)}
           />
-          <TouchableOpacity onPress={handleSaveTip} style={[styles.tipSaveBtn, { backgroundColor: colors.primary }]}>
+          <PressableScale onPress={handleSaveTip} style={[styles.tipSaveBtn, { backgroundColor: colors.primary }]}>
             <Text style={styles.tipSaveBtnText}>Set Tip %</Text>
-          </TouchableOpacity>
+          </PressableScale>
           <TouchableOpacity onPress={() => setEditingUserId(null)} style={styles.tipCancelBtn}>
             <Text style={[styles.tipCancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
           </TouchableOpacity>

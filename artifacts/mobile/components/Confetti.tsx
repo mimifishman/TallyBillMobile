@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-const COLORS = ["#10B981", "#FB7185", "#3B82F6", "#A855F7", "#EAB308"];
+const COLORS = ["#FB7185", "#10B981"];
 
 interface ParticleProps {
   index: number;
@@ -73,7 +73,7 @@ function Particle({ index, width }: ParticleProps) {
   );
 }
 
-export function Confetti({ count = 30, trigger }: { count?: number; trigger: number }) {
+export function Confetti({ count = 40, trigger }: { count?: number; trigger: number }) {
   const { width } = Dimensions.get("window");
   return (
     <View pointerEvents="none" style={styles.container}>

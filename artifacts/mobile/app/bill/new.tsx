@@ -28,6 +28,7 @@ import { appendGuestBill, registerJoinCode } from "@/utils/guestBillStore";
 import { pickColor } from "@/utils/pickColor";
 import { RADIUS } from "@/constants/styles";
 import * as Haptics from "expo-haptics";
+import { PressableScale } from "@/components/PressableScale";
 
 const today = new Date().toISOString().split("T")[0]!;
 
@@ -193,11 +194,10 @@ export default function NewBillScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           style={[styles.createBtn, { backgroundColor: colors.primary, opacity: createMutation.isPending ? 0.85 : 1 }]}
           onPress={handleCreate}
           disabled={createMutation.isPending}
-          activeOpacity={0.85}
         >
           {createMutation.isPending ? (
             <ActivityIndicator color="#fff" size="small" />
@@ -207,7 +207,7 @@ export default function NewBillScreen() {
               <Text style={styles.createBtnText}>Start the bill</Text>
             </>
           )}
-        </TouchableOpacity>
+        </PressableScale>
       </ScrollView>
     </KeyboardAvoidingView>
   );

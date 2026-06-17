@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { RADIUS } from "@/constants/styles";
+import { PressableScale } from "@/components/PressableScale";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -199,9 +200,9 @@ export default function LoginScreen() {
               <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Verification code" placeholderTextColor={colors.mutedForeground} value={verificationCode} onChangeText={setVerificationCode} keyboardType="numeric" autoFocus />
             </View>
             {!!codeError && <Text style={[styles.errorText, { color: colors.destructive }]}>{codeError}</Text>}
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleVerify} disabled={isPending} activeOpacity={0.8}>
+            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleVerify} disabled={isPending}>
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Verify</Text>}
-            </TouchableOpacity>
+            </PressableScale>
             {canResend && <TouchableOpacity onPress={() => { void resendSecondFactorCode(); }} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Resend code</Text></TouchableOpacity>}
             <TouchableOpacity onPress={() => { setSecondFactor(null); signIn.reset(); }} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Start over</Text></TouchableOpacity>
           </View>
@@ -273,9 +274,9 @@ export default function LoginScreen() {
               <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleEmailLogin} disabled={isPending} activeOpacity={0.8}>
+            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleEmailLogin} disabled={isPending}>
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Sign In</Text>}
-            </TouchableOpacity>
+            </PressableScale>
 
             <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={styles.linkBtn}>
               <Text style={[styles.linkText, { color: colors.mutedForeground }]}>No account? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Register</Text></Text>
