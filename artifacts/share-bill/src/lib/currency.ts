@@ -19,8 +19,8 @@ export function formatMoney(n: number, currency: string | null | undefined): str
 }
 
 export const PEOPLE_COLORS = [
-  "#E84393", "#FF6B35", "#2D9CDB", "#9B59B6",
-  "#27AE60", "#F39C12", "#E74C3C", "#1ABC9C",
+  "#3B82F6", "#A855F7", "#F97316", "#EAB308",
+  "#06B6D4", "#EC4899", "#6366F1", "#84CC16",
 ];
 
 export const CURRENCY_OPTIONS = [
