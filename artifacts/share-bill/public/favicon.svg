@@ -1,16 +1,12 @@
-<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <!-- Receipt background -->
-  <rect x="3" y="1" width="26" height="30" rx="5" fill="#16A34A"/>
-  <!-- Split line -->
-  <line x1="16" y1="6" x2="16" y2="27" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-dasharray="3,2"/>
-  <!-- Left item lines -->
-  <rect x="6" y="9" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
-  <rect x="6" y="14" width="6" height="2" rx="1" fill="white" opacity="0.9"/>
-  <rect x="6" y="19" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
-  <!-- Right item lines -->
-  <rect x="19" y="9" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
-  <rect x="19" y="14" width="6" height="2" rx="1" fill="white" opacity="0.9"/>
-  <rect x="19" y="19" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
-  <!-- Total bar -->
-  <rect x="6" y="24" width="20" height="2" rx="1" fill="white" opacity="0.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="64" height="64">
+  <rect width="1024" height="1024" rx="224" fill="#10B981"/>
+
+  <path d="M302,270 H690 A32 32 0 0 1 722,302 V730            l-42,44 l-42,-44 l-42,44 l-42,-44 l-42,44 l-42,-44 l-42,44 l-42,-44 l-42,44 l-42,-44            V302 A32 32 0 0 1 302,270 Z" fill="#FFFFFF"/>
+  <rect x="326" y="336" width="372" height="40" fill="#10B981"/>
+  <rect x="492" y="336" width="40" height="370" fill="#10B981"/>
+  <rect x="326" y="428" width="120" height="30" rx="15" fill="#10B981"/>
+  <rect x="326" y="492" width="88" height="30" rx="15" fill="#10B981"/>
+  <rect x="578" y="428" width="120" height="30" rx="15" fill="#10B981"/>
+  <rect x="578" y="492" width="88" height="30" rx="15" fill="#10B981"/>
+  <line x1="512" y1="344" x2="512" y2="700" stroke="#FB7185" stroke-width="24" stroke-linecap="round" stroke-dasharray="26 32"/>
 </svg>

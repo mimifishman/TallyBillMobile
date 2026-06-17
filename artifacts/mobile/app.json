@@ -19,6 +19,10 @@
       "associatedDomains": ["applinks:tallybill.app"]
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-foreground.png",
+        "backgroundColor": "#10B981"
+      },
       "package": "com.tallybill.mobile",
       "intentFilters": [
         {
