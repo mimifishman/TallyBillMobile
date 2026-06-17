@@ -239,6 +239,8 @@ export interface CircleMember {
   circleId: number;
   name: string;
   linkedUserId?: number | null;
+  linkedUserDisplayName?: string | null;
+  linkedUserEmail?: string | null;
   createdAt: string;
 }
 
@@ -265,6 +267,7 @@ export interface CreateCircleMemberRequest {
 
 export interface UpdateCircleMemberRequest {
   name: string;
+  linkedEmail?: string | null;
 }
 
 export type BulkCreateBillLinesBody = {

@@ -39,8 +39,12 @@ export default function CircleDetailScreen() {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [showRenameMemberModal, setShowRenameMemberModal] = useState(false);
-  const [renameMemberTarget, setRenameMemberTarget] = useState<{ id: number; name: string } | null>(null);
+  const [renameMemberTarget, setRenameMemberTarget] = useState<{ id: number; name: string; linkedUserId?: number | null; linkedUserDisplayName?: string | null; linkedUserEmail?: string | null } | null>(null);
   const [renameMemberValue, setRenameMemberValue] = useState("");
+  const [editMemberLinkedEmail, setEditMemberLinkedEmail] = useState("");
+  const [editMemberShowEmailField, setEditMemberShowEmailField] = useState(false);
+  const [editMemberUnlink, setEditMemberUnlink] = useState(false);
+  const [editMemberEmailError, setEditMemberEmailError] = useState<string | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
@@ -109,30 +113,23 @@ export default function CircleDetailScreen() {
 
   const renameMemberMutation = useRenameCircleMember({
     mutation: {
-      onMutate: async ({ memberId, data }) => {
-        await queryClient.cancelQueries({ queryKey: getGetCirclesQueryKey() });
-        const previous = queryClient.getQueryData<Circle[]>(getGetCirclesQueryKey());
-        queryClient.setQueryData(getGetCirclesQueryKey(), (old: Circle[] | undefined) => {
-          if (!old) return old;
-          return old.map((c) =>
-            c.id === circleId
-              ? { ...c, members: c.members.map((m) => (m.id === memberId ? { ...m, name: data.name } : m)) }
-              : c
-          );
-        });
+      onSuccess: () => {
+        invalidate();
         setShowRenameMemberModal(false);
         setRenameMemberTarget(null);
         setRenameMemberValue("");
-        return { previous };
+        setEditMemberLinkedEmail("");
+        setEditMemberShowEmailField(false);
+        setEditMemberUnlink(false);
+        setEditMemberEmailError(null);
       },
-      onError: (_err, _vars, context) => {
-        if (context?.previous) {
-          queryClient.setQueryData(getGetCirclesQueryKey(), context.previous);
+      onError: (err: unknown) => {
+        const apiErr = err as { status?: number };
+        if (apiErr?.status === 422) {
+          setEditMemberEmailError("No TallyBill account found with that email address.");
+        } else {
+          Alert.alert("Error", "Couldn't save changes. Please try again.");
         }
-        Alert.alert("Error", "Couldn't rename the person. Please try again.");
-      },
-      onSettled: () => {
-        invalidate();
       },
     },
   });
@@ -176,16 +173,19 @@ export default function CircleDetailScreen() {
     });
   };
 
-  const handleOpenRenameMember = (memberId: number, memberName: string) => {
-    setRenameMemberTarget({ id: memberId, name: memberName });
+  const handleOpenRenameMember = (memberId: number, memberName: string, linkedUserId?: number | null, linkedUserDisplayName?: string | null, linkedUserEmail?: string | null) => {
+    setRenameMemberTarget({ id: memberId, name: memberName, linkedUserId, linkedUserDisplayName, linkedUserEmail });
     setRenameMemberValue(memberName);
+    setEditMemberLinkedEmail("");
+    setEditMemberShowEmailField(false);
+    setEditMemberUnlink(false);
+    setEditMemberEmailError(null);
     setShowRenameMemberModal(true);
   };
 
   const handleRenameMember = () => {
     if (!renameMemberTarget || !renameMemberValue.trim()) return;
     const trimmed = renameMemberValue.trim();
-    if (trimmed === renameMemberTarget.name) return;
     const isDuplicate = circle?.members.some(
       (m) => m.id !== renameMemberTarget.id && m.name.toLowerCase() === trimmed.toLowerCase()
     );
@@ -193,7 +193,20 @@ export default function CircleDetailScreen() {
       Alert.alert("Name already in circle", `"${trimmed}" is already a member of this circle.`);
       return;
     }
-    renameMemberMutation.mutate({ id: circleId, memberId: renameMemberTarget.id, data: { name: trimmed } });
+
+    let linkedEmail: string | null | undefined = undefined;
+    if (editMemberUnlink) {
+      linkedEmail = null;
+    } else if (editMemberShowEmailField && editMemberLinkedEmail.trim()) {
+      linkedEmail = editMemberLinkedEmail.trim();
+    }
+
+    setEditMemberEmailError(null);
+    renameMemberMutation.mutate({
+      id: circleId,
+      memberId: renameMemberTarget.id,
+      data: { name: trimmed, ...(linkedEmail !== undefined ? { linkedEmail } : {}) },
+    });
   };
 
   const handleRemoveMember = (memberId: number, memberName: string) => {
@@ -313,7 +326,7 @@ export default function CircleDetailScreen() {
                   </View>
                   <TouchableOpacity
                     style={styles.memberInfo}
-                    onPress={() => handleOpenRenameMember(member.id, member.name)}
+                    onPress={() => handleOpenRenameMember(member.id, member.name, member.linkedUserId, member.linkedUserDisplayName, member.linkedUserEmail)}
                     activeOpacity={0.6}
                   >
                     <View style={styles.memberNameRow}>
@@ -406,6 +419,10 @@ export default function CircleDetailScreen() {
               setShowRenameMemberModal(false);
               setRenameMemberTarget(null);
               setRenameMemberValue("");
+              setEditMemberLinkedEmail("");
+              setEditMemberShowEmailField(false);
+              setEditMemberUnlink(false);
+              setEditMemberEmailError(null);
             }}
           >
             <TouchableOpacity
@@ -413,7 +430,7 @@ export default function CircleDetailScreen() {
               onPress={() => {}}
               style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
             >
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Rename Person</Text>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Person</Text>
               <TextInput
                 style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
                 placeholder="Name"
@@ -425,12 +442,113 @@ export default function CircleDetailScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleRenameMember}
               />
+
+              {renameMemberTarget?.linkedUserId && !editMemberUnlink && !editMemberShowEmailField ? (
+                <View style={[styles.linkedRow, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                  <Feather name="link" size={13} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.linkedRowText, { color: colors.foreground }]}>
+                      {renameMemberTarget.linkedUserEmail
+                        ? renameMemberTarget.linkedUserEmail
+                        : "Linked to TallyBill account"}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditMemberLinkedEmail(renameMemberTarget?.linkedUserEmail ?? "");
+                      setEditMemberShowEmailField(true);
+                      setEditMemberUnlink(false);
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={{ marginRight: 8 }}
+                  >
+                    <Text style={[styles.unlinkText, { color: colors.primary }]}>Change</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setEditMemberUnlink(true)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={[styles.unlinkText, { color: colors.destructive ?? "#EF4444" }]}>Unlink</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : editMemberUnlink ? (
+                <View style={[styles.linkedRow, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                  <Feather name="link-2" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.linkedRowText, { color: colors.mutedForeground }]}>
+                    Link will be removed on save
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setEditMemberUnlink(false)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={[styles.unlinkText, { color: colors.primary }]}>Undo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : editMemberShowEmailField ? (
+                <View style={{ gap: 4 }}>
+                  <TextInput
+                    style={[
+                      styles.modalInput,
+                      {
+                        borderColor: editMemberEmailError ? (colors.destructive ?? "#EF4444") : colors.border,
+                        color: colors.foreground,
+                      },
+                    ]}
+                    placeholder="TallyBill email address"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={editMemberLinkedEmail}
+                    onChangeText={(v) => {
+                      setEditMemberLinkedEmail(v);
+                      setEditMemberEmailError(null);
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleRenameMember}
+                    autoFocus={false}
+                  />
+                  {editMemberEmailError ? (
+                    <Text style={[styles.emailErrorText, { color: colors.destructive ?? "#EF4444" }]}>
+                      {editMemberEmailError}
+                    </Text>
+                  ) : null}
+                  {renameMemberTarget?.linkedUserId ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditMemberShowEmailField(false);
+                        setEditMemberLinkedEmail("");
+                        setEditMemberEmailError(null);
+                      }}
+                    >
+                      <Text style={[styles.emailErrorText, { color: colors.mutedForeground }]}>
+                        Cancel — keep existing link
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setEditMemberShowEmailField(true)}
+                  style={styles.linkEmailBtn}
+                >
+                  <Feather name="link" size={13} color={colors.primary} />
+                  <Text style={[styles.linkEmailText, { color: colors.primary }]}>
+                    Link to TallyBill account (optional)
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   onPress={() => {
                     setShowRenameMemberModal(false);
                     setRenameMemberTarget(null);
                     setRenameMemberValue("");
+                    setEditMemberLinkedEmail("");
+                    setEditMemberShowEmailField(false);
+                    setEditMemberUnlink(false);
+                    setEditMemberEmailError(null);
                   }}
                   style={[styles.modalCancelBtn, { borderColor: colors.border }]}
                 >
@@ -438,21 +556,12 @@ export default function CircleDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleRenameMember}
-                  disabled={
-                    renameMemberMutation.isPending ||
-                    !renameMemberValue.trim() ||
-                    renameMemberValue.trim() === renameMemberTarget?.name
-                  }
+                  disabled={renameMemberMutation.isPending || !renameMemberValue.trim()}
                   style={[
                     styles.modalConfirmBtn,
                     {
                       backgroundColor: colors.primary,
-                      opacity:
-                        renameMemberMutation.isPending ||
-                        !renameMemberValue.trim() ||
-                        renameMemberValue.trim() === renameMemberTarget?.name
-                          ? 0.6
-                          : 1,
+                      opacity: renameMemberMutation.isPending || !renameMemberValue.trim() ? 0.6 : 1,
                     },
                   ]}
                 >
@@ -663,6 +772,18 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
   },
   linkEmailText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  linkedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: SPACING.sm,
+  },
+  linkedRowText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  unlinkText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  emailErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 },
   modalButtons: { flexDirection: "row", gap: 10, marginTop: SPACING.xs },
   modalCancelBtn: {
     flex: 1,

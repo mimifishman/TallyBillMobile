@@ -22,11 +22,27 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
           .where(inArray(circleMembersTable.circleId, circleIds))
       : [];
 
-  const membersByCircle = new Map<number, typeof rawMembers>();
+  const linkedUserIds = [...new Set(rawMembers.map((m) => m.linkedUserId).filter((id): id is number => id != null))];
+  const linkedUsers =
+    linkedUserIds.length > 0
+      ? await db
+          .select({ id: usersTable.id, displayName: usersTable.displayName, email: usersTable.email })
+          .from(usersTable)
+          .where(inArray(usersTable.id, linkedUserIds))
+      : [];
+  const linkedUserMap = new Map(linkedUsers.map((u) => [u.id, u]));
+
+  const membersByCircle = new Map<number, Array<typeof rawMembers[0] & { linkedUserDisplayName: string | null }>>();
   for (const m of rawMembers) {
+    const linkedUser = m.linkedUserId != null ? linkedUserMap.get(m.linkedUserId) : undefined;
+    const enriched = {
+      ...m,
+      linkedUserDisplayName: linkedUser ? (linkedUser.displayName || linkedUser.email) : null,
+      linkedUserEmail: linkedUser ? linkedUser.email : null,
+    };
     const arr = membersByCircle.get(m.circleId);
-    if (arr) arr.push(m);
-    else membersByCircle.set(m.circleId, [m]);
+    if (arr) arr.push(enriched);
+    else membersByCircle.set(m.circleId, [enriched]);
   }
 
   const result = circles.map((c) => ({
@@ -155,7 +171,7 @@ router.patch("/:id/members/:memberId", requireAuth, async (req: AuthRequest, res
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const { name } = req.body;
+  const { name, linkedEmail } = req.body;
   if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ error: "name is required" });
     return;
@@ -188,9 +204,29 @@ router.patch("/:id/members/:memberId", requireAuth, async (req: AuthRequest, res
     res.status(409).json({ error: `"${trimmedName}" is already in this circle` });
     return;
   }
+
+  const updateValues: { name: string; linkedUserId?: number | null } = { name: trimmedName };
+
+  if (linkedEmail !== undefined) {
+    if (linkedEmail === null || (typeof linkedEmail === "string" && linkedEmail.trim() === "")) {
+      updateValues.linkedUserId = null;
+    } else if (typeof linkedEmail === "string") {
+      const [linkedUser] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.email, linkedEmail.trim().toLowerCase()))
+        .limit(1);
+      if (!linkedUser) {
+        res.status(422).json({ error: "No TallyBill account found with that email address" });
+        return;
+      }
+      updateValues.linkedUserId = linkedUser.id;
+    }
+  }
+
   const [updated] = await db
     .update(circleMembersTable)
-    .set({ name: trimmedName })
+    .set(updateValues)
     .where(eq(circleMembersTable.id, memberId))
     .returning();
   res.json(updated);

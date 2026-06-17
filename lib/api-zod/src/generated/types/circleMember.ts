@@ -11,5 +11,7 @@ export interface CircleMember {
   circleId: number;
   name: string;
   linkedUserId?: number | null;
+  linkedUserDisplayName?: string | null;
+  linkedUserEmail?: string | null;
   createdAt: Date;
 }

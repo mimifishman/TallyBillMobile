@@ -8,4 +8,5 @@
 
 export interface UpdateCircleMemberRequest {
   name: string;
+  linkedEmail?: string | null;
 }

@@ -823,6 +823,7 @@ export const RenameCircleMemberParams = zod.object({
 
 export const RenameCircleMemberBody = zod.object({
   name: zod.string(),
+  linkedEmail: zod.string().nullish(),
 });
 
 export const RenameCircleMemberResponse = zod.object({
@@ -830,6 +831,7 @@ export const RenameCircleMemberResponse = zod.object({
   circleId: zod.number(),
   name: zod.string(),
   linkedUserId: zod.number().nullish(),
+  linkedUserDisplayName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
