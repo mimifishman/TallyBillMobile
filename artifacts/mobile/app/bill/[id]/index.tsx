@@ -1057,9 +1057,6 @@ export default function BillDetailScreen() {
               </TouchableOpacity>
             ))
           ) : null}
-          <TouchableOpacity onPress={() => setShowCirclePicker(false)} style={[styles.sheetCancelBtn, { marginTop: 8 }]}>
-            <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Close</Text>
-          </TouchableOpacity>
         </View>
       </BottomSheet>
 
