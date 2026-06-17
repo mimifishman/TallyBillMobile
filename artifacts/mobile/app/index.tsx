@@ -139,7 +139,7 @@ export default function IndexScreen() {
       )}
 
       <TouchableOpacity
-        style={[styles.settingsBtn, { bottom: insets.bottom + 24, backgroundColor: colors.card, borderColor: colors.border }]}
+        style={[styles.settingsBtn, { top: insets.top + 12, backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => router.push("/(tabs)/settings")}
         activeOpacity={0.8}
       >

@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", marginTop: SPACING.sm, textAlign: "center", lineHeight: 26 }, // TODO: one-off
   fabWrapper: {
     position: "absolute",
-    right: SPACING.xxl,
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
     ...SHADOWS.raised,
