@@ -1,9 +1,21 @@
-import React from "react";
-import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View, ScrollView, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+  Animated,
+  Keyboard,
+  KeyboardEvent,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import ReAnimated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 interface BottomSheetProps {
@@ -18,6 +30,36 @@ const SHEET_MAX_RATIO = 0.85;
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const colors = useColors();
   const { height: windowHeight } = useWindowDimensions();
+  const bottomOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const onShow = (e: KeyboardEvent) => {
+      Animated.timing(bottomOffset, {
+        toValue: e.endCoordinates.height,
+        duration: Platform.OS === "ios" ? (e.duration ?? 250) : 150,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const onHide = (e: KeyboardEvent) => {
+      Animated.timing(bottomOffset, {
+        toValue: 0,
+        duration: Platform.OS === "ios" ? (e.duration ?? 200) : 150,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      bottomOffset.setValue(0);
+    };
+  }, [bottomOffset]);
 
   if (!visible) return null;
 
@@ -25,12 +67,8 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <BlurView intensity={20} style={styles.overlay} tint="dark">
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <KeyboardAvoidingView
-          behavior="padding"
-          style={styles.kavWrapper}
-          keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
-        >
-          <Animated.View
+        <Animated.View style={[styles.sheetWrapper, { marginBottom: bottomOffset }]}>
+          <ReAnimated.View
             entering={SlideInDown.springify().damping(20).stiffness(200)}
             exiting={SlideOutDown.duration(200)}
             style={[
@@ -59,8 +97,8 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             >
               {children}
             </ScrollView>
-          </Animated.View>
-        </KeyboardAvoidingView>
+          </ReAnimated.View>
+        </Animated.View>
       </BlurView>
     </Modal>
   );
@@ -69,7 +107,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  kavWrapper: { flex: 1, justifyContent: "flex-end" },
+  sheetWrapper: { width: "100%" },
   sheet: {
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
