@@ -147,6 +147,55 @@ router.post("/:id/members", requireAuth, async (req: AuthRequest, res) => {
   res.status(201).json(member);
 });
 
+router.patch("/:id/members/:memberId", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.userId;
+  const circleId = parseInt(String(req.params["id"]), 10);
+  const memberId = parseInt(String(req.params["memberId"]), 10);
+  if (isNaN(circleId) || isNaN(memberId)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const { name } = req.body;
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+  const trimmedName = name.trim();
+  const [circle] = await db
+    .select()
+    .from(circlesTable)
+    .where(and(eq(circlesTable.id, circleId), eq(circlesTable.ownerUserId, userId)))
+    .limit(1);
+  if (!circle) {
+    res.status(404).json({ error: "Circle not found" });
+    return;
+  }
+  const [member] = await db
+    .select()
+    .from(circleMembersTable)
+    .where(and(eq(circleMembersTable.id, memberId), eq(circleMembersTable.circleId, circleId)))
+    .limit(1);
+  if (!member) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  const [duplicate] = await db
+    .select({ id: circleMembersTable.id })
+    .from(circleMembersTable)
+    .where(and(eq(circleMembersTable.circleId, circleId), eq(circleMembersTable.name, trimmedName)))
+    .limit(1);
+  if (duplicate && duplicate.id !== memberId) {
+    res.status(409).json({ error: `"${trimmedName}" is already in this circle` });
+    return;
+  }
+  const [updated] = await db
+    .update(circleMembersTable)
+    .set({ name: trimmedName })
+    .where(eq(circleMembersTable.id, memberId))
+    .returning();
+  res.json(updated);
+});
+
 router.delete("/:id/members/:memberId", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.userId;
   const circleId = parseInt(String(req.params["id"]), 10);

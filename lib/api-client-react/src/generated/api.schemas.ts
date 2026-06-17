@@ -38,6 +38,10 @@ export interface AddCircleMemberRequest {
   email?: string;
 }
 
+export interface RenameCircleMemberRequest {
+  name: string;
+}
+
 export interface ErrorResponse {
   error: string;
 }

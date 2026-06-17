@@ -43,6 +43,7 @@ import type {
   OcrTranslateResponse,
   PatchBillRequest,
   RegisterRequest,
+  RenameCircleMemberRequest,
   SuccessResponse,
   ToggleBillLineUser200,
   ToggleBillLineUserBody,
@@ -2536,6 +2537,66 @@ export function useAddCircleMember<TError = ErrorType<unknown>, TContext = unkno
 }
 
 // Remove Circle Member
+
+// Rename Circle Member
+export const getRenameCircleMemberUrl = (id: number, memberId: number) => {
+  return `/api/circles/${id}/members/${memberId}`;
+};
+
+export const renameCircleMember = async (
+  id: number,
+  memberId: number,
+  renameCircleMemberRequest: RenameCircleMemberRequest,
+  options?: RequestInit,
+): Promise<CircleMember> => {
+  return customFetch<CircleMember>(getRenameCircleMemberUrl(id, memberId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(renameCircleMemberRequest),
+  });
+};
+
+export const getRenameCircleMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof renameCircleMember>>,
+    TError,
+    { id: number; memberId: number; data: RenameCircleMemberRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const mutationKey = ["renameCircleMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof renameCircleMember>>,
+    { id: number; memberId: number; data: RenameCircleMemberRequest }
+  > = (props) => {
+    const { id, memberId, data } = props ?? {};
+    return renameCircleMember(id, memberId, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export function useRenameCircleMember<TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof renameCircleMember>>,
+    TError,
+    { id: number; memberId: number; data: RenameCircleMemberRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof renameCircleMember>>,
+  TError,
+  { id: number; memberId: number; data: RenameCircleMemberRequest },
+  TContext
+> {
+  return useMutation(getRenameCircleMemberMutationOptions(options));
+}
 
 export const getRemoveCircleMemberUrl = (id: number, memberId: number) => {
   return `/api/circles/${id}/members/${memberId}`;

@@ -23,6 +23,7 @@ import {
   useDeleteCircle,
   useAddCircleMember,
   useRemoveCircleMember,
+  useRenameCircleMember,
   getGetCirclesQueryKey,
   type Circle,
 } from "@workspace/api-client-react";
@@ -37,6 +38,9 @@ export default function CircleDetailScreen() {
 
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [showRenameMemberModal, setShowRenameMemberModal] = useState(false);
+  const [renameMemberTarget, setRenameMemberTarget] = useState<{ id: number; name: string } | null>(null);
+  const [renameMemberValue, setRenameMemberValue] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
@@ -103,6 +107,36 @@ export default function CircleDetailScreen() {
     },
   });
 
+  const renameMemberMutation = useRenameCircleMember({
+    mutation: {
+      onMutate: async ({ memberId, data }) => {
+        await queryClient.cancelQueries({ queryKey: getGetCirclesQueryKey() });
+        const previous = queryClient.getQueryData<Circle[]>(getGetCirclesQueryKey());
+        queryClient.setQueryData(getGetCirclesQueryKey(), (old: Circle[] | undefined) => {
+          if (!old) return old;
+          return old.map((c) =>
+            c.id === circleId
+              ? { ...c, members: c.members.map((m) => (m.id === memberId ? { ...m, name: data.name } : m)) }
+              : c
+          );
+        });
+        setShowRenameMemberModal(false);
+        setRenameMemberTarget(null);
+        setRenameMemberValue("");
+        return { previous };
+      },
+      onError: (_err, _vars, context) => {
+        if (context?.previous) {
+          queryClient.setQueryData(getGetCirclesQueryKey(), context.previous);
+        }
+        Alert.alert("Error", "Couldn't rename the person. Please try again.");
+      },
+      onSettled: () => {
+        invalidate();
+      },
+    },
+  });
+
   const handleRename = () => {
     if (!renameValue.trim()) return;
     renameMutation.mutate({ id: circleId, data: { name: renameValue.trim() } });
@@ -140,6 +174,26 @@ export default function CircleDetailScreen() {
         ...(newMemberEmail.trim() ? { email: newMemberEmail.trim() } : {}),
       },
     });
+  };
+
+  const handleOpenRenameMember = (memberId: number, memberName: string) => {
+    setRenameMemberTarget({ id: memberId, name: memberName });
+    setRenameMemberValue(memberName);
+    setShowRenameMemberModal(true);
+  };
+
+  const handleRenameMember = () => {
+    if (!renameMemberTarget || !renameMemberValue.trim()) return;
+    const trimmed = renameMemberValue.trim();
+    if (trimmed === renameMemberTarget.name) return;
+    const isDuplicate = circle?.members.some(
+      (m) => m.id !== renameMemberTarget.id && m.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isDuplicate) {
+      Alert.alert("Name already in circle", `"${trimmed}" is already a member of this circle.`);
+      return;
+    }
+    renameMemberMutation.mutate({ id: circleId, memberId: renameMemberTarget.id, data: { name: trimmed } });
   };
 
   const handleRemoveMember = (memberId: number, memberName: string) => {
@@ -257,14 +311,21 @@ export default function CircleDetailScreen() {
                       {member.name.charAt(0).toUpperCase()}
                     </Text>
                   </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={[styles.memberName, { color: colors.foreground }]}>{member.name}</Text>
+                  <TouchableOpacity
+                    style={styles.memberInfo}
+                    onPress={() => handleOpenRenameMember(member.id, member.name)}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.memberNameRow}>
+                      <Text style={[styles.memberName, { color: colors.foreground }]}>{member.name}</Text>
+                      <Feather name="edit-2" size={12} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+                    </View>
                     {member.linkedUserId ? (
                       <Text style={[styles.memberLinked, { color: colors.primary }]}>
                         Linked to TallyBill account
                       </Text>
                     ) : null}
-                  </View>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleRemoveMember(member.id, member.name)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -334,6 +395,77 @@ export default function CircleDetailScreen() {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showRenameMemberModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+          <TouchableOpacity
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={() => {
+              setShowRenameMemberModal(false);
+              setRenameMemberTarget(null);
+              setRenameMemberValue("");
+            }}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => {}}
+              style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+            >
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Rename Person</Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder="Name"
+                placeholderTextColor={colors.mutedForeground}
+                value={renameMemberValue}
+                onChangeText={setRenameMemberValue}
+                autoFocus
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={handleRenameMember}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowRenameMemberModal(false);
+                    setRenameMemberTarget(null);
+                    setRenameMemberValue("");
+                  }}
+                  style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleRenameMember}
+                  disabled={
+                    renameMemberMutation.isPending ||
+                    !renameMemberValue.trim() ||
+                    renameMemberValue.trim() === renameMemberTarget?.name
+                  }
+                  style={[
+                    styles.modalConfirmBtn,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity:
+                        renameMemberMutation.isPending ||
+                        !renameMemberValue.trim() ||
+                        renameMemberValue.trim() === renameMemberTarget?.name
+                          ? 0.6
+                          : 1,
+                    },
+                  ]}
+                >
+                  {renameMemberMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.modalConfirmText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showAddMember} transparent animationType="fade">
@@ -497,6 +629,7 @@ const styles = StyleSheet.create({
   },
   memberAvatarText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
   memberInfo: { flex: 1, gap: 1 },
+  memberNameRow: { flexDirection: "row", alignItems: "center" },
   memberName: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
   memberLinked: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
   removeMemberBtn: { padding: SPACING.xs },
