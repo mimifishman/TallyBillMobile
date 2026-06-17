@@ -1,0 +1,30 @@
+Make the TallyBill public web app (artifacts/share-bill) look and feel more professional and trustworthy. This is the page people without the app see when they open a shared bill link, so it should reinforce the brand and gently invite them to get the app. Keep it fully on-brand (emerald #10B981 primary, coral #FB7185 as a sparing accent, the amber warning banner stays amber). Do NOT change the data fetching, SSE live-sync, or mutation logic — this is visual/UX polish only. Use the existing Inter font (add weight 800 for the wordmark).
+
+1. BRANDED TOP BAR
+Add a slim sticky top bar above the bill header: the TallyBill mark (reuse /favicon.svg) + "TallyBill" wordmark on the left, left-aligned, with a subtle bottom border/shadow that appears on scroll. Keep the existing editable bill header (HeaderEditable) directly below it. In the bill header area, surface a little more context next to the bill name: the owner's name, the people count, and the currency.
+
+2. REPLACE NATIVE BROWSER DIALOGS (biggest professionalism win)
+- The confirm() at BillPage.tsx ~line 275 ("Remove X from this bill?") -> replace with a styled confirmation dialog using the existing Modal + ModalButtons components.
+- The alert() at ~line 211 (split quantity validation) -> replace with inline error text inside the split modal, not a browser alert.
+- Add a small, tasteful toast/snackbar for lightweight feedback (person added, item removed, etc.). Build a minimal toast yourself or use a tiny in-house component; no heavy library.
+
+3. ELEVATE THE VISUAL DESIGN
+- Give the page a soft background so the centered column doesn't float on stark white: a very light slate (#F8FAFC) page background, or a subtle emerald-tinted band behind the top bar.
+- Replace flat card borders with subtle elevation: rounded-2xl, a soft shadow (e.g. shadow-sm with a slightly tinted color), and a touch more padding. Apply consistently to the summary card, item rows, and per-person rows.
+- Tighten the vertical rhythm and make the "Total" the clear visual anchor (larger, emerald).
+- When the bill is settled, show a small celebratory badge ("All settled ✓") using emerald, with a coral accent — this is the one place coral earns its keep.
+
+4. STICKY BOTTOM SUMMARY BAR (mobile)
+There's already pb-24 reserved. Add a fixed bottom bar on small screens showing the running Total on the left and an "Open in the app" button on the right (link to the App Store / Play Store — use placeholder URLs for now). It should hide on large screens where the inline summary is already visible.
+
+5. FOOTER + GET-THE-APP CTA
+Add a footer: the mark, a one-line pitch ("Split bills, not friendships — get TallyBill."), App Store + Google Play badges (placeholder links), and the shared-bill join code. This is the conversion moment for non-app users.
+
+6. POLISH LOADING + NOT-FOUND
+- Replace the "Loading bill…" text with a skeleton that mirrors the real layout (top bar, header, a row of people-chip skeletons, 3-4 item-row skeletons, and a summary card skeleton) using a gentle pulse.
+- Brand the NotFoundPage: add the TallyBill mark above the 🧾, keep the friendly copy, and add a button to get the app.
+
+7. ACCESSIBILITY & RESPONSIVENESS
+Emerald focus-visible rings on all interactive elements, tap targets at least 44px, and verify it looks right from 360px wide up to desktop.
+
+When done, show me before/after screenshots of: the shared bill page (mobile + desktop), the loading skeleton, the remove-person confirmation dialog, and the not-found page.
