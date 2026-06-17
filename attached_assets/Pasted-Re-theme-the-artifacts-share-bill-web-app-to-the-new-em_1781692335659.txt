@@ -1,0 +1,36 @@
+Re-theme the artifacts/share-bill web app to the new emerald + coral brand. It currently uses an amber theme via HSL custom properties.
+
+1. In artifacts/share-bill/src/index.css, replace the :root values with these (keep the HSL-triplet format the file already uses):
+   --background: 0 0% 98%;          /* #FAFAFA */
+   --foreground: 222 47% 11%;       /* #0F172A slate-900 */
+   --border: 214 32% 91%;           /* #E2E8F0 */
+   --input: 214 32% 91%;
+   --ring: 160 84% 39%;             /* emerald #10B981 */
+   --card: 0 0% 100%;
+   --card-foreground: 222 47% 11%;
+   --popover: 0 0% 100%;
+   --popover-foreground: 222 47% 11%;
+   --primary: 160 84% 39%;          /* emerald #10B981 */
+   --primary-foreground: 0 0% 100%;
+   --secondary: 210 40% 96%;        /* slate-100 #F1F5F9 */
+   --secondary-foreground: 222 47% 11%;
+   --muted: 210 40% 96%;
+   --muted-foreground: 215 16% 47%; /* slate-500 #64748B */
+   --accent: 351 95% 71%;           /* coral pop #FB7185 */
+   --accent-foreground: 0 0% 100%;
+   --destructive: 0 84% 60%;        /* #EF4444 */
+   --destructive-foreground: 0 0% 100%;
+   --radius: 0.75rem;
+
+2. The coral accent is a "pop" color — celebration/emphasis only, never a second primary button. Apply the same rule as the mobile app: emerald for all primary actions, coral only for highlights.
+
+3. IMPORTANT: Leave the warning banner at src/pages/BillPage.tsx:293 (bg-amber-50 / border-amber-200 / text-amber-800) as amber — that's a legitimate "unassigned items" warning, and amber is our warning color. Don't change it to brand colors.
+
+4. In src/lib/currency.ts, replace PEOPLE_COLORS with a palette that matches the mobile app and avoids emerald/coral:
+   ["#3B82F6", "#A855F7", "#F97316", "#EAB308", "#06B6D4", "#EC4899", "#6366F1", "#84CC16"]
+
+5. If any shadcn/ui components use hover:bg-accent for subtle row/menu hovers, those would now flash coral — switch just those hovers to bg-muted. Don't touch intentional accent highlights.
+
+(The web favicon.svg and opengraph.jpg are provided as ready-made on-brand files — placed via Prompt A — so do NOT redraw them here.)
+
+Then show me before/after screenshots of the shared bill page and the not-found page.
