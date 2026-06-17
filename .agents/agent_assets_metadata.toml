@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "NYXOll7tcLg87L7iOfvUv"
@@ -18,3 +17,135 @@ id = "CIJZ1mQWThEaK3sXZvEo2"
 uri = "file://attached_assets/generated_images/generated_image.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "MMyOnzUaXeWDrVnxVHmKY"
+uri = "file://screenshots/login-light.jpg"
+type = "image"
+title = "Login — Light"
+
+[[outputs]]
+id = "PDW0giAfSBQqhq0k-hB3-"
+uri = "file://screenshots/login-dark.jpg"
+type = "image"
+title = "Login — Dark"
+
+[[outputs]]
+id = "i3ylya1TTo_XlPo8T4LHl"
+uri = "file://screenshots/register-light.jpg"
+type = "image"
+title = "Register — Light"
+
+[[outputs]]
+id = "zzJsnGpiW1HrnC5ZUsqSg"
+uri = "file://screenshots/register-dark.jpg"
+type = "image"
+title = "Register — Dark"
+
+[[outputs]]
+id = "qWTrD6u5qNAMg3N5t2VBp"
+uri = "file://screenshots/bills-light.jpg"
+type = "image"
+title = "Bills List — Light"
+
+[[outputs]]
+id = "sBxQ3_SKfJBx0rsh6ECor"
+uri = "file://screenshots/bills-dark.jpg"
+type = "image"
+title = "Bills List — Dark"
+
+[[outputs]]
+id = "k4qpuaANfSaRO4u_UCJBa"
+uri = "file://screenshots/new-bill-light.jpg"
+type = "image"
+title = "New Bill — Light"
+
+[[outputs]]
+id = "NkV95zPpvxUkjYMjxPArt"
+uri = "file://screenshots/new-bill-dark.jpg"
+type = "image"
+title = "New Bill — Dark"
+
+[[outputs]]
+id = "1-ZVg5cjr74HLC1v8htyZ"
+uri = "file://screenshots/bill-detail-light.jpg"
+type = "image"
+title = "Bill Detail — Light (skeleton)"
+
+[[outputs]]
+id = "fAIn0wqWSLwxhzGgZYFWW"
+uri = "file://screenshots/bill-detail-dark.jpg"
+type = "image"
+title = "Bill Detail — Dark (skeleton)"
+
+[[outputs]]
+id = "B-oucHvB_pZFG2deEVzJ0"
+uri = "file://screenshots/scan-light.jpg"
+type = "image"
+title = "Scan — Light ✅ fixed"
+
+[[outputs]]
+id = "dty_XbfGp9hulCuLIdHKS"
+uri = "file://screenshots/scan-dark.jpg"
+type = "image"
+title = "Scan — Dark ✅ fixed"
+
+[[outputs]]
+id = "X4HA0tLEzDbFl_cyoFHSK"
+uri = "file://screenshots/totals-light.jpg"
+type = "image"
+title = "Totals — Light (skeleton)"
+
+[[outputs]]
+id = "pCcaaXZPEnDSi2ycwXO4p"
+uri = "file://screenshots/totals-dark.jpg"
+type = "image"
+title = "Totals — Dark (skeleton)"
+
+[[outputs]]
+id = "lzgFLFBNYyu_7wp63BRef"
+uri = "file://screenshots/share-light.jpg"
+type = "image"
+title = "Share — Light"
+
+[[outputs]]
+id = "hfb61kIK980_VobDlBQY6"
+uri = "file://screenshots/share-dark.jpg"
+type = "image"
+title = "Share — Dark"
+
+[[outputs]]
+id = "xn1adU2lwTx0AJseU-VjM"
+uri = "file://screenshots/join-light.jpg"
+type = "image"
+title = "Join — Light"
+
+[[outputs]]
+id = "kHxJzTd4PxhrNxIYurP8P"
+uri = "file://screenshots/join-dark.jpg"
+type = "image"
+title = "Join — Dark"
+
+[[outputs]]
+id = "YKEoUXzcQST63UF1qTJ-x"
+uri = "file://screenshots/settings-light.jpg"
+type = "image"
+title = "Settings — Light"
+
+[[outputs]]
+id = "lzUfomA-fIS5hz6bKY9Cz"
+uri = "file://screenshots/settings-dark.jpg"
+type = "image"
+title = "Settings — Dark"
+
+[[outputs]]
+id = "wrnIx5NJ-POFvqQIE7Ziy"
+uri = "file://screenshots/circles-light.jpg"
+type = "image"
+title = "Circles — Light"
+
+[[outputs]]
+id = "z8oyOgqJ1KK5QKTIgavDe"
+uri = "file://screenshots/circles-dark.jpg"
+type = "image"
+title = "Circles — Dark"

@@ -252,7 +252,7 @@ export default function TotalsScreen() {
                 <PersonBadge name={person.name} color={person.color} size="md" />
                 <View style={styles.personInfo}>
                   <Text style={[styles.personName, { color: colors.foreground }]}>{person.name}</Text>
-                  <Text style={[styles.personTotal, { color: colors.pop }]}>{fmt(person.total)}</Text>
+                  <Text style={[styles.personTotal, { color: colors.foreground }]}>{fmt(person.total)}</Text>
                 </View>
                 {person.items.length > 0 && (
                   <View style={[styles.expandBtn, { backgroundColor: colors.primarySoft }]}>
@@ -317,7 +317,7 @@ export default function TotalsScreen() {
             Enter a percentage like 20 for 20%. Reset to restore the bill default.
           </Text>
           <TextInput
-            style={[styles.tipInput, { borderColor: isTipFocused ? colors.pop : colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
+            style={[styles.tipInput, { borderColor: isTipFocused ? colors.primary : colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
             placeholder="e.g. 15"
             placeholderTextColor={colors.mutedForeground}
             value={editTipValue}

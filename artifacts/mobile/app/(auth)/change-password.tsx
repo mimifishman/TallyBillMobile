@@ -75,7 +75,7 @@ export default function ChangePasswordScreen() {
     return (
       <View style={[styles.flex, { backgroundColor: colors.background }]}>
         <View style={[styles.successContainer, { paddingTop: insets.top + 40 }]}>
-          <View style={[styles.successIcon, { backgroundColor: "rgba(31,136,61,0.12)" }]}>
+          <View style={[styles.successIcon, { backgroundColor: colors.primarySoft }]}>
             <Feather name="check-circle" size={48} color={colors.primary} />
           </View>
           <Text style={[styles.successTitle, { color: colors.foreground }]}>Password Updated</Text>

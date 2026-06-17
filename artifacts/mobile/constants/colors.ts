@@ -54,7 +54,7 @@ const colors = {
     settledForeground: "#065F46",
 
     warningBackground: "#FEF3C7",
-    warningForeground: "#B45309",
+    warningForeground: "#92400E",
 
     gradientPrimary: ["#10B981", "#059669"] as [string, string],
     gradientAccent: ["#10B981", "#059669"] as [string, string],

@@ -293,7 +293,7 @@ export default function ScanScreen() {
         </View>
       ) : step === "pick" ? (
         <View style={styles.pickContainer}>
-          <View style={[styles.iconBox, { backgroundColor: "rgba(31,136,61,0.1)" }]}>
+          <View style={[styles.iconBox, { backgroundColor: colors.primarySoft }]}>
             <Feather name="camera" size={48} color={colors.primary} />
           </View>
           <Text style={[styles.pickTitle, { color: colors.foreground }]}>Scan a Receipt</Text>

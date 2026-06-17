@@ -186,12 +186,12 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
                   style={[
                     styles.currencyRow,
                     { borderBottomColor: colors.border },
-                    isSelected && { backgroundColor: "rgba(31,136,61,0.05)" },
+                    isSelected && { backgroundColor: colors.primarySoft },
                   ]}
                   onPress={() => handleSelect(item.code)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.symbolBadge, { backgroundColor: isSelected ? "rgba(31,136,61,0.12)" : colors.muted }]}>
+                  <View style={[styles.symbolBadge, { backgroundColor: isSelected ? colors.primarySoft : colors.muted }]}>
                     <Text style={[styles.symbolText, { color: isSelected ? colors.primary : colors.mutedForeground }]}>
                       {item.symbol}
                     </Text>
