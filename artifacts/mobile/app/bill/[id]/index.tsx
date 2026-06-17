@@ -463,7 +463,14 @@ export default function BillDetailScreen() {
     toAdd.forEach((member) => {
       const color = pickColor(usedColors);
       usedColors.push(color);
-      addPersonMutation.mutate({ billId, data: { name: member.name, color } });
+      addPersonMutation.mutate({
+        billId,
+        data: {
+          name: member.name,
+          color,
+          ...(member.linkedUserId != null && { linkedUserId: member.linkedUserId }),
+        },
+      });
     });
   };
 

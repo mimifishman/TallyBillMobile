@@ -9,39 +9,6 @@ export interface HealthStatus {
   status: string;
 }
 
-export interface CircleMember {
-  id: number;
-  circleId: number;
-  name: string;
-  linkedUserId?: number | null;
-  createdAt: string;
-}
-
-export interface Circle {
-  id: number;
-  ownerUserId: number;
-  name: string;
-  createdAt: string;
-  members: CircleMember[];
-}
-
-export interface CreateCircleRequest {
-  name: string;
-}
-
-export interface UpdateCircleRequest {
-  name: string;
-}
-
-export interface AddCircleMemberRequest {
-  name: string;
-  email?: string;
-}
-
-export interface RenameCircleMemberRequest {
-  name: string;
-}
-
 export interface ErrorResponse {
   error: string;
 }
@@ -172,6 +139,7 @@ export interface JoinBillRequest {
 export interface CreateBillMemberRequest {
   name: string;
   color: string;
+  linkedUserId?: number | null;
 }
 
 export interface UpdateBillMemberRequest {
@@ -264,6 +232,39 @@ export interface OcrResult {
 export interface CurrencyResponse {
   currency: string;
   countryCode: string;
+}
+
+export interface CircleMember {
+  id: number;
+  circleId: number;
+  name: string;
+  linkedUserId?: number | null;
+  createdAt: string;
+}
+
+export interface Circle {
+  id: number;
+  ownerUserId: number;
+  name: string;
+  createdAt: string;
+  members: CircleMember[];
+}
+
+export interface CreateCircleRequest {
+  name: string;
+}
+
+export interface UpdateCircleRequest {
+  name: string;
+}
+
+export interface CreateCircleMemberRequest {
+  name: string;
+  email?: string | null;
+}
+
+export interface UpdateCircleMemberRequest {
+  name: string;
 }
 
 export type BulkCreateBillLinesBody = {

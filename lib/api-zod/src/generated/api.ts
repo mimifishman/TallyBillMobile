@@ -230,6 +230,11 @@ export const GetBillByCodeResponse = zod.object({
     }),
   ),
   isOwner: zod.boolean(),
+  ownerName: zod
+    .string()
+    .describe(
+      'Display name of the bill owner, or \"Guest\" for guest-created bills',
+    ),
 });
 
 /**
@@ -307,6 +312,11 @@ export const GetBillResponse = zod.object({
     }),
   ),
   isOwner: zod.boolean(),
+  ownerName: zod
+    .string()
+    .describe(
+      'Display name of the bill owner, or \"Guest\" for guest-created bills',
+    ),
 });
 
 /**
@@ -589,6 +599,7 @@ export const CreateBillUserParams = zod.object({
 export const CreateBillUserBody = zod.object({
   name: zod.string(),
   color: zod.string(),
+  linkedUserId: zod.number().nullish(),
 });
 
 /**
@@ -727,4 +738,105 @@ export const OcrTranslateResponse = zod.object({
 export const DetectCurrencyResponse = zod.object({
   currency: zod.string(),
   countryCode: zod.string(),
+});
+
+/**
+ * @summary List all circles owned by the current user
+ */
+export const GetCirclesResponseItem = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number(),
+  name: zod.string(),
+  createdAt: zod.coerce.date(),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      circleId: zod.number(),
+      name: zod.string(),
+      linkedUserId: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+export const GetCirclesResponse = zod.array(GetCirclesResponseItem);
+
+/**
+ * @summary Create a new circle
+ */
+export const CreateCircleBody = zod.object({
+  name: zod.string(),
+});
+
+/**
+ * @summary Rename a circle
+ */
+export const UpdateCircleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCircleBody = zod.object({
+  name: zod.string(),
+});
+
+export const UpdateCircleResponse = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number(),
+  name: zod.string(),
+  createdAt: zod.coerce.date(),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      circleId: zod.number(),
+      name: zod.string(),
+      linkedUserId: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a circle
+ */
+export const DeleteCircleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Add a member to a circle
+ */
+export const AddCircleMemberParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddCircleMemberBody = zod.object({
+  name: zod.string(),
+  email: zod.string().nullish(),
+});
+
+/**
+ * @summary Rename a circle member
+ */
+export const RenameCircleMemberParams = zod.object({
+  id: zod.coerce.number(),
+  memberId: zod.coerce.number(),
+});
+
+export const RenameCircleMemberBody = zod.object({
+  name: zod.string(),
+});
+
+export const RenameCircleMemberResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  name: zod.string(),
+  linkedUserId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a member from a circle
+ */
+export const RemoveCircleMemberParams = zod.object({
+  id: zod.coerce.number(),
+  memberId: zod.coerce.number(),
 });

@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateBillMemberRequest {
+export interface CircleMember {
+  id: number;
+  circleId: number;
   name: string;
-  color: string;
   linkedUserId?: number | null;
+  createdAt: Date;
 }

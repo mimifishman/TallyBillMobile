@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { billMembersTable } from "@workspace/db";
+import { billMembersTable, billUsersTable, billsTable, usersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { notifyBillChanged } from "../lib/sseManager.js";
+import { notifyBillChanged, notifyUserBillsChanged } from "../lib/sseManager.js";
 
 const router = Router({ mergeParams: true });
 
@@ -18,7 +18,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const billId = parseBillId(req);
-  const { name, color } = req.body;
+  const { name, color, linkedUserId } = req.body;
   if (!name || !color) {
     res.status(400).json({ error: "name and color are required" });
     return;
@@ -34,6 +34,39 @@ router.post("/", async (req, res) => {
     return;
   }
   const [member] = await db.insert(billMembersTable).values({ billId, name: trimmedName, color }).returning();
+
+  if (linkedUserId != null) {
+    const parsedLinkedUserId = parseInt(String(linkedUserId), 10);
+    if (!isNaN(parsedLinkedUserId)) {
+      const [alreadyInBill] = await db
+        .select({ id: billUsersTable.id })
+        .from(billUsersTable)
+        .where(and(eq(billUsersTable.billId, billId), eq(billUsersTable.userId, parsedLinkedUserId)))
+        .limit(1);
+      if (!alreadyInBill) {
+        await db.insert(billUsersTable).values({ billId, userId: parsedLinkedUserId, role: "member" });
+        const [bill] = await db
+          .select({ title: billsTable.title, ownerUserId: billsTable.ownerUserId })
+          .from(billsTable)
+          .where(eq(billsTable.id, billId))
+          .limit(1);
+        let addedBy: string | undefined;
+        if (bill?.ownerUserId) {
+          const [owner] = await db
+            .select({ displayName: usersTable.displayName })
+            .from(usersTable)
+            .where(eq(usersTable.id, bill.ownerUserId))
+            .limit(1);
+          addedBy = owner?.displayName;
+        }
+        notifyUserBillsChanged(parsedLinkedUserId, {
+          billTitle: bill?.title ?? undefined,
+          addedBy,
+        });
+      }
+    }
+  }
+
   notifyBillChanged(billId);
   res.status(201).json(member);
 });

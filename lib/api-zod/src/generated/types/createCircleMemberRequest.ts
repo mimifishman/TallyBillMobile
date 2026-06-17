@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateBillMemberRequest {
+export interface CreateCircleMemberRequest {
   name: string;
-  color: string;
-  linkedUserId?: number | null;
+  email?: string | null;
 }

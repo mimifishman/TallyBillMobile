@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -24,6 +25,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { useAuth as useClerkAuth } from "@clerk/expo";
 import { BillCard } from "@/components/BillCard";
 import { BillCardSkeleton } from "@/components/Skeleton";
 import { EmptyBillsIllustration } from "@/components/EmptyBillsIllustration";
@@ -132,15 +134,176 @@ export default function BillsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, guestName } = useAuth();
+  const { getToken, isSignedIn } = useClerkAuth();
   const queryClient = useQueryClient();
 
   const [guestBills, setGuestBills] = useState<GuestBillItem[]>([]);
   const [guestLoading, setGuestLoading] = useState(false);
   const [guestRefreshing, setGuestRefreshing] = useState(false);
 
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastOpacity = useSharedValue(0);
+  const toastY = useSharedValue(-80);
+  const toastDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    if (toastDismissTimer.current) clearTimeout(toastDismissTimer.current);
+    setToastMsg(message);
+    toastOpacity.value = withTiming(1, { duration: 280 });
+    toastY.value = withTiming(0, { duration: 280 });
+    toastDismissTimer.current = setTimeout(() => {
+      toastOpacity.value = withTiming(0, { duration: 300 });
+      toastY.value = withTiming(-80, { duration: 300 });
+      setTimeout(() => setToastMsg(null), 320);
+    }, 4000);
+  }, [toastOpacity, toastY]);
+  const showToastRef = useRef(showToast);
+  useEffect(() => { showToastRef.current = showToast; }, [showToast]);
+
+  const toastStyle = useAnimatedStyle(() => ({
+    opacity: toastOpacity.value,
+    transform: [{ translateY: toastY.value }],
+  }));
+
   const { data: authBills, isLoading: authLoading, refetch, isRefetching } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
   });
+
+  const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "";
+
+  const meSSERetryDelayRef = useRef(1000);
+  const meSSEXhrRef = useRef<XMLHttpRequest | null>(null);
+  const meSSERetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const meSSEMountedRef = useRef(true);
+  const meSSEForegroundRef = useRef(true);
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
+  const invalidateBills = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
+  }, [queryClient]);
+  const invalidateBillsRef = useRef(invalidateBills);
+  useEffect(() => { invalidateBillsRef.current = invalidateBills; }, [invalidateBills]);
+
+  const connectMeSSE = useCallback(async () => {
+    if (!meSSEMountedRef.current || !isSignedIn) return;
+    if (meSSERetryTimerRef.current) {
+      clearTimeout(meSSERetryTimerRef.current);
+      meSSERetryTimerRef.current = null;
+    }
+    if (meSSEXhrRef.current) {
+      meSSEXhrRef.current.abort();
+      meSSEXhrRef.current = null;
+    }
+
+    const xhr = new XMLHttpRequest();
+    meSSEXhrRef.current = xhr;
+    xhr.open("GET", `${baseUrl}/api/me/events`, true);
+
+    try {
+      const token = await getTokenRef.current();
+      if (meSSEXhrRef.current !== xhr) return;
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    } catch {
+    }
+
+    if (meSSEXhrRef.current !== xhr) return;
+
+    let lastLength = 0;
+    let sseBuffer = "";
+
+    xhr.onprogress = () => {
+      if (!meSSEMountedRef.current) return;
+      sseBuffer += xhr.responseText.slice(lastLength);
+      lastLength = xhr.responseText.length;
+      const parts = sseBuffer.split("\n\n");
+      sseBuffer = parts.pop() ?? "";
+      for (const block of parts) {
+        if (block.includes('"bills_changed"')) {
+          meSSERetryDelayRef.current = 1000;
+          invalidateBillsRef.current();
+          try {
+            const dataLine = block.split("\n").find((l) => l.startsWith("data:"));
+            if (dataLine) {
+              const payload = JSON.parse(dataLine.slice(5).trim()) as {
+                event: string;
+                billTitle?: string;
+                addedBy?: string;
+              };
+              if (payload.billTitle) {
+                const msg = payload.addedBy
+                  ? `${payload.addedBy} added you to "${payload.billTitle}"`
+                  : `You were added to "${payload.billTitle}"`;
+                showToastRef.current(msg);
+              }
+            }
+          } catch {
+          }
+        }
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (!meSSEMountedRef.current || !meSSEForegroundRef.current) return;
+      if (meSSERetryTimerRef.current) clearTimeout(meSSERetryTimerRef.current);
+      const delay = meSSERetryDelayRef.current;
+      meSSERetryDelayRef.current = Math.min(delay * 2, 30_000);
+      meSSERetryTimerRef.current = setTimeout(() => {
+        if (meSSEMountedRef.current && meSSEForegroundRef.current) connectMeSSE();
+      }, delay);
+    };
+
+    xhr.onload = scheduleReconnect;
+    xhr.onerror = scheduleReconnect;
+    xhr.ontimeout = scheduleReconnect;
+
+    xhr.send();
+  // isSignedIn and baseUrl are stable; getToken accessed via ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, baseUrl]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    meSSEMountedRef.current = true;
+    meSSERetryDelayRef.current = 1000;
+
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        meSSEForegroundRef.current = true;
+        if (meSSEXhrRef.current) {
+          meSSEXhrRef.current.abort();
+          meSSEXhrRef.current = null;
+        }
+        meSSERetryDelayRef.current = 1000;
+        connectMeSSE();
+        invalidateBillsRef.current();
+      } else {
+        meSSEForegroundRef.current = false;
+        if (meSSERetryTimerRef.current) {
+          clearTimeout(meSSERetryTimerRef.current);
+          meSSERetryTimerRef.current = null;
+        }
+        if (meSSEXhrRef.current) {
+          meSSEXhrRef.current.abort();
+          meSSEXhrRef.current = null;
+        }
+      }
+    });
+
+    connectMeSSE();
+
+    return () => {
+      meSSEMountedRef.current = false;
+      appStateSub.remove();
+      if (meSSERetryTimerRef.current) clearTimeout(meSSERetryTimerRef.current);
+      if (meSSEXhrRef.current) {
+        meSSEXhrRef.current.abort();
+        meSSEXhrRef.current = null;
+      }
+    };
+  }, [connectMeSSE, isSignedIn]);
 
   const deleteBillMutation = useDeleteBill({
     mutation: {
@@ -261,6 +424,20 @@ export default function BillsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {toastMsg ? (
+        <Animated.View
+          style={[
+            styles.toast,
+            { backgroundColor: colors.primary, top: Platform.OS === "web" ? 67 : insets.top + 8 },
+            toastStyle,
+          ]}
+          pointerEvents="none"
+        >
+          <Feather name="bell" size={15} color="#fff" />
+          <Text style={styles.toastText} numberOfLines={2}>{toastMsg}</Text>
+        </Animated.View>
+      ) : null}
+
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 20 }]}>
         <Text style={[styles.greeting, { color: colors.foreground }]}>{getGreeting()}, {displayName} 👋</Text>
         {!isLoading && !isEmpty && (
@@ -385,6 +562,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
+  },
+  toast: {
+    position: "absolute",
+    left: SPACING.xl,
+    right: SPACING.xl,
+    zIndex: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  toastText: {
+    flex: 1,
+    color: "#fff",
+    fontSize: FONT_SIZE.caption,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 18,
   },
   skeletonWrap: { paddingTop: SPACING.sm, gap: SPACING.md },
   empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: SPACING.xxxl, gap: SPACING.lg },

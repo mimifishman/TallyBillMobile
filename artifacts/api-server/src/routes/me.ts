@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable, billsTable, billUsersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
+import { subscribeUser, unsubscribeUser } from "../lib/sseManager.js";
 
 const router = Router();
 
@@ -129,6 +130,33 @@ router.post("/claim-guest-bills", requireAuth, async (req: AuthRequest, res) => 
   });
 
   res.json({ claimed });
+});
+
+router.get("/events", requireAuth, (req: AuthRequest, res) => {
+  const userId = req.user!.userId;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  res.write(": connected\n\n");
+
+  const pingTimer = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      clearInterval(pingTimer);
+    }
+  }, 30_000);
+
+  subscribeUser(userId, res);
+
+  req.on("close", () => {
+    clearInterval(pingTimer);
+    unsubscribeUser(userId, res);
+  });
 });
 
 export default router;
