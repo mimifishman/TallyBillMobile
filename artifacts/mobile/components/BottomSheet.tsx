@@ -14,7 +14,6 @@ interface BottomSheetProps {
 }
 
 const SHEET_MAX_RATIO = 0.85;
-const SHEET_CHROME_HEIGHT = 100;
 
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const colors = useColors();
@@ -22,20 +21,26 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 
   if (!visible) return null;
 
-  const maxScrollHeight = windowHeight * SHEET_MAX_RATIO - SHEET_CHROME_HEIGHT;
-
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <BlurView intensity={20} style={styles.overlay} tint="dark">
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior="padding"
           style={styles.kavWrapper}
+          keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
         >
-          <Animated.View 
+          <Animated.View
             entering={SlideInDown.springify().damping(20).stiffness(200)}
             exiting={SlideOutDown.duration(200)}
-            style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                maxHeight: windowHeight * SHEET_MAX_RATIO,
+              },
+            ]}
           >
             <View style={styles.handleWrap}>
               <View style={[styles.handle, { backgroundColor: colors.border }]} />
@@ -47,7 +52,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
               </TouchableOpacity>
             </View>
             <ScrollView
-              style={{ maxHeight: maxScrollHeight }}
+              style={styles.scrollView}
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -64,7 +69,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  kavWrapper: { width: "100%" },
+  kavWrapper: { flex: 1, justifyContent: "flex-end" },
   sheet: {
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
@@ -88,5 +93,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold" },
   closeBtn: { padding: 6, borderRadius: RADIUS.md },
+  scrollView: { flexShrink: 1 },
   content: { padding: SPACING.xl },
 });
