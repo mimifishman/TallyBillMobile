@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 export default function NameScreen() {
   const colors = useColors();
@@ -159,29 +160,29 @@ export default function NameScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center" },
-  container: { flex: 1, paddingHorizontal: 24, justifyContent: "center" },
+  container: { flex: 1, paddingHorizontal: SPACING.xl, justifyContent: "center" },
   header: { alignItems: "center", marginBottom: 40, gap: 10 },
   iconWrap: {
     width: 72,
     height: 72,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", textAlign: "center" },
-  subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  form: { gap: 12 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", textAlign: "center" }, // TODO: one-off
+  subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" }, // TODO: one-off
+  form: { gap: SPACING.md },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 14,
     paddingVertical: 14,
     gap: 10,
   },
-  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  primaryBtn: { borderRadius: 12, paddingVertical: 16, alignItems: "center", marginTop: 8 },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  input: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  primaryBtn: { borderRadius: RADIUS.sm, paddingVertical: SPACING.lg, alignItems: "center", marginTop: SPACING.sm },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
 });

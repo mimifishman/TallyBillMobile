@@ -2,6 +2,7 @@ import { Link, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { SPACING } from "@/constants/styles";
 
 export default function NotFoundScreen() {
   const colors = useColors();
@@ -29,10 +30,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: SPACING.xl,
   },
   title: {
-    fontSize: 20,
+    fontSize: 20, // TODO: one-off
     fontWeight: "bold",
   },
   link: {
@@ -40,6 +41,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   linkText: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
   },
 });

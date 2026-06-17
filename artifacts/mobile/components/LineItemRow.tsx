@@ -20,7 +20,7 @@ import Animated, {
 import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
-import { RADIUS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 interface BillMember {
   id: number;
@@ -254,8 +254,8 @@ export function LineItemRow({
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xs,
     gap: 10,
     borderRadius: RADIUS.sm,
     position: "relative",
@@ -263,36 +263,36 @@ const styles = StyleSheet.create({
   fullyAssignedBadge: {
     position: "absolute",
     top: 10,
-    right: 4,
+    right: SPACING.xs,
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: 9, // TODO: one-off (circular: half of 18px)
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
-  mainRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  mainRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  qtyBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
-  qtyBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  qtyBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }, // TODO: one-off
+  qtyBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   desc: { flex: 1, gap: 2 },
-  itemName: { fontSize: 14, fontFamily: "Inter_500Medium", lineHeight: 20, flexShrink: 1 },
-  originalDescription: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, paddingLeft: 28 },
-  itemTotal: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  unitPrice: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  splitBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 5 },
-  splitBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  itemName: { fontSize: 14, fontFamily: "Inter_500Medium", lineHeight: 20, flexShrink: 1 }, // TODO: one-off
+  originalDescription: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, paddingLeft: 28 }, // TODO: one-off
+  itemTotal: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  unitPrice: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  splitBtn: { flexDirection: "row", alignItems: "center", gap: SPACING.xs, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 5 },
+  splitBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   iconBtn: { padding: 6 },
-  peopleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingLeft: 2 },
-  editBlock: { gap: 8 },
-  editRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  editInput: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular" },
-  editQtyWrap: { flexDirection: "row", alignItems: "center", gap: 4 },
-  editQtyLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  editInputQty: { width: 48, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  editInputSmall: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "right" },
-  saveBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.sm },
-  saveBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  bulkBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.full, borderWidth: 1, borderStyle: "dashed", justifyContent: "center" },
-  bulkBtnText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  peopleRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm, paddingLeft: 2 },
+  editBlock: { gap: SPACING.sm },
+  editRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  editInput: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  editQtyWrap: { flexDirection: "row", alignItems: "center", gap: SPACING.xs },
+  editQtyLabel: { fontSize: 12, fontFamily: "Inter_500Medium" }, // TODO: one-off
+  editInputQty: { width: 48, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" }, // TODO: one-off
+  editInputSmall: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "right" }, // TODO: one-off
+  saveBtn: { paddingHorizontal: SPACING.md, paddingVertical: 7, borderRadius: RADIUS.sm },
+  saveBtnText: { color: "#fff", fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  bulkBtn: { paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderRadius: RADIUS.full, borderWidth: 1, borderStyle: "dashed", justifyContent: "center" },
+  bulkBtnText: { fontSize: 11, fontFamily: "Inter_500Medium" }, // TODO: one-off
 });

@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -178,41 +179,41 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: SPACING.xxl,
   },
   content: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: SPACING.lg,
     width: "100%",
     maxWidth: 600,
   },
   title: {
-    fontSize: 28,
+    fontSize: 28, // TODO: one-off
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 40,
   },
   message: {
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     textAlign: "center",
     lineHeight: 24,
   },
   topButton: {
     position: "absolute",
-    right: 16,
+    right: SPACING.lg,
     width: 44,
     height: 44,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
   },
   button: {
-    paddingVertical: 16,
-    borderRadius: 8,
-    paddingHorizontal: 24,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.xxl,
     minWidth: 200,
     shadowColor: "#000",
     shadowOffset: {
@@ -226,7 +227,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontWeight: "600",
     textAlign: "center",
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
   },
   modalOverlay: {
     flex: 1,
@@ -236,20 +237,20 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: "100%",
     height: "90%",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: RADIUS.md,
+    borderTopRightRadius: RADIUS.md,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 20, // TODO: one-off
     fontWeight: "600",
   },
   closeButton: {
@@ -262,16 +263,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalScrollContent: {
-    padding: 16,
+    padding: SPACING.lg,
   },
   errorContainer: {
     width: "100%",
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     overflow: "hidden",
-    padding: 16,
+    padding: SPACING.lg,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 12, // TODO: one-off
     lineHeight: 18,
     width: "100%",
   },

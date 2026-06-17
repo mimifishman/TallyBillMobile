@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 export const COMMON_LANGUAGES = [
   "Afrikaans",
@@ -166,35 +167,35 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.xl,
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
-  cancelBtn: { padding: 4, minWidth: 64 },
-  cancelText: { fontSize: 15, fontFamily: "Inter_400Regular" },
-  title: { flex: 1, textAlign: "center", fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  doneBtn: { padding: 4, minWidth: 64, alignItems: "flex-end" },
-  doneText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cancelBtn: { padding: SPACING.xs, minWidth: 64 },
+  cancelText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  title: { flex: 1, textAlign: "center", fontSize: 16, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
+  doneBtn: { padding: SPACING.xs, minWidth: 64, alignItems: "flex-end" },
+  doneText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginHorizontal: 16,
-    marginVertical: 12,
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.lg,
+    marginVertical: SPACING.md,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 9,
   },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", padding: 0 },
-  list: { paddingHorizontal: 16 },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", padding: 0 }, // TODO: one-off
+  list: { paddingHorizontal: SPACING.lg },
   row: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 8,
+    gap: SPACING.sm,
   },
-  rowText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  empty: { textAlign: "center", marginTop: 40, fontSize: 14, fontFamily: "Inter_400Regular" },
+  rowText: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  empty: { textAlign: "center", marginTop: 40, fontSize: 14, fontFamily: "Inter_400Regular" }, // TODO: one-off
 });

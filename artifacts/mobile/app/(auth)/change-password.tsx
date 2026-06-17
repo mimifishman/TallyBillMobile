@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChangePassword } from "@workspace/api-client-react";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 export default function ChangePasswordScreen() {
   const colors = useColors();
@@ -198,90 +199,90 @@ export default function ChangePasswordScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 20 },
+  content: { paddingHorizontal: SPACING.xl, gap: SPACING.xl },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  title: { fontSize: 20, fontFamily: "Inter_700Bold" }, // TODO: one-off
   card: {
-    borderRadius: 16,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    padding: 20,
+    padding: SPACING.xl,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 12, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
     textTransform: "uppercase",
   },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 14,
     paddingVertical: 14,
     gap: 10,
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
   },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 16,
-    borderRadius: 10,
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
+    borderRadius: RADIUS.sm,
     borderWidth: 1,
-    padding: 12,
+    padding: SPACING.md,
   },
   errorText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: FONT_SIZE.caption,
     fontFamily: "Inter_400Regular",
   },
   primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.lg,
     alignItems: "center",
   },
   primaryBtnText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
   successContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 16,
+    paddingHorizontal: SPACING.xxxl,
+    gap: SPACING.lg,
   },
   successIcon: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: 48, // TODO: one-off (circular: half of 96px)
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
-  successTitle: { fontSize: 24, fontFamily: "Inter_700Bold" },
+  successTitle: { fontSize: 24, fontFamily: "Inter_700Bold" }, // TODO: one-off
   successSub: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 22,

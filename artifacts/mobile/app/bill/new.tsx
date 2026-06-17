@@ -26,7 +26,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { appendGuestBill, registerJoinCode } from "@/utils/guestBillStore";
 import { pickColor } from "@/utils/pickColor";
-import { RADIUS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import * as Haptics from "expo-haptics";
 import { PressableScale } from "@/components/PressableScale";
 
@@ -218,33 +218,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.xl,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    gap: 12,
+    gap: SPACING.md,
   },
-  backBtn: { padding: 4, width: 40 },
-  headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", textAlign: "center" },
-  content: { paddingHorizontal: 20, paddingTop: 24, gap: 16 },
+  backBtn: { padding: SPACING.xs, width: 40 },
+  headerTitle: { flex: 1, fontSize: FONT_SIZE.title, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  content: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.xxl, gap: SPACING.lg },
   sectionCard: {
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    padding: 20,
-    gap: 16,
+    padding: SPACING.xl,
+    gap: SPACING.lg,
   },
   sectionCardTitle: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.caption,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 1.2,
   },
   formGroup: { gap: 6 },
-  label: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
+  label: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 }, // TODO: one-off
   input: {
     borderWidth: 1.5,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 13,
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
   },
   inputWithIcon: {
@@ -254,18 +254,18 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 13,
-    gap: 8,
+    gap: SPACING.sm,
   },
-  inputInner: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  row: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
+  inputInner: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  row: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
   helperRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: SPACING.sm,
     borderRadius: RADIUS.sm,
     padding: 10,
   },
-  helperText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  helperText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", lineHeight: 18 },
   createBtn: {
     borderRadius: RADIUS.full,
     paddingVertical: 17,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 10,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
-  createBtnText: { color: "#fff", fontSize: 17, fontFamily: "Inter_700Bold" },
+  createBtnText: { color: "#fff", fontSize: FONT_SIZE.title, fontFamily: "Inter_700Bold" },
 });

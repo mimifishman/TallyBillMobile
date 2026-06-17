@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 interface Currency {
   code: string;
@@ -220,22 +221,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 13,
     gap: 6,
     minWidth: 90,
   },
   triggerCode: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_600SemiBold",
   },
   triggerSymbol: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.caption,
     fontFamily: "Inter_400Regular",
   },
   triggerPlaceholder: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
     fontFamily: "Inter_400Regular",
   },
   chevron: {
@@ -248,37 +249,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
     borderBottomWidth: 1,
   },
   sheetTitle: {
-    fontSize: 18,
+    fontSize: 18, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
   closeBtn: {
-    padding: 4,
+    padding: SPACING.xs,
   },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.sm,
+    marginHorizontal: SPACING.lg,
+    marginVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 10,
-    gap: 8,
+    gap: SPACING.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
   },
   noneRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: 14,
     borderBottomWidth: 1,
     gap: 14,
@@ -286,14 +287,14 @@ const styles = StyleSheet.create({
   noneIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm,
     alignItems: "center",
     justifyContent: "center",
   },
   currencyRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: 13,
     borderBottomWidth: 1,
     gap: 14,
@@ -301,23 +302,23 @@ const styles = StyleSheet.create({
   symbolBadge: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm,
     alignItems: "center",
     justifyContent: "center",
   },
   symbolText: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
     fontFamily: "Inter_700Bold",
   },
   currencyInfo: {
     flex: 1,
   },
   currencyCode: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_600SemiBold",
   },
   currencyName: {
-    fontSize: 12,
+    fontSize: 12, // TODO: one-off
     fontFamily: "Inter_400Regular",
     marginTop: 1,
   },
@@ -326,7 +327,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
     fontFamily: "Inter_400Regular",
   },
 });

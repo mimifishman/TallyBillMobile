@@ -9,6 +9,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { rememberBillCode } from "@/lib/billCodeStore";
+import { FONT_SIZE, SPACING } from "@/constants/styles";
 
 export default function DeepLinkBillScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -68,7 +69,7 @@ export default function DeepLinkBillScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  title: { fontSize: 20, fontFamily: "Inter_600SemiBold", marginBottom: 8 },
-  sub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: SPACING.xxl },
+  title: { fontSize: 20, fontFamily: "Inter_600SemiBold", marginBottom: SPACING.sm }, // TODO: one-off
+  sub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" }, // TODO: one-off
 });

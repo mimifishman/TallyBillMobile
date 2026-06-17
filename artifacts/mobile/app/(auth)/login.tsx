@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { RADIUS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -303,39 +303,39 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   gradient: { paddingBottom: 40 },
-  backBtn: { position: "absolute", top: 16, left: 20, zIndex: 10, padding: 4 },
-  brandArea: { alignItems: "center", paddingTop: 20, paddingBottom: 8, gap: 8 },
-  wordmark: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
-  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
+  backBtn: { position: "absolute", top: SPACING.lg, left: SPACING.xl, zIndex: 10, padding: SPACING.xs },
+  brandArea: { alignItems: "center", paddingTop: SPACING.xl, paddingBottom: SPACING.sm, gap: SPACING.sm },
+  wordmark: { fontSize: FONT_SIZE.wordmark, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
+  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" }, // TODO: one-off
   formSheet: {
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     marginTop: -RADIUS.xl,
   },
-  formCard: { paddingHorizontal: 24, paddingTop: 32, gap: 0 },
-  formTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 4 },
-  formSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 24 },
-  iconCircle: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 16 },
-  cardTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 6 },
-  cardSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 28 },
+  formCard: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.xxxl, gap: 0 },
+  formTitle: { fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold", marginBottom: SPACING.xs },
+  formSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: SPACING.xxl }, // TODO: one-off
+  iconCircle: { width: 64, height: 64, borderRadius: RADIUS.xl, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: SPACING.lg },
+  cardTitle: { fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 6 },
+  cardSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 28 }, // TODO: one-off
   socialSection: { gap: 10 },
   socialBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderRadius: RADIUS.full, paddingVertical: 15, gap: 10 },
-  googleG: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#4285F4" },
-  socialBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  divider: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 20 },
+  googleG: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#4285F4" }, // TODO: one-off
+  socialBtnText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
+  divider: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginVertical: SPACING.xl },
   dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  formContent: { gap: 12 },
+  dividerText: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  formContent: { gap: SPACING.md },
   inputWrap: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 14, gap: 10 },
-  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  primaryBtn: { borderRadius: RADIUS.full, paddingVertical: 17, alignItems: "center", marginTop: 4 },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  input: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  primaryBtn: { borderRadius: RADIUS.full, paddingVertical: 17, alignItems: "center", marginTop: SPACING.xs },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }, // TODO: one-off
   forgotBtn: { alignSelf: "flex-end", paddingVertical: 2 },
-  forgotText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  linkBtn: { alignItems: "center", paddingVertical: 8 },
-  linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  ghostBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderRadius: RADIUS.full, paddingVertical: 15, gap: 8 },
-  ghostBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  guestNote: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 12, paddingHorizontal: 20, lineHeight: 18 },
-  errorText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: -4 },
+  forgotText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  linkBtn: { alignItems: "center", paddingVertical: SPACING.sm },
+  linkText: { fontSize: 14, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  ghostBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderRadius: RADIUS.full, paddingVertical: 15, gap: SPACING.sm },
+  ghostBtnText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
+  guestNote: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: SPACING.md, paddingHorizontal: SPACING.xl, lineHeight: 18 }, // TODO: one-off
+  errorText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: -SPACING.xs }, // TODO: one-off
 });

@@ -43,7 +43,7 @@ import {
 } from "@/utils/guestBillStore";
 import { PressableScale } from "@/components/PressableScale";
 import * as Haptics from "expo-haptics";
-import { RADIUS, SHADOWS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SHADOWS, SPACING } from "@/constants/styles";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -352,39 +352,39 @@ export default function BillsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.lg,
   },
   greeting: {
-    fontSize: 22,
+    fontSize: FONT_SIZE.heading,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
   subline: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_500Medium",
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
-  list: { paddingHorizontal: 20, paddingTop: 8 },
+  list: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.sm },
   deleteAction: {
     justifyContent: "center",
     alignItems: "center",
     width: 80,
     borderRadius: RADIUS.lg,
-    marginBottom: 12,
-    gap: 4,
+    marginBottom: SPACING.md,
+    gap: SPACING.xs,
   },
   deleteActionText: {
     color: "#fff",
-    fontSize: 12,
+    fontSize: 12, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
-  skeletonWrap: { paddingTop: 8, gap: 12 },
-  empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32, gap: 16 },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", marginTop: 8, textAlign: "center", lineHeight: 26 },
+  skeletonWrap: { paddingTop: SPACING.sm, gap: SPACING.md },
+  empty: { alignItems: "center", paddingTop: 40, paddingHorizontal: SPACING.xxxl, gap: SPACING.lg },
+  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", marginTop: SPACING.sm, textAlign: "center", lineHeight: 26 }, // TODO: one-off
   fabWrapper: {
     position: "absolute",
-    right: 24,
+    right: SPACING.xxl,
     alignItems: "center",
     justifyContent: "center",
     ...SHADOWS.raised,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   fab: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: RADIUS.xl,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#10B981",

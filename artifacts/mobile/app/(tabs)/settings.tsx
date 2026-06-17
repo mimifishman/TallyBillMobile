@@ -19,7 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { RADIUS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 
@@ -355,52 +355,52 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 16, gap: 20 },
+  content: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, gap: SPACING.xl },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    padding: 20,
-    gap: 16,
+    padding: SPACING.xl,
+    gap: SPACING.lg,
   },
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 28, // TODO: one-off (circular: half of 56px)
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#fff", fontSize: 22, fontFamily: "Inter_700Bold" },
+  avatarText: { color: "#fff", fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold" },
   profileInfo: { flex: 1 },
-  profileName: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  profileEmail: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 2 },
-  signInBtn: { borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 9 },
-  signInBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  section: { gap: 8 },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, paddingHorizontal: 4 },
-  nameCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: 20, gap: 12 },
-  nameCardLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  nameCardSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, marginTop: -4 },
+  profileName: { fontSize: 18, fontFamily: "Inter_700Bold" }, // TODO: one-off
+  profileEmail: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 2 }, // TODO: one-off
+  signInBtn: { borderRadius: RADIUS.full, paddingHorizontal: SPACING.lg, paddingVertical: 9 },
+  signInBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
+  section: { gap: SPACING.sm },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, paddingHorizontal: SPACING.xs }, // TODO: one-off
+  nameCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: SPACING.xl, gap: SPACING.md },
+  nameCardLabel: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
+  nameCardSub: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", lineHeight: 18, marginTop: -SPACING.xs },
   nameRow: { flexDirection: "row", gap: 10 },
   nameInputWrap: {
     borderWidth: 1.5,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
   },
-  nameInput: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  nameInput: { fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
   saveNameBtn: {
     borderRadius: RADIUS.full,
     paddingVertical: 13,
     alignItems: "center",
   },
-  saveNameBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  saveNameBtnText: { color: "#fff", fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
   menuCard: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: "hidden" },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     gap: 14,
     borderBottomWidth: 1,
@@ -408,14 +408,14 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  menuItemText: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
-  menuItemSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  menuItemValue: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", paddingVertical: 4 },
+  menuItemText: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
+  menuItemSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 }, // TODO: one-off
+  menuItemValue: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", paddingVertical: SPACING.xs }, // TODO: one-off
   signOutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -423,18 +423,18 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1.5,
     borderRadius: RADIUS.full,
-    paddingVertical: 16,
-    marginTop: 4,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.xs,
   },
-  signOutBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  signOutBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   devBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderWidth: 1.5,
     borderRadius: RADIUS.lg,
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 13,
   },
-  devBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  devBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
 });

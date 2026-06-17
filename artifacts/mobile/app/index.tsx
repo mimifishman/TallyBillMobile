@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 export default function IndexScreen() {
   const { user, isLoading, isGuest, guestName, saveGuestName } = useAuth();
@@ -217,51 +218,51 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   container: {
     flex: 1,
-    paddingHorizontal: 28,
+    paddingHorizontal: SPACING.xl,
     justifyContent: "space-between",
   },
   hero: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: SPACING.md,
   },
   logoWrap: {
     width: 96,
     height: 96,
-    borderRadius: 28,
+    borderRadius: RADIUS.xl,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   appName: {
-    fontSize: 34,
+    fontSize: FONT_SIZE.wordmark,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
   greeting: {
-    fontSize: 17,
+    fontSize: FONT_SIZE.title,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
   tagline: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 22,
   },
-  actions: { gap: 12 },
+  actions: { gap: SPACING.md },
   primaryBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.lg,
   },
   primaryBtnText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
   secondaryBtn: {
@@ -269,12 +270,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.lg,
     borderWidth: 1.5,
   },
   secondaryBtnText: {
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
   ghostBtn: {
@@ -282,28 +283,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.lg,
     borderWidth: 1.5,
   },
   ghostBtnText: {
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
   footer: {
     alignItems: "center",
-    paddingTop: 24,
+    paddingTop: SPACING.xxl,
   },
   footerLink: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
     fontFamily: "Inter_400Regular",
   },
   settingsBtn: {
     position: "absolute",
-    right: 20,
+    right: SPACING.xl,
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 22, // TODO: one-off (circular: half of 44px)
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -313,31 +314,31 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: SPACING.xxl,
   },
   modalCard: {
     width: "100%",
-    borderRadius: 20,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
-    padding: 24,
+    padding: SPACING.xxl,
     alignItems: "center",
-    gap: 12,
+    gap: SPACING.md,
   },
   modalIconWrap: {
     width: 60,
     height: 60,
-    borderRadius: 16,
+    borderRadius: RADIUS.md,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 20, // TODO: one-off
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
   modalSub: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
@@ -345,27 +346,27 @@ const styles = StyleSheet.create({
   modalInput: {
     width: "100%",
     borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     fontFamily: "Inter_400Regular",
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   modalConfirmBtn: {
     width: "100%",
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     paddingVertical: 15,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   modalConfirmText: {
-    fontSize: 16,
+    fontSize: 16, // TODO: one-off
     fontFamily: "Inter_600SemiBold",
   },
-  skipBtn: { paddingVertical: 8 },
+  skipBtn: { paddingVertical: SPACING.sm },
   skipText: {
-    fontSize: 14,
+    fontSize: 14, // TODO: one-off
     fontFamily: "Inter_400Regular",
   },
 });

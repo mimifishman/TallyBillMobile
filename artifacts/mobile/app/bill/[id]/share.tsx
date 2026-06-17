@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useGetBill, useJoinBill, getGetBillQueryKey } from "@workspace/api-client-react";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { rememberBillCode } from "@/lib/billCodeStore";
@@ -213,54 +214,54 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    gap: 12,
+    gap: SPACING.md,
   },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  content: { flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 24 },
+  backBtn: { padding: SPACING.xs },
+  headerTitle: { fontSize: FONT_SIZE.title, fontFamily: "Inter_600SemiBold" },
+  content: { flex: 1, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl, gap: SPACING.xxl },
   section: { gap: 10 },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, paddingHorizontal: 4 },
-  codeCard: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
-  codeLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  code: { fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: 6 },
-  codeSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
-  copyBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
-  copyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  linkCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 6, marginTop: 12 },
-  linkLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  linkUrl: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  linkSub: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, paddingHorizontal: SPACING.xs }, // TODO: one-off
+  codeCard: { borderRadius: RADIUS.md, borderWidth: 1, padding: SPACING.xl, alignItems: "center", gap: SPACING.sm },
+  codeLabel: { fontSize: 12, fontFamily: "Inter_500Medium" }, // TODO: one-off
+  code: { fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: 6 }, // TODO: one-off
+  codeSub: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
+  copyBtn: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.xl, paddingVertical: 10, marginTop: SPACING.xs },
+  copyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
+  linkCard: { borderRadius: RADIUS.md, borderWidth: 1, padding: SPACING.lg, gap: 6, marginTop: SPACING.md },
+  linkLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 }, // TODO: one-off
+  linkUrl: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_500Medium" },
+  linkSub: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 }, // TODO: one-off
   linkBtnRow: { flexDirection: "row", gap: 10, marginTop: 10 },
   linkBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    borderRadius: 10,
+    gap: SPACING.sm,
+    borderRadius: RADIUS.sm,
     paddingVertical: 11,
   },
-  linkBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  linkBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   divider: { borderTopWidth: 1 },
-  joinCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
-  joinLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  joinSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  joinRow: { flexDirection: "row", gap: 10, alignItems: "center", marginTop: 4 },
+  joinCard: { borderRadius: RADIUS.md, borderWidth: 1, padding: SPACING.lg, gap: SPACING.sm },
+  joinLabel: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
+  joinSub: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  joinRow: { flexDirection: "row", gap: 10, alignItems: "center", marginTop: SPACING.xs },
   joinInput: {
     flex: 1,
     borderWidth: 1.5,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 14,
     paddingVertical: 11,
-    fontSize: 18,
+    fontSize: 18, // TODO: one-off
     fontFamily: "Inter_700Bold",
     letterSpacing: 4,
     textAlign: "center",
   },
-  joinBtn: { borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
-  joinBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  signInLink: { fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center" },
+  joinBtn: { borderRadius: RADIUS.sm, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md },
+  joinBtnText: { color: "#fff", fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
+  signInLink: { fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center" }, // TODO: one-off
 });

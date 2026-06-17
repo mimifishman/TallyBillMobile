@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { RADIUS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
@@ -147,25 +147,25 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   gradient: { paddingBottom: 40 },
-  backBtnGradient: { position: "absolute", top: 16, left: 20, zIndex: 10, padding: 4 },
-  brandArea: { alignItems: "center", paddingTop: 20, paddingBottom: 8, gap: 8 },
-  wordmark: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
-  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
+  backBtnGradient: { position: "absolute", top: SPACING.lg, left: SPACING.xl, zIndex: 10, padding: SPACING.xs },
+  brandArea: { alignItems: "center", paddingTop: SPACING.xl, paddingBottom: SPACING.sm, gap: SPACING.sm },
+  wordmark: { fontSize: FONT_SIZE.wordmark, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
+  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" }, // TODO: one-off
   formSheet: { borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, marginTop: -RADIUS.xl },
-  formCard: { paddingHorizontal: 24, paddingTop: 32, gap: 24 },
-  iconCircle: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", alignSelf: "center" },
-  formTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
-  formSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21, marginTop: -12 },
-  formContent: { gap: 12 },
-  oauthCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: 24, alignItems: "center", gap: 12 },
-  oauthTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  oauthSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21 },
+  formCard: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.xxxl, gap: SPACING.xxl },
+  iconCircle: { width: 64, height: 64, borderRadius: RADIUS.xl, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+  formTitle: { fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold", textAlign: "center" },
+  formSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21, marginTop: -SPACING.md }, // TODO: one-off
+  formContent: { gap: SPACING.md },
+  oauthCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: SPACING.xxl, alignItems: "center", gap: SPACING.md },
+  oauthTitle: { fontSize: 18, fontFamily: "Inter_700Bold" }, // TODO: one-off
+  oauthSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 21 }, // TODO: one-off
   inputWrap: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 14, gap: 10 },
-  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: RADIUS.sm, borderWidth: 1, padding: 12 },
-  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
+  input: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  errorBox: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, borderRadius: RADIUS.sm, borderWidth: 1, padding: SPACING.md },
+  errorText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
   primaryBtn: { borderRadius: RADIUS.full, paddingVertical: 17, alignItems: "center", width: "100%" },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
-  linkBtn: { alignItems: "center", paddingVertical: 4 },
-  linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }, // TODO: one-off
+  linkBtn: { alignItems: "center", paddingVertical: SPACING.xs },
+  linkText: { fontSize: 14, fontFamily: "Inter_400Regular" }, // TODO: one-off
 });

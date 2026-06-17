@@ -1,0 +1,1 @@
+- [Bill table swap bug](bill-table-swap.md) — bill_users/bill_members can silently end up swapped in DB; migration 0004 was a no-op when both tables already existed.

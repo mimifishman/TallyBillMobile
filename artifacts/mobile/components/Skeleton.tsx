@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
+import { RADIUS, SPACING } from "@/constants/styles";
 
 interface SkeletonProps {
   height?: number;
@@ -100,12 +101,12 @@ export function BillCardSkeleton() {
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     overflow: "hidden",
   },
   statusBar: { width: 4 },
-  body: { flex: 1, padding: 14, gap: 12 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  body: { flex: 1, padding: 14, gap: SPACING.md },
+  row: { flexDirection: "row", alignItems: "center", gap: SPACING.md },
 });

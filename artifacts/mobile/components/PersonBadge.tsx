@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import colors_data from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
+import { FONT_SIZE } from "@/constants/styles";
 
 interface PersonBadgeProps {
   name: string;
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   name: {
-    fontSize: 11,
+    fontSize: 11, // TODO: one-off
     fontFamily: "Inter_500Medium",
     maxWidth: 52,
     textAlign: "center",

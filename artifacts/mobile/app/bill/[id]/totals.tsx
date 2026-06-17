@@ -28,7 +28,7 @@ import { PersonBadge } from "@/components/PersonBadge";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Skeleton } from "@/components/Skeleton";
 import { Confetti } from "@/components/Confetti";
-import { RADIUS, SHADOWS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SHADOWS, SPACING } from "@/constants/styles";
 import {
   useGetBillTotals,
   useGetBill,
@@ -343,17 +343,17 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    gap: 12,
+    gap: SPACING.md,
   },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  content: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
+  backBtn: { padding: SPACING.xs },
+  headerTitle: { fontSize: FONT_SIZE.title, fontFamily: "Inter_600SemiBold" },
+  content: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, gap: SPACING.lg },
   grandCard: {
     borderRadius: RADIUS.xl,
-    padding: 24,
+    padding: SPACING.xxl,
     alignItems: "center",
     gap: 6,
     shadowColor: "#10B981",
@@ -362,55 +362,55 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 6,
   },
-  grandLabel: { color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: "Inter_500Medium" },
-  grandAmount: { color: "#fff", fontSize: 40, fontFamily: "Inter_700Bold", letterSpacing: -1 },
-  grandSubline: { color: "rgba(255,255,255,0.8)", fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 2 },
-  grandBreakdown: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 6 },
-  grandSub: { color: "rgba(255,255,255,0.9)", fontSize: 13, fontFamily: "Inter_500Medium" },
+  grandLabel: { color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
+  grandAmount: { color: "#fff", fontSize: 40, fontFamily: "Inter_700Bold", letterSpacing: -1 }, // TODO: one-off
+  grandSubline: { color: "rgba(255,255,255,0.8)", fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", marginBottom: 2 },
+  grandBreakdown: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: SPACING.sm, marginTop: 6 },
+  grandSub: { color: "rgba(255,255,255,0.9)", fontSize: FONT_SIZE.caption, fontFamily: "Inter_500Medium" },
   settledBanner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.lg,
   },
-  checkCircle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  settledText: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2 },
-  expandAllBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 6 },
-  expandAllText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  emptyContainer: { alignItems: "center", paddingVertical: 32 },
-  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  checkCircle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" }, // TODO: one-off (circular: half of 28px)
+  settledText: { fontSize: 16, fontFamily: "Inter_700Bold" }, // TODO: one-off
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACING.xs },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2 }, // TODO: one-off
+  expandAllBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: 6 },
+  expandAllText: { fontSize: 12, fontFamily: "Inter_500Medium" }, // TODO: one-off
+  emptyContainer: { alignItems: "center", paddingVertical: SPACING.xxxl },
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 }, // TODO: one-off
   personCard: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: "hidden" },
-  personHeader: { flexDirection: "row", alignItems: "center", padding: 16, gap: 14 },
-  expandBtn: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  personHeader: { flexDirection: "row", alignItems: "center", padding: SPACING.lg, gap: 14 },
+  expandBtn: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" }, // TODO: one-off (circular: half of 30px)
   personInfo: { flex: 1 },
-  personName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  personTotal: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 1 },
-  itemsList: { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
-  itemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  personName: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
+  personTotal: { fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 1 }, // TODO: one-off
+  itemsList: { borderTopWidth: 1, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: 10 },
+  itemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACING.md },
   itemLeft: { flex: 1, gap: 2 },
-  itemName: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  itemSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  itemShare: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  breakdown: { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  itemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
+  itemSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  itemShare: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
+  breakdown: { borderTopWidth: 1, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: SPACING.sm },
   breakdownRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  breakdownLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  breakdownValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  breakdownLabel: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  breakdownValue: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
   tipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  editTipBtn: { padding: 4 },
-  warningBanner: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 16, borderRadius: RADIUS.lg },
-  warningText: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
-  unsplitCard: { borderRadius: RADIUS.xl, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
-  unsplitHeader: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginBottom: 2 },
-  tipSheetContent: { gap: 16 },
-  tipSheetSub: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  tipInput: { borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 16, paddingVertical: 14, fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" },
+  editTipBtn: { padding: SPACING.xs },
+  warningBanner: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg, borderRadius: RADIUS.lg },
+  warningText: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 }, // TODO: one-off
+  unsplitCard: { borderRadius: RADIUS.xl, borderWidth: 1, paddingHorizontal: SPACING.lg, paddingVertical: 14, gap: 10 },
+  unsplitHeader: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginBottom: 2 }, // TODO: one-off
+  tipSheetContent: { gap: SPACING.lg },
+  tipSheetSub: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 }, // TODO: one-off
+  tipInput: { borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: SPACING.lg, paddingVertical: 14, fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" }, // TODO: one-off
   tipSaveBtn: { borderRadius: RADIUS.full, paddingVertical: 15, alignItems: "center" },
-  tipSaveBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
-  tipCancelBtn: { alignItems: "center", paddingVertical: 8 },
-  tipCancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  tipSaveBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }, // TODO: one-off
+  tipCancelBtn: { alignItems: "center", paddingVertical: SPACING.sm },
+  tipCancelBtnText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
 });

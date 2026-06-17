@@ -4,6 +4,7 @@ import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
 interface BottomSheetProps {
   visible: boolean;
@@ -54,8 +55,8 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
   kavWrapper: { width: "100%" },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
@@ -66,16 +67,16 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
-  handleWrap: { alignItems: "center", paddingTop: 12, paddingBottom: 8 },
+  handleWrap: { alignItems: "center", paddingTop: SPACING.md, paddingBottom: SPACING.sm },
   handle: { width: 40, height: 4, borderRadius: 2 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.lg,
   },
-  title: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  closeBtn: { padding: 6, borderRadius: 16 },
-  content: { padding: 20 },
+  title: { fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold" },
+  closeBtn: { padding: 6, borderRadius: RADIUS.md },
+  content: { padding: SPACING.xl },
 });

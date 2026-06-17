@@ -5,7 +5,7 @@ import { useColors } from "@/hooks/useColors";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
 import { PressableScale } from "./PressableScale";
-import { RADIUS, SHADOWS } from "@/constants/styles";
+import { FONT_SIZE, RADIUS, SHADOWS, SPACING } from "@/constants/styles";
 
 interface BillCardParticipant {
   name: string;
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     overflow: "hidden",
   },
   statusBar: {
@@ -112,30 +112,30 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    padding: 20,
-    gap: 16,
+    padding: SPACING.xl,
+    gap: SPACING.lg,
   },
   topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
+    gap: SPACING.md,
   },
-  info: { flex: 1, gap: 4 },
-  title: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  info: { flex: 1, gap: SPACING.xs },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold" }, // TODO: one-off
   meta: { flexDirection: "row", alignItems: "center", gap: 6 },
-  metaText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  metaDot: { fontSize: 13 },
-  codeText: { fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  pillBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full },
-  pillBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  metaText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_500Medium" },
+  metaDot: { fontSize: FONT_SIZE.caption },
+  codeText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  pillBadge: { paddingHorizontal: 10, paddingVertical: SPACING.xs, borderRadius: RADIUS.full },
+  pillBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   avatarGroup: { flexDirection: "row", alignItems: "center" },
-  overlapBadge: { marginLeft: -8 },
+  overlapBadge: { marginLeft: -SPACING.sm },
   emptyBadge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 14, // TODO: one-off (circular: half of 28px)
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -143,20 +143,20 @@ const styles = StyleSheet.create({
   ownerBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: SPACING.xs,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
   },
-  ownerText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  ownerText: { fontSize: 11, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   moreBadge: {
-    marginLeft: -8,
+    marginLeft: -SPACING.sm,
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 14, // TODO: one-off (circular: half of 28px)
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
-  moreText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  moreText: { fontSize: 11, fontFamily: "Inter_700Bold" }, // TODO: one-off
 });
