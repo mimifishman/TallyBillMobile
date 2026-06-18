@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { Plugin } from "vite";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
@@ -26,9 +27,38 @@ if (!basePath) {
   );
 }
 
+function billRoutePlugin(base: string): Plugin {
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+
+  const rewrite = (
+    req: { url?: string },
+    _res: unknown,
+    next: () => void,
+  ) => {
+    const url = req.url ?? "/";
+    const withoutBase = url.startsWith(base) ? url.slice(base.length) : url;
+    const pathname = (withoutBase.split("?")[0] ?? "/").replace(/^\/+/, "");
+    if (/^[A-Za-z0-9]+$/.test(pathname)) {
+      req.url = `${normalizedBase}/app.html`;
+    }
+    next();
+  };
+
+  return {
+    name: "bill-route",
+    configureServer(server) {
+      server.middlewares.use(rewrite);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewrite);
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    billRoutePlugin(basePath),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
@@ -57,6 +87,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        marketing: path.resolve(import.meta.dirname, "index.html"),
+        app: path.resolve(import.meta.dirname, "app.html"),
+      },
+    },
   },
   server: {
     port,

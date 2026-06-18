@@ -1,6 +1,6 @@
 kind = "web"
-previewPath = "/b/"
-title = "TallyBill Share"
+previewPath = "/"
+title = "TallyBill"
 version = "1.0.0"
 id = "artifacts/share-bill"
 router = "path"
@@ -11,7 +11,7 @@ version = "1.0.0"
 
 [[services]]
 name = "web"
-paths = [ "/b/" ]
+paths = [ "/" ]
 localPort = 25729
 
 [services.development]
@@ -24,8 +24,8 @@ serve = "static"
 
 [[services.production.rewrites]]
 from = "/*"
-to = "/index.html"
+to = "/app.html"
 
 [services.env]
 PORT = "25729"
-BASE_PATH = "/b/"
+BASE_PATH = "/"
