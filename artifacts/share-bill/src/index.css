@@ -20,6 +20,7 @@
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-coral: hsl(var(--coral));
 
   --font-sans: 'Inter', sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
@@ -28,7 +29,7 @@
 }
 
 :root {
-  --background: 0 0% 98%;           /* #FAFAFA */
+  --background: 210 40% 98%;        /* #F8FAFC soft slate */
   --foreground: 222 47% 11%;        /* #0F172A slate-900 */
   --border: 214 32% 91%;            /* #E2E8F0 slate-200 */
   --input: 214 32% 91%;
@@ -47,6 +48,7 @@
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;         /* #EF4444 */
   --destructive-foreground: 0 0% 100%;
+  --coral: 351 95% 71%;             /* #FB7185 coral alias */
   --radius: 0.75rem;
 }
 
@@ -63,4 +65,24 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   -webkit-font-smoothing: antialiased;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.skeleton {
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+  background: hsl(var(--border));
+  border-radius: 0.5rem;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.toast-enter {
+  animation: toast-in 0.2s ease-out;
 }

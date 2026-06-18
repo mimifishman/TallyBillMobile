@@ -27,6 +27,108 @@ function num(v: unknown): number {
   return typeof v === "number" ? v : parseFloat(String(v ?? 0)) || 0;
 }
 
+/* ─── Toast system ─────────────────────────────────────────────────── */
+
+type Toast = { id: number; message: string };
+let _toastId = 0;
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const show = useCallback((message: string) => {
+    const id = ++_toastId;
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  }, []);
+  return { toasts, show };
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none px-4 w-full max-w-sm lg:bottom-6">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className="toast-enter bg-foreground text-background text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg text-center"
+        >
+          {t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Top bar ───────────────────────────────────────────────────────── */
+
+function TopBar() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <div
+      className={`sticky top-0 z-40 bg-card border-b border-border transition-shadow duration-200 ${scrolled ? "shadow-md" : ""}`}
+    >
+      <div className="max-w-2xl mx-auto px-4 h-12 flex items-center gap-2.5">
+        <img src={import.meta.env.BASE_URL + "favicon.svg"} alt="TallyBill" className="w-7 h-7 rounded-lg" />
+        <span className="text-base font-bold text-foreground tracking-tight">TallyBill</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Loading skeleton ──────────────────────────────────────────────── */
+
+function BillSkeleton() {
+  return (
+    <div className="min-h-screen">
+      <TopBar />
+      <header className="bg-card border-b border-border">
+        <div className="max-w-2xl mx-auto px-4 py-4 space-y-2">
+          <div className="skeleton h-7 w-48 rounded-lg" />
+          <div className="skeleton h-4 w-28 rounded" />
+          <div className="flex gap-2 pt-1">
+            <div className="skeleton h-9 flex-1 rounded-lg" />
+            <div className="skeleton h-9 w-32 rounded-lg" />
+          </div>
+        </div>
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-8">
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="skeleton h-4 w-16 rounded" />
+            <div className="skeleton h-8 w-14 rounded-lg" />
+          </div>
+          <div className="flex gap-3 pb-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5 shrink-0">
+                <div className="skeleton w-12 h-12 rounded-full" />
+                <div className="skeleton h-3 w-10 rounded" />
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="space-y-2">
+          <div className="flex items-center justify-between mb-3">
+            <div className="skeleton h-4 w-12 rounded" />
+            <div className="skeleton h-8 w-20 rounded-lg" />
+          </div>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton h-16 rounded-2xl" />
+          ))}
+        </section>
+        <div className="skeleton h-36 rounded-2xl" />
+      </main>
+    </div>
+  );
+}
+
+/* ─── Page entry ────────────────────────────────────────────────────── */
+
 export default function BillPage() {
   const params = useParams<{ code: string }>();
   const code = (params.code ?? "").toUpperCase();
@@ -44,11 +146,7 @@ export default function BillPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground text-sm">Loading bill…</div>
-      </div>
-    );
+    return <BillSkeleton />;
   }
 
   if (error || !data) {
@@ -68,6 +166,8 @@ export default function BillPage() {
 
   return <BillView data={data} onChange={invalidate} />;
 }
+
+/* ─── SSE hook ──────────────────────────────────────────────────────── */
 
 function useBillSSE(billId: number, joinCode: string, invalidate: () => void) {
   const retryDelayRef = useRef(1000);
@@ -131,11 +231,15 @@ function useBillSSE(billId: number, joinCode: string, invalidate: () => void) {
   }, [connect]);
 }
 
+/* ─── Bill view ─────────────────────────────────────────────────────── */
+
 function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }) {
   const { bill, lines, users, ownerName } = data;
   const billId = bill.id;
 
   useBillSSE(billId, bill.joinCode, onChange);
+
+  const { toasts, show: showToast } = useToast();
 
   const totalsQuery = useGetBillTotals(billId, {
     query: { queryKey: getGetBillTotalsQueryKey(billId) },
@@ -143,11 +247,27 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const totals = totalsQuery.data;
 
   const updateBill = useUpdateBill({ mutation: { onSuccess: onChange } });
-  const addPerson = useCreateBillUser({ mutation: { onSuccess: onChange } });
-  const removePerson = useDeleteBillUser({ mutation: { onSuccess: onChange } });
-  const addLine = useCreateBillLine({ mutation: { onSuccess: onChange } });
+  const addPerson = useCreateBillUser({
+    mutation: {
+      onSuccess: () => { onChange(); showToast("Person added"); },
+    },
+  });
+  const removePerson = useDeleteBillUser({
+    mutation: {
+      onSuccess: () => { onChange(); showToast("Person removed"); },
+    },
+  });
+  const addLine = useCreateBillLine({
+    mutation: {
+      onSuccess: () => { onChange(); showToast("Item added"); },
+    },
+  });
   const updateLine = useUpdateBillLine({ mutation: { onSuccess: onChange } });
-  const deleteLine = useDeleteBillLine({ mutation: { onSuccess: onChange } });
+  const deleteLine = useDeleteBillLine({
+    mutation: {
+      onSuccess: () => { onChange(); showToast("Item removed"); },
+    },
+  });
   const toggleAssignment = useToggleBillLineUser({ mutation: { onSuccess: onChange } });
 
   const saveBill = (patch: UpdateBillRequest) =>
@@ -162,6 +282,10 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
 
   const [splitLineId, setSplitLineId] = useState<number | null>(null);
   const [splitQtyInput, setSplitQtyInput] = useState("");
+  const [splitError, setSplitError] = useState("");
+
+  const [confirmPersonId, setConfirmPersonId] = useState<number | null>(null);
+  const confirmPerson = users.find((u) => u.id === confirmPersonId) ?? null;
 
   const subtotal = useMemo(
     () => lines.reduce((s, l) => s + num(l.total), 0),
@@ -208,7 +332,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     const splitQty = parseFloat(splitQtyInput);
 
     if (isNaN(splitQty) || splitQty <= 0 || splitQty >= currentQty) {
-      alert(`Enter a number between 0 and ${currentQty} (exclusive).`);
+      setSplitError(`Enter a number between 0 and ${currentQty} (exclusive).`);
       return;
     }
 
@@ -220,6 +344,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
 
     setSplitLineId(null);
     setSplitQtyInput("");
+    setSplitError("");
 
     updateLine.mutate({
       billId,
@@ -248,9 +373,11 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
 
   return (
     <div className="min-h-screen pb-24">
+      <TopBar />
+
       <header className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <HeaderEditable bill={bill} onSave={saveBill} ownerName={ownerName} />
+          <HeaderEditable bill={bill} onSave={saveBill} ownerName={ownerName} peopleCount={users.length} />
         </div>
       </header>
 
@@ -271,11 +398,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                 <PersonChip
                   key={u.id}
                   user={u}
-                  onRemove={() => {
-                    if (confirm(`Remove ${u.name} from this bill?`)) {
-                      removePerson.mutate({ billId, userId: u.id });
-                    }
-                  }}
+                  onRemove={() => setConfirmPersonId(u.id)}
                 />
               ))}
             </div>
@@ -299,7 +422,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           )}
 
           {lines.length === 0 ? (
-            <div className="border-2 border-dashed border-border rounded-xl py-10 px-6 text-center mt-3">
+            <div className="border-2 border-dashed border-border rounded-2xl py-10 px-6 text-center mt-3">
               <p className="text-sm text-muted-foreground">
                 No items yet. Add the first one above.
               </p>
@@ -335,6 +458,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                   onSplit={() => {
                     setSplitLineId(line.id);
                     setSplitQtyInput("");
+                    setSplitError("");
                   }}
                 />
               ))}
@@ -361,7 +485,21 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           </section>
         )}
 
-        <section className="bg-card border border-border rounded-xl p-4 space-y-2">
+        <section
+          className="bg-card border border-border rounded-2xl p-5 space-y-2"
+          style={{ boxShadow: "0 2px 8px 0 hsl(160 84% 39% / 0.08)" }}
+        >
+          {totals?.settled && (
+            <div className="flex justify-end mb-1">
+              <span
+                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: "hsl(160 84% 39% / 0.12)", color: "#10B981" }}
+              >
+                <span style={{ color: "hsl(351 95% 71%)" }}>✓</span>
+                All settled
+              </span>
+            </div>
+          )}
           <SummaryRow label="Subtotal" value={fmt(subtotal)} />
           <PercentRow
             label="Tax"
@@ -379,16 +517,68 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           />
           <div className="h-px bg-border my-1" />
           <div className="flex justify-between items-center">
-            <span className="font-semibold text-foreground">Total</span>
-            <span className="text-lg font-bold text-primary">{fmt(grandTotal)}</span>
+            <span className="text-base font-bold text-foreground">Grand Total</span>
+            <span className="text-xl font-bold text-primary tabular-nums">{fmt(grandTotal)}</span>
           </div>
         </section>
-
-        <p className="text-center text-xs text-muted-foreground">
-          Shared bill · code <span className="font-mono font-semibold">{bill.joinCode}</span>
-        </p>
       </main>
 
+      <footer className="max-w-2xl mx-auto px-4 py-10 mt-2 border-t border-border">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex items-center gap-2">
+            <img src={import.meta.env.BASE_URL + "favicon.svg"} alt="TallyBill" className="w-8 h-8 rounded-lg" />
+            <span className="text-base font-bold text-foreground tracking-tight">TallyBill</span>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            The easiest way to split bills with friends. Download the app to create and manage your bills.
+          </p>
+          <div className="flex gap-3 flex-wrap justify-center">
+            <a
+              href="https://apps.apple.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-xl min-h-[44px] hover:opacity-80 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              App Store
+            </a>
+            <a
+              href="https://play.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-xl min-h-[44px] hover:opacity-80 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.36.6 1.24 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
+              Google Play
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Bill join code:{" "}
+            <span className="font-mono font-semibold text-foreground">{bill.joinCode}</span>
+          </p>
+        </div>
+      </footer>
+
+      {/* Sticky mobile bottom bar */}
+      <div className="fixed bottom-0 inset-x-0 lg:hidden bg-card border-t border-border px-4 py-3 flex items-center justify-between gap-3 z-30">
+        <div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Grand Total</div>
+          <div className="text-lg font-bold text-primary tabular-nums leading-tight">{fmt(grandTotal)}</div>
+        </div>
+        <a
+          href="https://apps.apple.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          Open in App
+        </a>
+      </div>
+
+      <ToastContainer toasts={toasts} />
+
+      {/* Add person modal */}
       {showAddPerson && (
         <Modal title="Add person" onClose={() => setShowAddPerson(false)}>
           <input
@@ -397,7 +587,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             onChange={(e) => setNewPersonName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddPerson()}
             placeholder="Name"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
           />
           <ModalButtons
             onCancel={() => setShowAddPerson(false)}
@@ -407,6 +597,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         </Modal>
       )}
 
+      {/* Add item modal */}
       {showAddItem && (
         <Modal title="Add item" onClose={() => setShowAddItem(false)}>
           <input
@@ -415,7 +606,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             onChange={(e) => setNewItemDesc(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
             placeholder="Item description"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
           />
           <div className="flex gap-2">
             <div className="flex flex-col gap-1">
@@ -426,7 +617,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                 onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                 placeholder="1"
                 inputMode="decimal"
-                className="w-16 border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary text-center"
+                className="w-16 border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary text-center focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
             <div className="flex flex-col gap-1 flex-1">
@@ -437,7 +628,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                 onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                 placeholder="e.g. 12.50"
                 inputMode="decimal"
-                className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
+                className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
           </div>
@@ -449,11 +640,12 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         </Modal>
       )}
 
+      {/* Split item modal */}
       {splitLineId !== null && (() => {
         const line = lines.find((l) => l.id === splitLineId);
         const currentQty = line ? parseFloat(String(line.quantity)) : 0;
         return (
-          <Modal title="Split item" onClose={() => setSplitLineId(null)}>
+          <Modal title="Split item" onClose={() => { setSplitLineId(null); setSplitError(""); }}>
             <p className="text-sm text-muted-foreground">
               How many units to split off?{" "}
               <span className="font-medium text-foreground">
@@ -463,32 +655,58 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             <input
               autoFocus
               value={splitQtyInput}
-              onChange={(e) => setSplitQtyInput(e.target.value)}
+              onChange={(e) => { setSplitQtyInput(e.target.value); setSplitError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleConfirmSplit()}
               inputMode="decimal"
               placeholder={`e.g. 1 (max ${currentQty - 0.01})`}
-              className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary"
+              className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
             />
+            {splitError && (
+              <p className="text-sm text-destructive font-medium -mt-1">{splitError}</p>
+            )}
             <ModalButtons
-              onCancel={() => setSplitLineId(null)}
+              onCancel={() => { setSplitLineId(null); setSplitError(""); }}
               onConfirm={handleConfirmSplit}
               confirmLabel="Split"
             />
           </Modal>
         );
       })()}
+
+      {/* Confirm remove person modal */}
+      {confirmPerson && (
+        <Modal title="Remove person" onClose={() => setConfirmPersonId(null)}>
+          <p className="text-sm text-muted-foreground">
+            Remove <span className="font-semibold text-foreground">{confirmPerson.name}</span> from this bill?
+            Their item assignments will be cleared.
+          </p>
+          <ModalButtons
+            onCancel={() => setConfirmPersonId(null)}
+            onConfirm={() => {
+              removePerson.mutate({ billId, userId: confirmPerson.id });
+              setConfirmPersonId(null);
+            }}
+            confirmLabel="Remove"
+            destructive
+          />
+        </Modal>
+      )}
     </div>
   );
 }
+
+/* ─── Header editable ───────────────────────────────────────────────── */
 
 function HeaderEditable({
   bill,
   onSave,
   ownerName,
+  peopleCount,
 }: {
   bill: Bill;
   onSave: (patch: UpdateBillRequest) => void;
   ownerName: string;
+  peopleCount: number;
 }) {
   const [title, setTitle] = useState<string>(bill.title);
   const [date, setDate] = useState<string>(bill.date);
@@ -508,9 +726,20 @@ function HeaderEditable({
         onBlur={() => {
           if (title.trim() && title !== bill.title) onSave({ title: title.trim() });
         }}
-        className="w-full text-xl font-bold text-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1"
+        className="w-full text-xl font-bold text-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1 focus-visible:ring-2 focus-visible:ring-primary"
       />
-      <p className="text-xs text-muted-foreground px-1 -mx-1">Created by {ownerName}</p>
+      <div className="flex flex-wrap items-center gap-2 px-1 -mx-1">
+        <span className="text-xs text-muted-foreground">By {ownerName}</span>
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          {peopleCount} {peopleCount === 1 ? "person" : "people"}
+        </span>
+        {bill.currency && (
+          <span className="inline-flex items-center text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-mono">
+            {bill.currency}
+          </span>
+        )}
+      </div>
       <div className="flex gap-2 pt-1">
         <label className="flex-1 text-xs text-muted-foreground">
           <span className="block mb-0.5">Date</span>
@@ -521,7 +750,7 @@ function HeaderEditable({
             onBlur={() => {
               if (date && date !== bill.date) onSave({ date });
             }}
-            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary"
+            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
           />
         </label>
         <label className="w-32 text-xs text-muted-foreground">
@@ -533,7 +762,7 @@ function HeaderEditable({
               setCurrency(v);
               if (v !== (bill.currency ?? "")) onSave({ currency: v || null });
             }}
-            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary"
+            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
           >
             <option value="">—</option>
             {CURRENCY_OPTIONS.map((c) => (
@@ -547,6 +776,8 @@ function HeaderEditable({
     </div>
   );
 }
+
+/* ─── Section header ────────────────────────────────────────────────── */
 
 function SectionHeader({
   title,
@@ -564,13 +795,15 @@ function SectionHeader({
       </h2>
       <button
         onClick={onAction}
-        className="text-sm font-semibold text-primary bg-muted px-3 py-1.5 rounded-lg hover:bg-secondary transition"
+        className="text-sm font-semibold text-primary bg-muted px-3 py-1.5 rounded-lg hover:bg-secondary transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {actionLabel}
       </button>
     </div>
   );
 }
+
+/* ─── Person chip ───────────────────────────────────────────────────── */
 
 function PersonChip({ user, onRemove }: { user: BillMember; onRemove: () => void }) {
   const initials = user.name
@@ -582,7 +815,7 @@ function PersonChip({ user, onRemove }: { user: BillMember; onRemove: () => void
   return (
     <button
       onClick={onRemove}
-      className="flex flex-col items-center gap-1 shrink-0 group"
+      className="flex flex-col items-center gap-1 shrink-0 group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
       title="Tap to remove"
     >
       <div
@@ -595,6 +828,8 @@ function PersonChip({ user, onRemove }: { user: BillMember; onRemove: () => void
     </button>
   );
 }
+
+/* ─── Line row ──────────────────────────────────────────────────────── */
 
 function LineRow({
   line,
@@ -641,14 +876,17 @@ function LineRow({
   const lineQty = num(line.quantity);
 
   return (
-    <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+    <div
+      className="bg-card border border-border rounded-2xl p-3 space-y-2"
+      style={{ boxShadow: "0 1px 4px 0 hsl(222 47% 11% / 0.06)" }}
+    >
       <div className="flex items-start gap-2">
         {editing ? (
           <div className="flex-1 space-y-2">
             <input
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
+              className="w-full border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
             />
             <div className="flex gap-2">
               <input
@@ -656,18 +894,18 @@ function LineRow({
                 onChange={(e) => setQty(e.target.value)}
                 inputMode="decimal"
                 placeholder="Qty"
-                className="w-16 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
+                className="w-16 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
               />
               <input
                 value={total}
                 onChange={(e) => setTotal(e.target.value)}
                 inputMode="decimal"
                 placeholder="Total"
-                className="flex-1 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary"
+                className="flex-1 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
               />
               <button
                 onClick={save}
-                className="px-3 py-1.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md"
+                className="px-3 py-1.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 Save
               </button>
@@ -676,7 +914,7 @@ function LineRow({
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="flex-1 min-w-0 text-left"
+            className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
           >
             <div className="flex items-baseline justify-between gap-2">
               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
@@ -701,7 +939,7 @@ function LineRow({
             {lineQty > 1 && (
               <button
                 onClick={onSplit}
-                className="flex items-center gap-1 text-xs font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition"
+                className="flex items-center gap-1 text-xs font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 title="Split into two lines"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
@@ -710,7 +948,7 @@ function LineRow({
             )}
             <button
               onClick={() => setEditing(true)}
-              className="text-muted-foreground hover:text-foreground p-1.5 rounded transition"
+              className="text-muted-foreground hover:text-foreground p-1.5 rounded transition min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               title="Edit item"
               aria-label="Edit item"
             >
@@ -718,7 +956,7 @@ function LineRow({
             </button>
             <button
               onClick={onDelete}
-              className="text-muted-foreground hover:text-destructive p-1.5 rounded transition"
+              className="text-muted-foreground hover:text-destructive p-1.5 rounded transition min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               title="Delete"
               aria-label="Delete item"
             >
@@ -730,24 +968,25 @@ function LineRow({
 
       {users.length > 0 && (
         <div className="space-y-1.5 pt-1">
-          <div className="flex gap-1">
+          <div className="inline-flex rounded-lg border border-border overflow-hidden text-xs font-medium">
             <button
               onClick={() => {
                 users.forEach((u) => {
                   if (!assigned.has(u.id)) onToggle(u.id);
                 });
               }}
-              className="text-xs font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:bg-muted transition"
+              className="px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
             >
               All
             </button>
+            <div className="w-px bg-border" />
             <button
               onClick={() => {
                 users.forEach((u) => {
                   if (assigned.has(u.id)) onToggle(u.id);
                 });
               }}
-              className="text-xs font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:bg-muted transition"
+              className="px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
             >
               None
             </button>
@@ -755,18 +994,21 @@ function LineRow({
           <div className="flex flex-wrap gap-1.5">
             {users.map((u) => {
               const on = assigned.has(u.id);
+              const initials = u.name[0]?.toUpperCase() ?? "?";
               return (
                 <button
                   key={u.id}
                   onClick={() => onToggle(u.id)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
                   style={{
                     backgroundColor: on ? u.color : "transparent",
                     borderColor: u.color,
                     color: on ? "#fff" : u.color,
                   }}
+                  title={u.name}
+                  aria-label={`${u.name} — ${on ? "assigned" : "not assigned"}`}
                 >
-                  <span>{u.name}</span>
+                  {initials}
                 </button>
               );
             })}
@@ -776,6 +1018,8 @@ function LineRow({
     </div>
   );
 }
+
+/* ─── Person total row ──────────────────────────────────────────────── */
 
 function PersonTotalRow({
   person,
@@ -837,7 +1081,10 @@ function PersonTotalRow({
 
   return (
     <>
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div
+        className="bg-card border border-border rounded-2xl overflow-hidden"
+        style={{ boxShadow: "0 1px 4px 0 hsl(222 47% 11% / 0.06)" }}
+      >
         <div className="p-3 flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
@@ -856,7 +1103,7 @@ function PersonTotalRow({
           {hasItems && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="text-muted-foreground hover:text-foreground transition text-sm px-1 shrink-0"
+              className="text-muted-foreground hover:text-foreground transition text-sm px-1 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
               aria-label={expanded ? "Collapse" : "Expand"}
             >
               {expanded ? "▲" : "▼"}
@@ -909,7 +1156,7 @@ function PersonTotalRow({
               </span>
               <button
                 onClick={openTipModal}
-                className="text-muted-foreground hover:text-foreground transition p-0.5 rounded"
+                className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 title="Set custom tip %"
                 aria-label="Edit tip percentage"
               >
@@ -918,7 +1165,7 @@ function PersonTotalRow({
               {person.tipIsCustom && (
                 <button
                   onClick={resetTip}
-                  className="text-muted-foreground hover:text-foreground transition p-0.5 rounded"
+                  className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   title="Reset to bill default tip"
                   aria-label="Reset tip to default"
                 >
@@ -942,7 +1189,7 @@ function PersonTotalRow({
             onKeyDown={(e) => e.key === "Enter" && saveTip()}
             inputMode="decimal"
             placeholder="15"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base text-center focus:outline-none focus:border-primary"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base text-center focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
           />
           <ModalButtons
             onCancel={() => setTipModalOpen(false)}
@@ -954,6 +1201,8 @@ function PersonTotalRow({
     </>
   );
 }
+
+/* ─── Summary rows ──────────────────────────────────────────────────── */
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
@@ -992,7 +1241,7 @@ function PercentRow({
             else setVal(String(percent));
           }}
           inputMode="decimal"
-          className="w-12 text-center border border-border rounded px-1 py-0.5 text-sm focus:outline-none focus:border-primary"
+          className="w-12 text-center border border-border rounded px-1 py-0.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
         />
         <span>%</span>
       </div>
@@ -1002,6 +1251,8 @@ function PercentRow({
     </div>
   );
 }
+
+/* ─── Modal + ModalButtons ──────────────────────────────────────────── */
 
 function Modal({
   title,
@@ -1032,22 +1283,28 @@ function ModalButtons({
   onCancel,
   onConfirm,
   confirmLabel = "Add",
+  destructive = false,
 }: {
   onCancel: () => void;
   onConfirm: () => void;
   confirmLabel?: string;
+  destructive?: boolean;
 }) {
   return (
     <div className="flex gap-2 pt-1">
       <button
         onClick={onCancel}
-        className="flex-1 border-2 border-border rounded-lg py-2.5 text-sm font-medium text-muted-foreground"
+        className="flex-1 border-2 border-border rounded-lg py-2.5 text-sm font-medium text-muted-foreground min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         Cancel
       </button>
       <button
         onClick={onConfirm}
-        className="flex-1 bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold"
+        className={`flex-1 rounded-lg py-2.5 text-sm font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          destructive
+            ? "bg-destructive text-destructive-foreground hover:opacity-90"
+            : "bg-primary text-primary-foreground hover:opacity-90"
+        } transition`}
       >
         {confirmLabel}
       </button>
