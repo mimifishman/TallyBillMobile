@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  Platform,
   Share,
   StyleSheet,
   Text,
@@ -76,7 +77,9 @@ export default function ShareScreen() {
     if (!shareUrl || !bill) return;
     try {
       await Share.share({
-        message: `Join me on "${bill.title}" — split the bill: ${shareUrl}`,
+        message: Platform.OS === 'ios'
+          ? `Join me on "${bill.title}" — split the bill:`
+          : `Join me on "${bill.title}" — split the bill: ${shareUrl}`,
         url: shareUrl,
         title: bill.title,
       });
