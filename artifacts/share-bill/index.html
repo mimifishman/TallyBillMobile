@@ -1323,6 +1323,15 @@
 </footer>
 
 <script>
+  // Redirect legacy bare-root join code links (e.g. /JOINCODE) to the new /b/JOINCODE prefix.
+  (function() {
+    var path = window.location.pathname;
+    var match = path.match(/^\/([A-Za-z0-9]{4,12})\/?$/);
+    if (match) {
+      window.location.replace('/b/' + match[1] + window.location.search + window.location.hash);
+    }
+  })();
+
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   // Only arm the fade-in animation if the browser supports it and motion is allowed.

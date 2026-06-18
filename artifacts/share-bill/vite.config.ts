@@ -38,7 +38,7 @@ function billRoutePlugin(base: string): Plugin {
     const url = req.url ?? "/";
     const withoutBase = url.startsWith(base) ? url.slice(base.length) : url;
     const pathname = (withoutBase.split("?")[0] ?? "/").replace(/^\/+/, "");
-    if (/^[A-Za-z0-9]+$/.test(pathname)) {
+    if (/^b\/[A-Za-z0-9]+$/.test(pathname)) {
       req.url = `${normalizedBase}/app.html`;
     }
     next();

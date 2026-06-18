@@ -23,7 +23,7 @@ publicDir = "artifacts/share-bill/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]
-from = "/*"
+from = "/b/*"
 to = "/app.html"
 
 [services.env]

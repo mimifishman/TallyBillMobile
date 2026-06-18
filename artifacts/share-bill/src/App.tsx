@@ -21,7 +21,7 @@ function joinCodeFromLocation(): string | null {
   if (BASE_PATH && path.startsWith(BASE_PATH)) {
     path = path.slice(BASE_PATH.length);
   }
-  const match = path.match(/^\/?([A-Za-z0-9]+)/);
+  const match = path.match(/^\/b\/([A-Za-z0-9]+)/);
   return match ? match[1]!.toUpperCase() : null;
 }
 
@@ -40,7 +40,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={BASE_PATH}>
         <Switch>
-          <Route path="/:code" component={BillPage} />
+          <Route path="/b/:code" component={BillPage} />
           <Route component={NotFoundPage} />
         </Switch>
       </WouterRouter>
