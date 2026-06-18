@@ -264,12 +264,12 @@ export default function TotalsScreen() {
               {person.items.length > 0 && expandedIds.has(person.billUserId) ? (
                 <View style={[styles.itemsList, { borderTopColor: colors.border }]}>
                   {person.items.map((item) => {
-                    const splitLabel = item.splitWithNames.length === 0 ? "not split" : `split with ${item.splitWithNames.join(", ")}`;
+                    const splitLabel = item.splitWithNames.length === 0 ? "not split" : item.splitWithNames.length === totals.perPerson.length - 1 ? "split with all" : `split with ${item.splitWithNames.join(", ")}`;
                     return (
                       <View key={item.billLineId} style={styles.itemRow}>
                         <View style={styles.itemLeft}>
                           <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>{item.description}</Text>
-                          <Text style={[styles.itemSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{fmt(item.lineTotal)} · {splitLabel}</Text>
+                          <Text style={[styles.itemSubtitle, { color: colors.mutedForeground }]}>{fmt(item.lineTotal)} · {splitLabel}</Text>
                         </View>
                         <Text style={[styles.itemShare, { color: colors.foreground }]}>{fmt(item.share)}</Text>
                       </View>
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACING.md },
   itemLeft: { flex: 1, gap: 2 },
   itemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
-  itemSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  itemSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
   itemShare: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   breakdown: { borderTopWidth: 1, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: SPACING.sm },
   breakdownRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
