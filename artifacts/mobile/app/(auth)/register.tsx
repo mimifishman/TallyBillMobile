@@ -23,8 +23,6 @@ import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
 
-WebBrowser.maybeCompleteAuthSession();
-
 function useWarmUpBrowser() {
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -62,7 +60,7 @@ function extractErrorCode(err: unknown): string {
 function isDuplicateEmail(err: unknown): boolean {
   const msg = extractErrorMessage(err).toLowerCase();
   const code = extractErrorCode(err).toLowerCase();
-  return msg.includes("already") || msg.includes("in use") || msg.includes("taken") || msg.includes("exists") || code.includes("exists") || code.includes("taken") || code.includes("duplicate");
+  return msg.includes("already") || msg.includes("in use") || msg.includes("taken") || msg.includes("exists") || code.includes("exists") || code.includes("taken") || code.includes("duplicate") || code === "form_identifier_exists";
 }
 
 export default function RegisterScreen() {

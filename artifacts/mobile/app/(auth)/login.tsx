@@ -22,8 +22,6 @@ import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
 
-WebBrowser.maybeCompleteAuthSession();
-
 function useWarmUpBrowser() {
   useEffect(() => {
     if (Platform.OS !== "android") return;
