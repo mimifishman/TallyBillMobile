@@ -5,7 +5,7 @@ description: Why Google/Apple SSO can fail instantly in @clerk/expo and how erro
 
 # Clerk Expo SSO
 
-**Rule:** Keep `@clerk/expo` at >= 3.4.0 (currently ^3.6.4 range, resolves 3.7.x). Versions below 3.4.0 loaded `expo-auth-session`/`expo-web-browser` inside `useSSO` via dynamic `import()`, which fails under Metro's async-chunk resolution in pnpm monorepos.
+**Rule:** Keep `@clerk/expo` at >= 4.0.0. Versions below 3.4.0 loaded `expo-auth-session`/`expo-web-browser` inside `useSSO` via dynamic `import()`, which fails under Metro's async-chunk resolution in pnpm monorepos. Versions 3.5.x–3.7.x crash on **Android in Expo Go** at import time with "Cannot find native module 'ClerkExpo'" — their Android spec calls `requireNativeModule("ClerkExpo")` unguarded, and Expo Go doesn't ship Clerk's native module (iOS/web specs use the optional loader, so it's Android-only). Fixed in 4.0.0 (`requireOptionalNativeModule`, per changelog). 4.0.0 breaking changes: drops Expo SDK 53; native Google Sign-In moved to optional `@clerk/expo-google-signin` (only matters if using `useSignInWithGoogle`).
 
 **Why:** In this monorepo, `startSSOFlow` failed instantly on native (no browser ever opened) because the dynamic import threw, was swallowed, and rethrown as a misleading "install expo-auth-session" error — which the UI then mislabeled as a network problem. Upstream: clerk/javascript issue #8288, fixed by PR #8720 (require-based loading) in 3.4.0.
 
