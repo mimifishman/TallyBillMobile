@@ -424,8 +424,10 @@ export default function BillDetailScreen() {
     setEditTitle(data.bill.title ?? "");
     setEditDate(data.bill.date ?? "");
     setEditCurrency(data.bill.currency ?? "");
-    setEditTaxPercent(String(parseFloat(String(data.bill.taxPercent ?? 0))));
-    setEditTipPercent(String(parseFloat(String(data.bill.tipPercent ?? 0))));
+    const taxVal = parseFloat(String(data.bill.taxPercent ?? 0));
+    const tipVal = parseFloat(String(data.bill.tipPercent ?? 0));
+    setEditTaxPercent(taxVal === 0 ? "" : String(taxVal));
+    setEditTipPercent(tipVal === 0 ? "" : String(tipVal));
     setShowEditHeader(true);
   };
 

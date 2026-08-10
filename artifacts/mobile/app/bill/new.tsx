@@ -40,8 +40,8 @@ export default function NewBillScreen() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(today);
   const [currency, setCurrency] = useState("");
-  const [taxPercent, setTaxPercent] = useState("0");
-  const [tipPercent, setTipPercent] = useState("0");
+  const [taxPercent, setTaxPercent] = useState("");
+  const [tipPercent, setTipPercent] = useState("");
 
   const { data: currencyData } = useDetectCurrency();
   useEffect(() => {
