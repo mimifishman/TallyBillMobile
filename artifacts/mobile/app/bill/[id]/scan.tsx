@@ -132,6 +132,8 @@ export default function ScanScreen() {
   const scan = useScan();
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(null);
+  const [priceDraft, setPriceDraft] = useState("");
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
   const [showOriginals, setShowOriginals] = useState(true);
@@ -197,6 +199,27 @@ export default function ScanScreen() {
       const asset = result.assets[0];
       scan.startScan(billId, asset.uri, asset.width ?? 1800);
     }
+  };
+
+  const commitPriceEdit = (index: number) => {
+    const normalized = priceDraft.trim().replace(",", ".");
+    const parsed = /^\d+(\.\d*)?$|^\.\d+$/.test(normalized) ? Number(normalized) : NaN;
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      const rounded = Math.round(parsed * 100) / 100;
+      scan.setItems((prev) =>
+        prev.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                total: rounded,
+                unitPrice: item.quantity > 0 ? Math.round((rounded / item.quantity) * 100) / 100 : rounded,
+              }
+            : item,
+        ),
+      );
+    }
+    setEditingPriceIndex(null);
+    setPriceDraft("");
   };
 
   const toggleItem = (index: number) => {
@@ -378,6 +401,7 @@ export default function ScanScreen() {
           }
           renderItem={({ item, index }) => {
             const isEditing = editingIndex === index;
+            const isEditingPrice = editingPriceIndex === index;
             const displayName = item.translatedDescription ?? item.description;
             const originalName = item.translatedDescription ? item.description : null;
             return (
@@ -441,15 +465,33 @@ export default function ScanScreen() {
                   )}
                 </View>
 
-                <TouchableOpacity
-                  onPress={() => { if (isEditing) setEditingIndex(null); toggleItem(index); }}
-                  activeOpacity={0.7}
-                  style={styles.priceHitArea}
-                >
-                  <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
-                    {item.total.toFixed(2)}
-                  </Text>
-                </TouchableOpacity>
+                {isEditingPrice ? (
+                  <AutoFocusTextInput
+                    style={[styles.reviewItemPriceInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                    value={priceDraft}
+                    onChangeText={setPriceDraft}
+                    onBlur={() => commitPriceEdit(index)}
+                    autoFocus
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                    onSubmitEditing={() => commitPriceEdit(index)}
+                    selectTextOnFocus
+                  />
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (isEditing) setEditingIndex(null);
+                      setPriceDraft(item.total.toFixed(2));
+                      setEditingPriceIndex(index);
+                    }}
+                    activeOpacity={0.6}
+                    style={styles.priceHitArea}
+                  >
+                    <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
+                      {item.total.toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           }}
@@ -585,6 +627,7 @@ const styles = StyleSheet.create({
   editIcon: { marginTop: 1 },
   reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 }, // TODO: one-off
   priceHitArea: { padding: SPACING.xs },
+  reviewItemPriceInput: { fontSize: 14, fontFamily: "Inter_700Bold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 64, textAlign: "right" }, // TODO: one-off
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
 
   summaryBar: {
