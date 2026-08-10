@@ -20,6 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
+import { getInitials } from "@/utils/initials";
 
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 
@@ -129,7 +130,7 @@ export default function SettingsScreen() {
   };
 
   const guestDisplayName = guestName || "Guest";
-  const guestInitial = guestDisplayName.charAt(0).toUpperCase();
+  const guestInitial = getInitials(guestDisplayName);
 
   return (
     <ScrollView
@@ -145,7 +146,7 @@ export default function SettingsScreen() {
       {user ? (
         <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{user.displayName.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarText}>{getInitials(user.displayName)}</Text>
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: colors.foreground }]}>{user.displayName}</Text>

@@ -22,6 +22,7 @@ import {
   type UpdateBillRequest,
 } from "@workspace/api-client-react";
 import { CURRENCY_OPTIONS, formatMoney, PEOPLE_COLORS } from "@/lib/currency";
+import { getInitials } from "@/lib/initials";
 
 function num(v: unknown): number {
   return typeof v === "number" ? v : parseFloat(String(v ?? 0)) || 0;
@@ -898,12 +899,7 @@ function PersonChip({
   onIdentify: () => void;
   onRemove: () => void;
 }) {
-  const initials = user.name
-    .split(/\s+/)
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(user.name);
   return (
     <div className="relative shrink-0">
       <button
@@ -1107,7 +1103,7 @@ function LineRow({
           <div className="flex flex-wrap gap-1.5">
             {users.map((u) => {
               const on = assigned.has(u.id);
-              const initials = u.name[0]?.toUpperCase() ?? "?";
+              const initials = getInitials(u.name) || "?";
               return (
                 <button
                   key={u.id}
@@ -1188,12 +1184,7 @@ function PersonTotalRow({
     setTipModalOpen(true);
   };
 
-  const initials = person.name
-    .split(/\s+/)
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(person.name);
   const fmt = (n: number) => formatMoney(n, currency);
   const fmtPct = (n: number) => String(Math.round(n * 100) / 100);
 

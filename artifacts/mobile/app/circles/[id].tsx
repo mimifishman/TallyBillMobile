@@ -28,6 +28,7 @@ import {
   type Circle,
 } from "@workspace/api-client-react";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
+import { getInitials } from "@/utils/initials";
 
 export default function CircleDetailScreen() {
   const colors = useColors();
@@ -321,7 +322,7 @@ export default function CircleDetailScreen() {
                 >
                   <View style={[styles.memberAvatar, { backgroundColor: colors.primary + "22" }]}>
                     <Text style={[styles.memberAvatarText, { color: colors.primary }]}>
-                      {member.name.charAt(0).toUpperCase()}
+                      {getInitials(member.name)}
                     </Text>
                   </View>
                   <TouchableOpacity

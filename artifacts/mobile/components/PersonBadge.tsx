@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import colors_data from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
 import { FONT_SIZE } from "@/constants/styles";
+import { getInitials } from "@/utils/initials";
 
 interface PersonBadgeProps {
   name: string;
@@ -34,7 +35,7 @@ export function PersonBadge({
   const themeColors = useColors();
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
   const fontSize = size === "sm" ? 11 : size === "lg" ? 16 : 14;
-  const initial = name.charAt(0).toUpperCase();
+  const initial = getInitials(name);
   const [start, end] = gradientFor(color);
   const isUnselected = selected === false;
 
