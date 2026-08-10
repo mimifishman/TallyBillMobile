@@ -14,7 +14,10 @@ const colors = {
 
     primary: "#10B981",
     primaryForeground: "#FFFFFF",
-    primaryDark: "#059669",
+    // Emerald dark enough to carry small text at WCAG AA. `primary` itself is
+    // a fill colour — at 2.5:1 on white it must never be used for text.
+    primaryText: "#047857",
+    primaryDark: "#047857",
     primaryLight: "#6EE7B7",
     primarySoft: "#D1FAE5",
 
@@ -22,26 +25,26 @@ const colors = {
     secondaryForeground: "#0F172A",
 
     pop: "#FB7185",
-    popDark: "#F43F5E",
+    popDark: "#BE123C",
     popSoft: "#FFE4E6",
     popForeground: "#FFFFFF",
 
     muted: "#F1F5F9",
-    mutedForeground: "#64748B",
+    mutedForeground: "#5B6779",
 
     accent: "#10B981",
     accentForeground: "#FFFFFF",
     accentSoft: "#D1FAE5",
 
-    destructive: "#EF4444",
+    destructive: "#DC2626",
     destructiveForeground: "#FFFFFF",
 
-    danger: "#EF4444",
+    danger: "#DC2626",
     success: "#16A34A",
     warning: "#F59E0B",
 
     textPrimary: "#0F172A",
-    textSecondary: "#64748B",
+    textSecondary: "#5B6779",
 
     border: "#E2E8F0",
     borderStrong: "#CBD5E1",
@@ -115,7 +118,10 @@ const colors = {
 
     primary: "#34D399",
     primaryForeground: "#FFFFFF",
-    primaryDark: "#10B981",
+    // On dark surfaces the mint primary already clears AA as text, so
+    // `primaryText` mirrors it — the split exists for the light palette.
+    primaryText: "#34D399",
+    primaryDark: "#34D399",
     primaryLight: "#6EE7B7",
     primarySoft: "#064E3B",
 
@@ -123,7 +129,7 @@ const colors = {
     secondaryForeground: "#E6EDF3",
 
     pop: "#FB7185",
-    popDark: "#F43F5E",
+    popDark: "#FB7185",
     popSoft: "#4C0D1A",
     popForeground: "#FFFFFF",
 

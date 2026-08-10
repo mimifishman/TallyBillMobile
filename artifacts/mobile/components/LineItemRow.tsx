@@ -170,7 +170,7 @@ export function LineItemRow({
             />
             {quantity > 1 && (
               <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primary }]} accessibilityLabel="Split item quantity">
-                <Feather name="scissors" size={13} color={colors.primary} />
+                <Feather name="scissors" size={13} color={colors.primaryText} />
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
@@ -205,8 +205,8 @@ export function LineItemRow({
           </View>
           {quantity > 1 && (
             <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primary }]} accessibilityLabel="Split item quantity">
-              <Feather name="scissors" size={13} color={colors.primary} />
-              <Text style={[styles.splitBtnText, { color: colors.primary }]}>Split</Text>
+              <Feather name="scissors" size={13} color={colors.primaryText} />
+              <Text style={[styles.splitBtnText, { color: colors.primaryText }]}>Split</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleEdit} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>

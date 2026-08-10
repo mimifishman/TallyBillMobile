@@ -177,7 +177,7 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
                   <Text style={[styles.currencyCode, { color: colors.foreground }]}>None</Text>
                   <Text style={[styles.currencyName, { color: colors.mutedForeground }]}>No currency</Text>
                 </View>
-                {!value && <Feather name="check" size={18} color={colors.primary} />}
+                {!value && <Feather name="check" size={18} color={colors.primaryText} />}
               </TouchableOpacity>
             }
             renderItem={({ item }) => {
@@ -201,7 +201,7 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
                     <Text style={[styles.currencyCode, { color: colors.foreground }]}>{item.code}</Text>
                     <Text style={[styles.currencyName, { color: colors.mutedForeground }]}>{item.name}</Text>
                   </View>
-                  {isSelected && <Feather name="check" size={18} color={colors.primary} />}
+                  {isSelected && <Feather name="check" size={18} color={colors.primaryText} />}
                 </TouchableOpacity>
               );
             }}

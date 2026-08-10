@@ -265,7 +265,7 @@ export default function SettingsScreen() {
             onPress={() => setShowLanguagePicker(true)}
             activeOpacity={0.75}
           >
-            <IconBox name="globe" color={colors.primary} />
+            <IconBox name="globe" color={colors.primaryText} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.menuItemText, { color: colors.foreground }]}>Preferred receipt language</Text>
               {preferredLanguage && (
@@ -290,7 +290,7 @@ export default function SettingsScreen() {
                 onPress={() => router.push("/(auth)/change-password")}
                 activeOpacity={0.75}
               >
-                <IconBox name="lock" color={colors.primary} />
+                <IconBox name="lock" color={colors.primaryText} />
                 <Text style={[styles.menuItemText, { color: colors.foreground }]}>Change Password</Text>
                 <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
               </TouchableOpacity>

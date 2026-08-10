@@ -79,7 +79,7 @@ export default function ForgotPasswordScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
-            <Feather name="mail" size={28} color={colors.primary} />
+            <Feather name="mail" size={28} color={colors.primaryText} />
           </View>
 
           <Text style={[styles.formTitle, { color: colors.foreground }]}>Reset your password</Text>
@@ -90,7 +90,7 @@ export default function ForgotPasswordScreen() {
           {oauthProvider ? (
             <View style={[styles.oauthCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
-                <Feather name="shield" size={28} color={colors.primary} />
+                <Feather name="shield" size={28} color={colors.primaryText} />
               </View>
               <Text style={[styles.oauthTitle, { color: colors.foreground }]}>No password needed</Text>
               <Text style={[styles.oauthSub, { color: colors.mutedForeground }]}>
@@ -134,7 +134,7 @@ export default function ForgotPasswordScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => router.back()} style={styles.linkBtn}>
-                <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Remembered it? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Sign In</Text></Text>
+                <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Remembered it? <Text style={{ color: colors.primaryText, fontFamily: "Inter_600SemiBold" }}>Sign In</Text></Text>
               </TouchableOpacity>
             </View>
           )}

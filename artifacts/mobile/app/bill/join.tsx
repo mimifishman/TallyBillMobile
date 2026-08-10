@@ -97,7 +97,7 @@ export default function JoinBillScreen() {
 
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-      <ActivityIndicator color={colors.primary} />
+      <ActivityIndicator color={colors.primaryText} />
     </View>
   );
 }

@@ -65,7 +65,7 @@ export default function JoinScreen() {
         ]}
       >
         <View style={styles.hero}>
-          <Text style={[styles.wordmark, { color: colors.primary }]}>TallyBill</Text>
+          <Text style={[styles.wordmark, { color: colors.primaryText }]}>TallyBill</Text>
           <Text style={[styles.title, { color: colors.foreground }]}>Enter your join code</Text>
         </View>
 

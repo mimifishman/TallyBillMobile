@@ -52,7 +52,7 @@ export default function IndexScreen() {
   if (isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={colors.primaryText} />
       </View>
     );
   }
@@ -105,8 +105,8 @@ export default function IndexScreen() {
           onPress={() => router.push("/bill/new")}
           activeOpacity={0.85}
         >
-          <Feather name="plus-circle" size={18} color={colors.primary} />
-          <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Add Bill</Text>
+          <Feather name="plus-circle" size={18} color={colors.primaryText} />
+          <Text style={[styles.secondaryBtnText, { color: colors.primaryText }]}>Add Bill</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -135,7 +135,7 @@ export default function IndexScreen() {
           <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
             <Text style={[styles.footerLink, { color: colors.mutedForeground }]}>
               Already have an account?{" "}
-              <Text style={{ color: colors.primary }}>Sign in</Text>
+              <Text style={{ color: colors.primaryText }}>Sign in</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -161,7 +161,7 @@ export default function IndexScreen() {
             ]}
           >
             <View style={[styles.modalIconWrap, { backgroundColor: colors.primarySoft }]}>
-              <Feather name="user" size={26} color={colors.primary} />
+              <Feather name="user" size={26} color={colors.primaryText} />
             </View>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>
               What's your name?

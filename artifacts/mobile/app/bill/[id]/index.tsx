@@ -759,13 +759,13 @@ export default function BillDetailScreen() {
                   onPress={() => setShowCirclePicker(true)}
                   style={[styles.addBtn, { backgroundColor: colors.muted }]}
                 >
-                  <Feather name="users" size={14} color={colors.primary} />
-                  <Text style={[styles.addBtnText, { color: colors.primary }]}>Circle</Text>
+                  <Feather name="users" size={14} color={colors.primaryText} />
+                  <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Circle</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={() => setShowAddPerson(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
-                <Feather name="plus" size={14} color={colors.primary} />
-                <Text style={[styles.addBtnText, { color: colors.primary }]}>Add</Text>
+                <Feather name="plus" size={14} color={colors.primaryText} />
+                <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -804,12 +804,12 @@ export default function BillDetailScreen() {
                 onPress={() => router.push(`/bill/${billId}/scan`)}
                 style={[styles.addBtn, { backgroundColor: colors.muted }]}
               >
-                <Feather name="camera" size={14} color={colors.primary} />
-                <Text style={[styles.addBtnText, { color: colors.primary }]}>Scan</Text>
+                <Feather name="camera" size={14} color={colors.primaryText} />
+                <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Scan</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowAddItem(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
-                <Feather name="plus" size={14} color={colors.primary} />
-                <Text style={[styles.addBtnText, { color: colors.primary }]}>Add</Text>
+                <Feather name="plus" size={14} color={colors.primaryText} />
+                <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -859,7 +859,7 @@ export default function BillDetailScreen() {
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, styles.summaryTotalLabel, { color: colors.foreground }]}>Total</Text>
-            <Text style={[styles.summaryValue, styles.summaryTotalValue, { color: colors.primary }]}>{fmt(grandTotal)}</Text>
+            <Text style={[styles.summaryValue, styles.summaryTotalValue, { color: colors.primaryText }]}>{fmt(grandTotal)}</Text>
           </View>
         </View>
       </ScrollView>
@@ -922,8 +922,8 @@ export default function BillDetailScreen() {
               onPress={() => setShowAddPersonLinkEmail(true)}
               style={styles.addPersonLinkBtn}
             >
-              <Feather name="link" size={13} color={colors.primary} />
-              <Text style={[styles.addPersonLinkText, { color: colors.primary }]}>
+              <Feather name="link" size={13} color={colors.primaryText} />
+              <Text style={[styles.addPersonLinkText, { color: colors.primaryText }]}>
                 Link to TallyBill account (optional)
               </Text>
             </TouchableOpacity>
@@ -1152,7 +1152,7 @@ export default function BillDetailScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[styles.circlePickerIcon, { backgroundColor: colors.primarySoft }]}>
-                  <Feather name="users" size={16} color={colors.primary} />
+                  <Feather name="users" size={16} color={colors.primaryText} />
                 </View>
                 <View style={styles.circlePickerInfo}>
                   <Text style={[styles.circlePickerName, { color: colors.foreground }]}>{circle.name}</Text>
@@ -1161,7 +1161,7 @@ export default function BillDetailScreen() {
                   </Text>
                 </View>
                 {addingFromCircleId === circle.id ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={colors.primaryText} />
                 ) : (
                   <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
                 )}

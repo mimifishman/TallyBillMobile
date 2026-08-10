@@ -182,7 +182,7 @@ export default function NewBillScreen() {
           </View>
 
           <View style={[styles.helperRow, { backgroundColor: colors.primarySoft }]}>
-            <Feather name="info" size={13} color={colors.primary} />
+            <Feather name="info" size={13} color={colors.primaryText} />
             <Text style={[styles.helperText, { color: colors.primaryDark }]}>
               Shared proportionally across all items
             </Text>

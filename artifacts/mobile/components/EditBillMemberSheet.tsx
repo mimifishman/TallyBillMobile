@@ -145,7 +145,7 @@ export function EditBillMemberSheet({
 
           {hasLinkedAccount && !showEmailField ? (
             <View style={[styles.linkedRow, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-              <Feather name="link" size={13} color={colors.primary} />
+              <Feather name="link" size={13} color={colors.primaryText} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.linkedRowText, { color: colors.foreground }]} numberOfLines={1}>
                   {member.linkedUserEmail ?? "Linked to TallyBill account"}
@@ -160,7 +160,7 @@ export function EditBillMemberSheet({
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 style={{ marginRight: 10 }}
               >
-                <Text style={[styles.actionLink, { color: colors.primary }]}>Change</Text>
+                <Text style={[styles.actionLink, { color: colors.primaryText }]}>Change</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setUnlinkPending(true)}
@@ -179,7 +179,7 @@ export function EditBillMemberSheet({
                 onPress={() => setUnlinkPending(false)}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <Text style={[styles.actionLink, { color: colors.primary }]}>Undo</Text>
+                <Text style={[styles.actionLink, { color: colors.primaryText }]}>Undo</Text>
               </TouchableOpacity>
             </View>
           ) : showEmailField ? (
@@ -242,8 +242,8 @@ export function EditBillMemberSheet({
               onPress={() => setShowEmailField(true)}
               style={styles.linkEmailBtn}
             >
-              <Feather name="link" size={13} color={colors.primary} />
-              <Text style={[styles.linkEmailText, { color: colors.primary }]}>
+              <Feather name="link" size={13} color={colors.primaryText} />
+              <Text style={[styles.linkEmailText, { color: colors.primaryText }]}>
                 Link to TallyBill account (optional)
               </Text>
             </TouchableOpacity>

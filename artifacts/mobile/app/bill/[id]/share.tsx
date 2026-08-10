@@ -138,7 +138,7 @@ export default function ShareScreen() {
             )}
 
             <View style={[styles.tipRow, { backgroundColor: colors.primarySoft }]}>
-              <Feather name="info" size={14} color={colors.primary} />
+              <Feather name="info" size={14} color={colors.primaryText} />
               <Text style={[styles.tipText, { color: colors.primaryDark }]}>
                 To join a different bill, use the Join tab.
               </Text>
