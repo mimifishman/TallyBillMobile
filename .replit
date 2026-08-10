@@ -90,6 +90,26 @@ waitForPort = 8081
 PORT = "8081"
 BASE_PATH = "/__mockup"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "mobile-react-singleton"
+
+[[workflows.workflow]]
+name = "mobile-react-singleton"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/src/check-mobile-react-singleton.mjs"
+
+[workflows.workflow.metadata]
+isValidation = true
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
