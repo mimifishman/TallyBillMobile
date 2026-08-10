@@ -443,8 +443,8 @@ export default function ScanScreen() {
               activeOpacity={0.7}
               style={[styles.addItemRow, { borderColor: colors.border }]}
             >
-              <Feather name="plus" size={16} color={colors.primaryText} />
-              <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
+              <Feather name="plus" size={16} color={colors.primary} />
+              <Text style={[styles.addItemText, { color: colors.primary }]}>Add item</Text>
             </TouchableOpacity>
           }
           renderItem={({ item, index }) => {
