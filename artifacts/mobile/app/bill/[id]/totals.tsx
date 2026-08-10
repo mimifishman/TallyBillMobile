@@ -299,7 +299,7 @@ export default function TotalsScreen() {
                 </View>
                 {person.items.length > 0 && (
                   <View style={[styles.expandBtn, { backgroundColor: colors.primarySoft }]}>
-                    <Feather name={expandedIds.has(person.billUserId) ? "chevron-up" : "chevron-down"} size={16} color={colors.primary} />
+                    <Feather name={expandedIds.has(person.billUserId) ? "chevron-up" : "chevron-down"} size={16} color={colors.primaryText} />
                   </View>
                 )}
               </TouchableOpacity>

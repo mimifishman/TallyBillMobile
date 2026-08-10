@@ -89,8 +89,8 @@ export function BillCard({
           
           {isOwner ? (
             <View style={[styles.ownerBadge, { backgroundColor: colors.primarySoft }]}>
-              <Feather name="star" size={10} color={colors.primary} />
-              <Text style={[styles.ownerText, { color: colors.primary }]}>Owner</Text>
+              <Feather name="star" size={10} color={colors.primaryText} />
+              <Text style={[styles.ownerText, { color: colors.primaryText }]}>Owner</Text>
             </View>
           ) : null}
         </View>

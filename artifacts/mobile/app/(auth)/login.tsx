@@ -198,7 +198,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={[styles.flex, { backgroundColor: colors.background }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={[styles.formCard, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
           <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
-            <Feather name="shield" size={28} color={colors.primary} />
+            <Feather name="shield" size={28} color={colors.primaryText} />
           </View>
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Verify your identity</Text>
           <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>{tagline}</Text>
@@ -279,7 +279,7 @@ export default function LoginScreen() {
             {!!passwordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>}
 
             <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={styles.forgotBtn}>
-              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
+              <Text style={[styles.forgotText, { color: colors.primaryText }]}>Forgot password?</Text>
             </TouchableOpacity>
 
             <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleEmailLogin} disabled={isPending}>
@@ -287,7 +287,7 @@ export default function LoginScreen() {
             </PressableScale>
 
             <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={styles.linkBtn}>
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>No account? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Register</Text></Text>
+              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>No account? <Text style={{ color: colors.primaryText, fontFamily: "Inter_600SemiBold" }}>Register</Text></Text>
             </TouchableOpacity>
           </View>
 

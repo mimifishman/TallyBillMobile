@@ -149,7 +149,7 @@ export function LanguagePicker({ visible, selectedLanguage, onConfirm, onClose }
                 <Text style={[styles.rowText, { color: selected ? colors.primary : colors.foreground }]}>
                   {item}
                 </Text>
-                {selected && <Feather name="check" size={16} color={colors.primary} />}
+                {selected && <Feather name="check" size={16} color={colors.primaryText} />}
               </TouchableOpacity>
             );
           }}

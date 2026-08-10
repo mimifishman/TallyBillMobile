@@ -85,7 +85,7 @@ export default function NameScreen() {
   if (!isLoaded) {
     return (
       <View style={[styles.flex, styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={colors.primaryText} />
       </View>
     );
   }
@@ -103,7 +103,7 @@ export default function NameScreen() {
       >
         <View style={styles.header}>
           <View style={[styles.iconWrap, { backgroundColor: colors.primary + "18" }]}>
-            <Feather name="user" size={32} color={colors.primary} />
+            <Feather name="user" size={32} color={colors.primaryText} />
           </View>
           <Text style={[styles.title, { color: colors.foreground }]}>What's your name?</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>

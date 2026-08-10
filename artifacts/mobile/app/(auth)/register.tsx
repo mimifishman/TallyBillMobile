@@ -193,7 +193,7 @@ export default function RegisterScreen() {
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
-            <Feather name="mail" size={28} color={colors.primary} />
+            <Feather name="mail" size={28} color={colors.primaryText} />
           </View>
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Check your email</Text>
           <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>We sent a verification code to {email}</Text>
@@ -207,7 +207,7 @@ export default function RegisterScreen() {
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Verify Email</Text>}
             </PressableScale>
             <TouchableOpacity onPress={() => signUp.verifications.sendEmailCode()} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Resend code</Text></TouchableOpacity>
-            <TouchableOpacity onPress={abandonSignUp} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Wrong email? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Use a different email</Text></Text></TouchableOpacity>
+            <TouchableOpacity onPress={abandonSignUp} style={styles.linkBtn}><Text style={[styles.linkText, { color: colors.mutedForeground }]}>Wrong email? <Text style={{ color: colors.primaryText, fontFamily: "Inter_600SemiBold" }}>Use a different email</Text></Text></TouchableOpacity>
           </View>
           <View nativeID="clerk-captcha" />
         </ScrollView>
@@ -278,7 +278,7 @@ export default function RegisterScreen() {
             </PressableScale>
 
             <TouchableOpacity onPress={() => router.back()} style={styles.linkBtn}>
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Already have an account? <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Sign in</Text></Text>
+              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Already have an account? <Text style={{ color: colors.primaryText, fontFamily: "Inter_600SemiBold" }}>Sign in</Text></Text>
             </TouchableOpacity>
           </View>
 

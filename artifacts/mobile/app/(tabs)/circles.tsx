@@ -77,7 +77,7 @@ export default function CirclesScreen() {
 
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.primaryText} />
         </View>
       ) : !circles || circles.length === 0 ? (
         <ScrollView contentContainerStyle={styles.emptyContainer}>
@@ -109,7 +109,7 @@ export default function CirclesScreen() {
               activeOpacity={0.75}
             >
               <View style={[styles.circleIcon, { backgroundColor: colors.primary + "22" }]}>
-                <Feather name="users" size={20} color={colors.primary} />
+                <Feather name="users" size={20} color={colors.primaryText} />
               </View>
               <View style={styles.circleInfo}>
                 <Text style={[styles.circleName, { color: colors.foreground }]}>{circle.name}</Text>

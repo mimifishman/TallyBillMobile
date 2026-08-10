@@ -12,9 +12,12 @@ const colors = {
     surface: "#FFFFFF",
     surfaceRaised: "#F8FAFC",
 
-    primary: "#10B981",
+    // `primary` is a FILL colour only — it must carry white text at AA
+    // (5.48:1). Never use it for text; use `primaryText` instead.
+    primary: "#047857",
     primaryForeground: "#FFFFFF",
-    primaryDark: "#059669",
+    primaryText: "#047857",
+    primaryDark: "#047857",
     primaryLight: "#6EE7B7",
     primarySoft: "#D1FAE5",
 
@@ -22,26 +25,26 @@ const colors = {
     secondaryForeground: "#0F172A",
 
     pop: "#FB7185",
-    popDark: "#F43F5E",
+    popDark: "#BE123C",
     popSoft: "#FFE4E6",
     popForeground: "#FFFFFF",
 
     muted: "#F1F5F9",
-    mutedForeground: "#64748B",
+    mutedForeground: "#5B6779",
 
     accent: "#10B981",
     accentForeground: "#FFFFFF",
     accentSoft: "#D1FAE5",
 
-    destructive: "#EF4444",
+    destructive: "#DC2626",
     destructiveForeground: "#FFFFFF",
 
-    danger: "#EF4444",
+    danger: "#DC2626",
     success: "#16A34A",
     warning: "#F59E0B",
 
     textPrimary: "#0F172A",
-    textSecondary: "#64748B",
+    textSecondary: "#5B6779",
 
     border: "#E2E8F0",
     borderStrong: "#CBD5E1",
@@ -113,9 +116,13 @@ const colors = {
     surface: "#161B22",
     surfaceRaised: "#1C2128",
 
-    primary: "#34D399",
+    // Fill only, same as light: white text clears AA (5.48:1) and the fill
+    // still reads against the dark background (3.5:1). Text and icons use
+    // the brighter `primaryText` mint.
+    primary: "#047857",
     primaryForeground: "#FFFFFF",
-    primaryDark: "#10B981",
+    primaryText: "#34D399",
+    primaryDark: "#34D399",
     primaryLight: "#6EE7B7",
     primarySoft: "#064E3B",
 
@@ -123,7 +130,7 @@ const colors = {
     secondaryForeground: "#E6EDF3",
 
     pop: "#FB7185",
-    popDark: "#F43F5E",
+    popDark: "#FB7185",
     popSoft: "#4C0D1A",
     popForeground: "#FFFFFF",
 
@@ -135,7 +142,10 @@ const colors = {
     accentSoft: "#064E3B",
 
     destructive: "#F87171",
-    destructiveForeground: "#FFFFFF",
+    // The dark-mode red is tuned to read as text on dark surfaces, so it is
+    // light — white on it is only 2.8:1. Anything filled with `destructive`
+    // must use this near-black red instead (5.8:1).
+    destructiveForeground: "#450A0A",
 
     danger: "#F87171",
     success: "#34D399",

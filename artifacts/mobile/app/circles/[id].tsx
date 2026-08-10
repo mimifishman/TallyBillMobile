@@ -236,7 +236,7 @@ export default function CircleDetailScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.primaryText} />
         </View>
       </View>
     );
@@ -296,8 +296,8 @@ export default function CircleDetailScreen() {
               style={[styles.addBtn, { backgroundColor: colors.muted }]}
               onPress={() => setShowAddMember(true)}
             >
-              <Feather name="plus" size={14} color={colors.primary} />
-              <Text style={[styles.addBtnText, { color: colors.primary }]}>Add person</Text>
+              <Feather name="plus" size={14} color={colors.primaryText} />
+              <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add person</Text>
             </TouchableOpacity>
           </View>
 
@@ -322,7 +322,7 @@ export default function CircleDetailScreen() {
                   ]}
                 >
                   <View style={[styles.memberAvatar, { backgroundColor: colors.primary + "22" }]}>
-                    <Text style={[styles.memberAvatarText, { color: colors.primary }]}>
+                    <Text style={[styles.memberAvatarText, { color: colors.primaryText }]}>
                       {getInitials(member.name)}
                     </Text>
                   </View>
@@ -336,7 +336,7 @@ export default function CircleDetailScreen() {
                       <Feather name="edit-2" size={12} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
                     </View>
                     {member.linkedUserId ? (
-                      <Text style={[styles.memberLinked, { color: colors.primary }]}>
+                      <Text style={[styles.memberLinked, { color: colors.primaryText }]}>
                         Linked to TallyBill account
                       </Text>
                     ) : null}
@@ -447,7 +447,7 @@ export default function CircleDetailScreen() {
 
               {renameMemberTarget?.linkedUserId && !editMemberUnlink && !editMemberShowEmailField ? (
                 <View style={[styles.linkedRow, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                  <Feather name="link" size={13} color={colors.primary} />
+                  <Feather name="link" size={13} color={colors.primaryText} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.linkedRowText, { color: colors.foreground }]}>
                       {renameMemberTarget.linkedUserEmail
@@ -464,7 +464,7 @@ export default function CircleDetailScreen() {
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     style={{ marginRight: 8 }}
                   >
-                    <Text style={[styles.unlinkText, { color: colors.primary }]}>Change</Text>
+                    <Text style={[styles.unlinkText, { color: colors.primaryText }]}>Change</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setEditMemberUnlink(true)}
@@ -483,7 +483,7 @@ export default function CircleDetailScreen() {
                     onPress={() => setEditMemberUnlink(false)}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   >
-                    <Text style={[styles.unlinkText, { color: colors.primary }]}>Undo</Text>
+                    <Text style={[styles.unlinkText, { color: colors.primaryText }]}>Undo</Text>
                   </TouchableOpacity>
                 </View>
               ) : editMemberShowEmailField ? (
@@ -534,8 +534,8 @@ export default function CircleDetailScreen() {
                   onPress={() => setEditMemberShowEmailField(true)}
                   style={styles.linkEmailBtn}
                 >
-                  <Feather name="link" size={13} color={colors.primary} />
-                  <Text style={[styles.linkEmailText, { color: colors.primary }]}>
+                  <Feather name="link" size={13} color={colors.primaryText} />
+                  <Text style={[styles.linkEmailText, { color: colors.primaryText }]}>
                     Link to TallyBill account (optional)
                   </Text>
                 </TouchableOpacity>
@@ -628,8 +628,8 @@ export default function CircleDetailScreen() {
                   onPress={() => setShowEmailField(true)}
                   style={styles.linkEmailBtn}
                 >
-                  <Feather name="link" size={13} color={colors.primary} />
-                  <Text style={[styles.linkEmailText, { color: colors.primary }]}>
+                  <Feather name="link" size={13} color={colors.primaryText} />
+                  <Text style={[styles.linkEmailText, { color: colors.primaryText }]}>
                     Link to TallyBill account (optional)
                   </Text>
                 </TouchableOpacity>

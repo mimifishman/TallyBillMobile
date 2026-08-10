@@ -65,28 +65,34 @@ interface GuestBillItem extends GuestBillRef {
 
 function DeleteAction({ onDelete }: { onDelete: () => void }) {
   const colors = useColors();
+  // `destructive` is a light red in dark mode, so white fails on it (2.8:1).
+  // `destructiveForeground` is themed to stay legible on the fill.
+  const fg = colors.destructiveForeground;
   return (
     <TouchableOpacity
       style={[styles.deleteAction, { backgroundColor: colors.destructive }]}
       onPress={onDelete}
       activeOpacity={0.85}
     >
-      <Feather name="trash-2" size={22} color="#fff" />
-      <Text style={styles.deleteActionText}>Delete</Text>
+      <Feather name="trash-2" size={22} color={fg} />
+      <Text style={[styles.deleteActionText, { color: fg }]}>Delete</Text>
     </TouchableOpacity>
   );
 }
 
 function RemoveAction({ onRemove }: { onRemove: () => void }) {
   const colors = useColors();
+  // Filled with a mid-grey that white only clears in light mode, so invert
+  // against the page background instead — legible in both themes.
+  const fg = colors.background;
   return (
     <TouchableOpacity
       style={[styles.deleteAction, { backgroundColor: colors.mutedForeground ?? "#6B7280" }]}
       onPress={onRemove}
       activeOpacity={0.85}
     >
-      <Feather name="log-out" size={22} color="#fff" />
-      <Text style={styles.deleteActionText}>Remove</Text>
+      <Feather name="log-out" size={22} color={fg} />
+      <Text style={[styles.deleteActionText, { color: fg }]}>Remove</Text>
     </TouchableOpacity>
   );
 }
@@ -458,7 +464,7 @@ export default function BillsScreen() {
               if (isGuest_) void loadGuestBills(true);
               else refetch();
             }}
-            tintColor={colors.primary}
+            tintColor={colors.primaryText}
           />
         }
         scrollEnabled={bills.length > 0}

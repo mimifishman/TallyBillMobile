@@ -58,7 +58,7 @@ export default function DeepLinkBillScreen() {
         </>
       ) : (
         <>
-          <ActivityIndicator color={colors.primary} size="large" />
+          <ActivityIndicator color={colors.primaryText} size="large" />
           <Text style={[styles.sub, { color: colors.mutedForeground, marginTop: 16 }]}>
             Opening bill {joinCode}…
           </Text>

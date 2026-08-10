@@ -58,7 +58,7 @@ export default function SSOCallback() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ActivityIndicator size="large" color={colors.primary} />
+      <ActivityIndicator size="large" color={colors.primaryText} />
     </View>
   );
 }
