@@ -28,7 +28,7 @@ import {
   type Circle,
 } from "@workspace/api-client-react";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
-import { getInitials } from "@/utils/initials";
+import { getInitials } from "@workspace/utils";
 
 export default function CircleDetailScreen() {
   const colors = useColors();

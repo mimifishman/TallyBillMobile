@@ -20,7 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
-import { getInitials } from "@/utils/initials";
+import { getInitials } from "@workspace/utils";
 
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 

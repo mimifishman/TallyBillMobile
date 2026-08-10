@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import colors_data from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
 import { FONT_SIZE } from "@/constants/styles";
-import { getInitials } from "@/utils/initials";
+import { getInitials } from "@workspace/utils";
 
 interface PersonBadgeProps {
   name: string;

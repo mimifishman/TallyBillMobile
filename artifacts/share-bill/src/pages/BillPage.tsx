@@ -22,7 +22,7 @@ import {
   type UpdateBillRequest,
 } from "@workspace/api-client-react";
 import { CURRENCY_OPTIONS, formatMoney, PEOPLE_COLORS } from "@/lib/currency";
-import { getInitials } from "@/lib/initials";
+import { getInitials } from "@workspace/utils";
 
 function num(v: unknown): number {
   return typeof v === "number" ? v : parseFloat(String(v ?? 0)) || 0;
