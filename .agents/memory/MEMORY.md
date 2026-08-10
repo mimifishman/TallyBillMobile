@@ -1,3 +1,4 @@
 - [Bill table swap bug](bill-table-swap.md) — bill_users/bill_members can silently end up swapped in DB; migration 0004 was a no-op when both tables already existed.
 - [Clerk Expo SSO](clerk-expo-sso.md) — keep @clerk/expo >= 4.0.0; 3.5–3.7 crash on Android in Expo Go ("Cannot find native module 'ClerkExpo'"); <3.4 breaks useSSO under Metro in pnpm monorepos.
+- [React version pin](react-version-pin.md) — keep react/react-dom on a 19.1.x patch >=19.1.4 to satisfy Clerk peers; the Expo "expected 19.1.0" startup warning is cosmetic.
 - [Clerk auth testing](clerk-testing.md) — Turnstile captcha blocks automated sign-up tests (spinner hangs); pre-create users via Backend API and test sign-in instead; +clerk_test code is 424242.

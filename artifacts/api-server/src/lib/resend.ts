@@ -18,7 +18,7 @@ async function getResendClient(): Promise<{ client: Resend; fromEmail: string }>
         },
       }
     )
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<{ items?: { settings?: { api_key?: string; from_email?: string } }[] }>)
       .then((d) => d.items?.[0]);
 
     if (data?.settings?.api_key) {

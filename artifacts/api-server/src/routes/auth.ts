@@ -133,8 +133,10 @@ router.post("/forgot-password", async (req, res) => {
         headers: { Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}` },
       });
       if (clerkRes.ok) {
-        const clerkUser = await clerkRes.json();
-        if (clerkUser.external_accounts?.length > 0) {
+        const clerkUser = (await clerkRes.json()) as {
+          external_accounts?: { provider: string }[];
+        };
+        if (clerkUser.external_accounts && clerkUser.external_accounts.length > 0) {
           const provider = clerkUser.external_accounts.some((a: { provider: string }) =>
             a.provider === "oauth_apple"
           ) ? "Apple" : "Google";
