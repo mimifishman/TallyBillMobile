@@ -55,11 +55,13 @@ catalog:
   drizzle-orm: ^0.45.2
   framer-motion: ^12.23.24
   lucide-react: ^0.545.0
-  # Pinned to a 19.1.x patch: expo/react-native 0.81 require react 19.1,
-  # and @clerk/* peers require ~19.1.4 or newer
+  # WEB-ONLY pin: @clerk/* peers (clerk-react, shared) prefer ~19.1.4+, so web
+  # apps use 19.1.9. The mobile app must NOT use this entry — React Native
+  # 0.81's bundled react-native-renderer is built against react 19.1.0 exactly
+  # and React crashes at startup ("Incompatible React versions" red screen in
+  # Expo Go) on any other patch. Mobile uses the `mobile` named catalog below.
   react: 19.1.9
-  # Pinned to a 19.1.x patch: expo/react-native 0.81 require react 19.1,
-  # and @clerk/* peers require ~19.1.4 or newer
+  # See comment on `react` above — web-only; mobile uses the `mobile` catalog.
   react-dom: 19.1.9
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
@@ -68,7 +70,32 @@ catalog:
   wouter: ^3.3.5
   zod: ^3.25.76
 
+catalogs:
+  # MOBILE-ONLY React pin. React Native 0.81 ships react-native-renderer
+  # 19.1.0 and React enforces an EXACT version match at runtime — any other
+  # react patch (e.g. 19.1.9) crashes Expo Go at startup with an
+  # "Incompatible React versions" red screen. @clerk/* peer warnings about
+  # preferring react ~19.1.4+ are install-time noise only (see
+  # peerDependencyRules below) and must NEVER be "fixed" by bumping this pin.
+  mobile:
+    react: 19.1.0
+    react-dom: 19.1.0
+
 autoInstallPeers: false
+
+peerDependencyRules:
+  # The mobile app pins react/react-dom to exactly 19.1.0 because React
+  # Native 0.81's renderer requires an exact runtime match (see the `mobile`
+  # named catalog above). @clerk/* peers declare ~19.1.4+, which would emit
+  # unmet-peer warnings; allow 19.1.x explicitly so installs stay quiet.
+  # Do NOT resolve any future @clerk peer warning by moving mobile react off
+  # 19.1.0 — that reintroduces the Expo Go startup crash.
+  allowedVersions:
+    '@clerk/expo>react': '19'
+    '@clerk/react>react': '19'
+    '@clerk/react>react-dom': '19'
+    '@clerk/shared>react': '19'
+    '@clerk/shared>react-dom': '19'
 
 onlyBuiltDependencies:
   - '@swc/core'
