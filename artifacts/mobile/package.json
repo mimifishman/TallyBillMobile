@@ -62,6 +62,7 @@
     "@react-native-community/datetimepicker": "8.4.4",
     "expo-camera": "^17.0.10",
     "expo-clipboard": "^8.0.8",
+    "expo-file-system": "~19.0.23",
     "expo-image-manipulator": "^55.0.16",
     "expo-secure-store": "^15.0.8"
   }

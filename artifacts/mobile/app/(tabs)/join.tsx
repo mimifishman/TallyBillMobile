@@ -73,7 +73,9 @@ export default function JoinScreen() {
           {code.map((char, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => {
+                inputRefs.current[index] = ref;
+              }}
               style={[
                 styles.cell,
                 {
