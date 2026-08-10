@@ -1108,7 +1108,7 @@ function LineRow({
                 <button
                   key={u.id}
                   onClick={() => onToggle(u.id)}
-                  className="relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+                  className="relative w-8 h-8 rounded-full flex items-center justify-center text-[11px] leading-none font-bold tracking-tight border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
                   style={{
                     backgroundColor: on ? u.color : "transparent",
                     borderColor: u.color,

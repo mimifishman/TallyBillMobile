@@ -34,8 +34,19 @@ export function PersonBadge({
 }: PersonBadgeProps) {
   const themeColors = useColors();
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
-  const fontSize = size === "sm" ? 11 : size === "lg" ? 16 : 14;
   const initial = getInitials(name);
+  // Two-letter pairs need a slightly smaller size to fit the small/medium circles.
+  const twoLetters = initial.length > 1;
+  const fontSize =
+    size === "sm"
+      ? twoLetters
+        ? 10
+        : 11
+      : size === "lg"
+        ? 16
+        : twoLetters
+          ? 13
+          : 14;
   const [start, end] = gradientFor(color);
   const isUnselected = selected === false;
 
@@ -54,7 +65,14 @@ export function PersonBadge({
         },
       ]}
     >
-      <Text style={[styles.initial, { fontSize, color }]}>{initial}</Text>
+      <Text
+        style={[styles.initial, { fontSize, color }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={1.2}
+      >
+        {initial}
+      </Text>
     </View>
   ) : (
     <LinearGradient
@@ -67,7 +85,14 @@ export function PersonBadge({
         { width: dim, height: dim, borderRadius: dim / 2 },
       ]}
     >
-      <Text style={[styles.initial, { fontSize, color: "#fff" }]}>{initial}</Text>
+      <Text
+        style={[styles.initial, { fontSize, color: "#fff" }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={1.2}
+      >
+        {initial}
+      </Text>
     </LinearGradient>
   );
 
@@ -106,6 +131,8 @@ const styles = StyleSheet.create({
   initial: {
     fontFamily: "Inter_700Bold",
     lineHeight: undefined,
+    letterSpacing: -0.3,
+    textAlign: "center",
   },
   withName: {
     alignItems: "center",
