@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
-import { useBulkCreateBillLines } from "@workspace/api-client-react";
+import {
+  useBulkCreateBillLines,
+  useGetBill,
+  getGetBillQueryKey,
+} from "@workspace/api-client-react";
+import { formatMoney } from "@/utils/currency";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useScan } from "@/context/ScanContext";
 import { LanguagePicker } from "@/components/LanguagePicker";
@@ -132,6 +137,19 @@ export default function ScanScreen() {
   const [showOriginals, setShowOriginals] = useState(true);
 
   const hasTranslations = scan.items.some((i) => i.translatedDescription != null);
+
+  const { data: billData } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
+
+  const { selectedCount, selectedTotal } = useMemo(() => {
+    let count = 0;
+    let total = 0;
+    for (const item of scan.items) {
+      if (!item.selected) continue;
+      count += 1;
+      total += Number.isFinite(item.total) ? item.total : 0;
+    }
+    return { selectedCount: count, selectedTotal: total };
+  }, [scan.items]);
 
   useEffect(() => {
     AsyncStorage.getItem(PREF_LANGUAGE_KEY).then((val) => {
@@ -334,10 +352,12 @@ export default function ScanScreen() {
           </TouchableOpacity>
         </View>
       ) : (
+        <>
         <FlatList
           data={scan.items}
           keyExtractor={(_, i) => String(i)}
-          contentContainerStyle={[styles.reviewList, { paddingBottom: insets.bottom + 20 }]}
+          style={styles.flex}
+          contentContainerStyle={[styles.reviewList, { paddingBottom: SPACING.xl }]}
           ListHeaderComponent={
             <View style={styles.reviewHeader}>
               <Text style={[styles.reviewHint, { color: colors.mutedForeground }]}>
@@ -434,6 +454,32 @@ export default function ScanScreen() {
             );
           }}
         />
+
+        <View
+          style={[
+            styles.summaryBar,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              paddingBottom: insets.bottom + SPACING.md,
+            },
+          ]}
+        >
+          <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
+            {selectedCount === 0
+              ? "No items selected"
+              : `${selectedCount} ${selectedCount === 1 ? "item" : "items"} selected`}
+          </Text>
+          <Text
+            style={[
+              styles.summaryTotal,
+              { color: selectedCount === 0 ? colors.mutedForeground : colors.foreground },
+            ]}
+          >
+            {formatMoney(selectedTotal, billData?.bill.currency)}
+          </Text>
+        </View>
+        </>
       )}
 
       <LanguagePicker
@@ -540,6 +586,18 @@ const styles = StyleSheet.create({
   reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 }, // TODO: one-off
   priceHitArea: { padding: SPACING.xs },
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
+
+  summaryBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+  },
+  summaryLabel: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_500Medium" },
+  summaryTotal: { fontSize: FONT_SIZE.title, fontFamily: "Inter_700Bold" },
 
   failedScanContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 36, gap: 16 },
   failedScanIconBox: { width: 96, height: 96, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 4 },

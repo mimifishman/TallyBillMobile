@@ -1,4 +1,5 @@
 - [Bill table swap bug](bill-table-swap.md) — bill_users/bill_members can silently end up swapped in DB; migration 0004 was a no-op when both tables already existed.
 - [Clerk Expo SSO](clerk-expo-sso.md) — keep @clerk/expo >= 4.0.0; 3.5–3.7 crash on Android in Expo Go ("Cannot find native module 'ClerkExpo'"); <3.4 breaks useSSO under Metro in pnpm monorepos.
 - [React version pins](react-version-pin.md) — mobile react must EXACTLY equal RN's renderer version (19.1.0 on RN 0.81) or Expo Go hard-crashes; web stays 19.1.9 for Clerk. Never bump mobile react to fix Clerk peer warnings.
+- [Previewing the scan Review step](mobile-scan-review-preview.md) — the review UI is unreachable without a camera; seed ScanProvider with `status: "ready"` + fake items to screenshot it.
 - [Clerk auth testing](clerk-testing.md) — Turnstile captcha blocks automated sign-up tests (spinner hangs); pre-create users via Backend API and test sign-in instead; +clerk_test code is 424242.
