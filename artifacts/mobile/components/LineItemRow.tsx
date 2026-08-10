@@ -169,7 +169,7 @@ export function LineItemRow({
               placeholderTextColor={colors.mutedForeground}
             />
             {quantity > 1 && (
-              <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primary }]} accessibilityLabel="Split item quantity">
+              <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primaryText }]} accessibilityLabel="Split item quantity">
                 <Feather name="scissors" size={13} color={colors.primaryText} />
               </TouchableOpacity>
             )}
@@ -204,7 +204,7 @@ export function LineItemRow({
             </Text>
           </View>
           {quantity > 1 && (
-            <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primary }]} accessibilityLabel="Split item quantity">
+            <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primaryText }]} accessibilityLabel="Split item quantity">
               <Feather name="scissors" size={13} color={colors.primaryText} />
               <Text style={[styles.splitBtnText, { color: colors.primaryText }]}>Split</Text>
             </TouchableOpacity>

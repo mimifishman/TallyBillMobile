@@ -443,8 +443,8 @@ export default function ScanScreen() {
               activeOpacity={0.7}
               style={[styles.addItemRow, { borderColor: colors.border }]}
             >
-              <Feather name="plus" size={16} color={colors.primary} />
-              <Text style={[styles.addItemText, { color: colors.primary }]}>Add item</Text>
+              <Feather name="plus" size={16} color={colors.primaryText} />
+              <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
             </TouchableOpacity>
           }
           renderItem={({ item, index }) => {
@@ -477,7 +477,7 @@ export default function ScanScreen() {
                 <View style={styles.reviewItemMiddle}>
                   {isEditingQuantity ? (
                     <AutoFocusTextInput
-                      style={[styles.quantityInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                      style={[styles.quantityInput, { color: colors.foreground, borderBottomColor: colors.primaryText }]}
                       value={quantityDraft}
                       onChangeText={setQuantityDraft}
                       onBlur={() => commitQuantityEdit(index)}
@@ -504,7 +504,7 @@ export default function ScanScreen() {
                   )}
                   {isEditing ? (
                     <AutoFocusTextInput
-                      style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                      style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primaryText }]}
                       value={item.description}
                       onChangeText={(text) =>
                         scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text, translatedDescription: undefined } : it))
@@ -540,7 +540,7 @@ export default function ScanScreen() {
 
                 {isEditingPrice ? (
                   <AutoFocusTextInput
-                    style={[styles.reviewItemPriceInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                    style={[styles.reviewItemPriceInput, { color: colors.foreground, borderBottomColor: colors.primaryText }]}
                     value={priceDraft}
                     onChangeText={setPriceDraft}
                     onBlur={() => commitPriceEdit(index)}
