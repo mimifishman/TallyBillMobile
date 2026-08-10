@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { isOAuthCancelled, logOAuthError, oauthFailureMessage } from "@/utils/clerkErrors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
@@ -143,28 +144,21 @@ export default function LoginScreen() {
 
   const handleOAuth = useCallback(
     async (strategy: "oauth_google" | "oauth_apple") => {
+      const provider = strategy === "oauth_google" ? "Google" : "Apple";
+      setPasswordError("");
       try {
         const { createdSessionId, setActive } = await startSSOFlow({
           strategy,
           redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }),
         });
+        // No session means the user closed the browser without finishing.
         if (!createdSessionId || !setActive) return;
-        await setActive({ session: createdSessionId, navigate: async () => {} });
+        await setActive({ session: createdSessionId });
         router.replace("/");
       } catch (err: unknown) {
-        if (__DEV__) console.warn("[OAuth sign-in error]", err);
-        const msg = (() => {
-          if (err instanceof Error) return err.message.toLowerCase();
-          if (typeof err === "object" && err !== null) {
-            const e = err as Record<string, unknown>;
-            if (typeof e["message"] === "string") return e["message"].toLowerCase();
-          }
-          return "";
-        })();
-        const cancelled = msg.includes("cancel") || msg.includes("dismiss") || msg === "";
-        if (cancelled) return;
-        const provider = strategy === "oauth_google" ? "Google" : "Apple";
-        setPasswordError(`Could not sign in with ${provider}. Check your internet connection and try again.`);
+        logOAuthError("OAuth sign-in error", err);
+        if (isOAuthCancelled(err)) return;
+        setPasswordError(oauthFailureMessage(provider, "in", err));
       }
     },
     [startSSOFlow],

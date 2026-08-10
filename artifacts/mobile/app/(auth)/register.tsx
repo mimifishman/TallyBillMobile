@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { extractErrorCode, extractErrorMessage, isOAuthCancelled, logOAuthError, oauthFailureMessage } from "@/utils/clerkErrors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
@@ -29,32 +30,6 @@ function useWarmUpBrowser() {
     void WebBrowser.warmUpAsync();
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
-}
-
-function extractErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null) {
-    const e = err as Record<string, unknown>;
-    if (typeof e["message"] === "string") return e["message"];
-    const errs = e["errors"];
-    if (Array.isArray(errs) && errs.length > 0) {
-      const first = errs[0] as Record<string, unknown>;
-      return typeof first["longMessage"] === "string" ? first["longMessage"] : typeof first["message"] === "string" ? first["message"] : "";
-    }
-  }
-  return "";
-}
-
-function extractErrorCode(err: unknown): string {
-  if (typeof err === "object" && err !== null) {
-    const e = err as Record<string, unknown>;
-    const errs = e["errors"];
-    if (Array.isArray(errs) && errs.length > 0) {
-      const first = errs[0] as Record<string, unknown>;
-      return typeof first["code"] === "string" ? first["code"] : "";
-    }
-  }
-  return "";
 }
 
 function isDuplicateEmail(err: unknown): boolean {
@@ -158,18 +133,21 @@ export default function RegisterScreen() {
 
   const handleOAuth = useCallback(
     async (strategy: "oauth_google" | "oauth_apple") => {
+      const provider = strategy === "oauth_google" ? "Google" : "Apple";
+      setEmailError("");
       try {
         const { createdSessionId, setActive, signUp: ssoSignUp } = await startSSOFlow({ strategy, redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }) });
+        // No session means the user closed the browser without finishing.
         if (!createdSessionId || !setActive) return;
         const isNewUser = ssoSignUp != null && ssoSignUp.status === "complete";
-        await setActive({ session: createdSessionId, navigate: async ({ session }) => { if (session?.currentTask) return; if (isNewUser) router.replace("/(auth)/name"); else router.replace("/"); } });
+        await setActive({ session: createdSessionId });
+        if (isNewUser) router.replace("/(auth)/name");
+        else router.replace("/");
       } catch (err: unknown) {
-        if (__DEV__) console.warn("[OAuth sign-up error]", err);
-        const msg = extractErrorMessage(err).toLowerCase();
-        const cancelled = msg.includes("cancel") || msg.includes("dismiss") || msg.includes("user closed") || msg === "";
-        if (cancelled) return;
+        logOAuthError("OAuth sign-up error", err);
+        if (isOAuthCancelled(err)) return;
         if (isDuplicateEmail(err)) showDuplicateAlert();
-        else { const provider = strategy === "oauth_google" ? "Google" : "Apple"; setEmailError(`Could not sign up with ${provider}. Check your internet connection and try again.`); }
+        else setEmailError(oauthFailureMessage(provider, "up", err));
       }
     },
     [startSSOFlow],

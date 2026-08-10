@@ -1,1 +1,3 @@
 - [Bill table swap bug](bill-table-swap.md) — bill_users/bill_members can silently end up swapped in DB; migration 0004 was a no-op when both tables already existed.
+- [Clerk Expo SSO](clerk-expo-sso.md) — keep @clerk/expo >= 3.4.0; older useSSO dynamic import fails under Metro in pnpm monorepos, making OAuth fail instantly with a misleading error.
+- [Clerk auth testing](clerk-testing.md) — Turnstile captcha blocks automated sign-up tests (spinner hangs); pre-create users via Backend API and test sign-in instead; +clerk_test code is 424242.
