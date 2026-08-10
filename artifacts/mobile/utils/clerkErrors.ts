@@ -94,6 +94,26 @@ function looksLikeNetworkError(err: unknown): boolean {
 }
 
 /**
+ * Builds a user-facing message for an OAuth flow that finished in the
+ * browser but produced no session — e.g. the account needs an extra
+ * verification step, or account setup couldn't be completed.
+ */
+export function oauthIncompleteMessage(
+  provider: "Google" | "Apple",
+  action: "in" | "up",
+  signInStatus?: string | null,
+  signUpStatus?: string | null,
+): string {
+  if (signInStatus === "needs_second_factor" || signInStatus === "needs_client_trust") {
+    return `Your ${provider} account needs an extra verification step that couldn't be completed here. Please sign in with your email and password instead.`;
+  }
+  if (signUpStatus === "missing_requirements") {
+    return `Your ${provider} account was verified, but we couldn't finish setting up your TallyBill account. Please try again or sign ${action === "in" ? "in" : "up"} with email.`;
+  }
+  return `Could not sign ${action === "in" ? "in" : "up"} with ${provider}. Please try again.`;
+}
+
+/**
  * Builds an honest, user-facing message for a failed OAuth flow based on the
  * actual error, instead of blaming the internet connection for everything.
  */

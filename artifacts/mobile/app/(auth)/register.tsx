@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { extractErrorCode, extractErrorMessage, isOAuthCancelled, logOAuthError, oauthFailureMessage } from "@/utils/clerkErrors";
+import { extractErrorCode, extractErrorMessage, isOAuthCancelled, logOAuthError, oauthFailureMessage, oauthIncompleteMessage } from "@/utils/clerkErrors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
@@ -136,13 +136,27 @@ export default function RegisterScreen() {
       const provider = strategy === "oauth_google" ? "Google" : "Apple";
       setEmailError("");
       try {
-        const { createdSessionId, setActive, signUp: ssoSignUp } = await startSSOFlow({ strategy, redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }) });
-        // No session means the user closed the browser without finishing.
-        if (!createdSessionId || !setActive) return;
-        const isNewUser = ssoSignUp != null && ssoSignUp.status === "complete";
-        await setActive({ session: createdSessionId });
-        if (isNewUser) router.replace("/(auth)/name");
-        else router.replace("/");
+        const {
+          createdSessionId,
+          setActive,
+          signIn: ssoSignIn,
+          signUp: ssoSignUp,
+          authSessionResult,
+        } = await startSSOFlow({ strategy, redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }) });
+        if (createdSessionId && setActive) {
+          const isNewUser = ssoSignUp != null && ssoSignUp.status === "complete";
+          await setActive({ session: createdSessionId });
+          if (isNewUser) router.replace("/(auth)/name");
+          else router.replace("/");
+          return;
+        }
+        // The browser was closed/cancelled before finishing — stay silent.
+        if (!authSessionResult || authSessionResult.type !== "success") return;
+        // The browser flow succeeded but no session was created — surface it.
+        logOAuthError("OAuth sign-up incomplete", {
+          message: `signIn.status=${ssoSignIn?.status ?? "unknown"} signUp.status=${ssoSignUp?.status ?? "unknown"}`,
+        });
+        setEmailError(oauthIncompleteMessage(provider, "up", ssoSignIn?.status, ssoSignUp?.status));
       } catch (err: unknown) {
         logOAuthError("OAuth sign-up error", err);
         if (isOAuthCancelled(err)) return;

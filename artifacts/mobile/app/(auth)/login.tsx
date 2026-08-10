@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { isOAuthCancelled, logOAuthError, oauthFailureMessage } from "@/utils/clerkErrors";
+import { isOAuthCancelled, logOAuthError, oauthFailureMessage, oauthIncompleteMessage } from "@/utils/clerkErrors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
@@ -147,14 +147,30 @@ export default function LoginScreen() {
       const provider = strategy === "oauth_google" ? "Google" : "Apple";
       setPasswordError("");
       try {
-        const { createdSessionId, setActive } = await startSSOFlow({
+        const {
+          createdSessionId,
+          setActive,
+          signIn: ssoSignIn,
+          signUp: ssoSignUp,
+          authSessionResult,
+        } = await startSSOFlow({
           strategy,
           redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }),
         });
-        // No session means the user closed the browser without finishing.
-        if (!createdSessionId || !setActive) return;
-        await setActive({ session: createdSessionId });
-        router.replace("/");
+        if (createdSessionId && setActive) {
+          await setActive({ session: createdSessionId });
+          router.replace("/");
+          return;
+        }
+        // The browser was closed/cancelled before finishing — stay silent.
+        if (!authSessionResult || authSessionResult.type !== "success") return;
+        // The browser flow succeeded but no session was created (e.g. an
+        // extra verification step or unfinished account setup). Tell the
+        // user instead of leaving them stranded in silence.
+        logOAuthError("OAuth sign-in incomplete", {
+          message: `signIn.status=${ssoSignIn?.status ?? "unknown"} signUp.status=${ssoSignUp?.status ?? "unknown"}`,
+        });
+        setPasswordError(oauthIncompleteMessage(provider, "in", ssoSignIn?.status, ssoSignUp?.status));
       } catch (err: unknown) {
         logOAuthError("OAuth sign-in error", err);
         if (isOAuthCancelled(err)) return;
