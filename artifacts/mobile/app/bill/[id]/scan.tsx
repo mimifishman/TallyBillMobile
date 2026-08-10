@@ -134,6 +134,8 @@ export default function ScanScreen() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(null);
   const [priceDraft, setPriceDraft] = useState("");
+  const [editingQuantityIndex, setEditingQuantityIndex] = useState<number | null>(null);
+  const [quantityDraft, setQuantityDraft] = useState("");
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
   const [showOriginals, setShowOriginals] = useState(true);
@@ -220,6 +222,25 @@ export default function ScanScreen() {
     }
     setEditingPriceIndex(null);
     setPriceDraft("");
+  };
+
+  const commitQuantityEdit = (index: number) => {
+    const parsed = /^\d+$/.test(quantityDraft.trim()) ? Number(quantityDraft.trim()) : NaN;
+    if (Number.isInteger(parsed) && parsed >= 1) {
+      scan.setItems((prev) =>
+        prev.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                quantity: parsed,
+                unitPrice: Math.round((item.total / parsed) * 100) / 100,
+              }
+            : item,
+        ),
+      );
+    }
+    setEditingQuantityIndex(null);
+    setQuantityDraft("");
   };
 
   const toggleItem = (index: number) => {
@@ -402,6 +423,7 @@ export default function ScanScreen() {
           renderItem={({ item, index }) => {
             const isEditing = editingIndex === index;
             const isEditingPrice = editingPriceIndex === index;
+            const isEditingQuantity = editingQuantityIndex === index;
             const displayName = item.translatedDescription ?? item.description;
             const originalName = item.translatedDescription ? item.description : null;
             return (
@@ -426,10 +448,32 @@ export default function ScanScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.reviewItemMiddle}>
-                  {item.quantity > 1 && (
-                    <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
-                      ×{item.quantity}
-                    </Text>
+                  {isEditingQuantity ? (
+                    <AutoFocusTextInput
+                      style={[styles.quantityInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                      value={quantityDraft}
+                      onChangeText={setQuantityDraft}
+                      onBlur={() => commitQuantityEdit(index)}
+                      autoFocus
+                      keyboardType="number-pad"
+                      returnKeyType="done"
+                      onSubmitEditing={() => commitQuantityEdit(index)}
+                      selectTextOnFocus
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (isEditing) setEditingIndex(null);
+                        setQuantityDraft(String(item.quantity));
+                        setEditingQuantityIndex(index);
+                      }}
+                      activeOpacity={0.6}
+                      style={styles.quantityHitArea}
+                    >
+                      <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
+                        ×{item.quantity}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                   {isEditing ? (
                     <AutoFocusTextInput
@@ -620,6 +664,8 @@ const styles = StyleSheet.create({
   checkbox: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   reviewItemMiddle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 },
   quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 }, // TODO: one-off
+  quantityHitArea: { paddingVertical: 4 }, // TODO: one-off
+  quantityInput: { fontSize: 12, fontFamily: "Inter_600SemiBold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 28 }, // TODO: one-off
   reviewItemNameBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   reviewItemNameCol: { flex: 1, gap: 2 },
   reviewItemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
