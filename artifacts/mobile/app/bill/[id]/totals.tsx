@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -103,6 +104,12 @@ export default function TotalsScreen() {
     return Number.isInteger(rounded) ? `${rounded}` : `${rounded}`;
   };
 
+  // Always point at the production domain — this link is for recipients,
+  // not the app itself, so it must resolve regardless of dev/prod.
+  const shareUrl = billData?.bill.joinCode
+    ? `https://tallybill.app/b/${billData.bill.joinCode}`
+    : null;
+
   const handleShareTotals = async () => {
     if (!totals || totals.perPerson.length === 0) return;
     const title = billData?.bill.title ?? "Bill";
@@ -111,9 +118,18 @@ export default function TotalsScreen() {
       totals.unsplitLines.length > 0
         ? `\n\n⚠️ ${totals.unsplitLines.length} item${totals.unsplitLines.length === 1 ? "" : "s"} not yet assigned.`
         : "";
-    const message = `${title}\nTotal: ${fmt(totals.grandTotal)}\n\nWhat each person owes:\n${rows}${unsplitNote}\n\nSplit with TallyBill`;
+    // iOS renders `url` as its own share-sheet attachment, so repeating it in
+    // the body would duplicate it. Android ignores `url`, so it must be
+    // inlined there or the link is lost entirely.
+    const linkLine =
+      shareUrl && Platform.OS !== "ios" ? `\n\nSee the full bill: ${shareUrl}` : "";
+    const message = `${title}\nTotal: ${fmt(totals.grandTotal)}\n\nWhat each person owes:\n${rows}${unsplitNote}${linkLine}\n\nSplit with TallyBill`;
     try {
-      await Share.share({ message, title });
+      await Share.share({
+        message,
+        title,
+        ...(shareUrl ? { url: shareUrl } : {}),
+      });
     } catch {
       // user cancelled
     }
