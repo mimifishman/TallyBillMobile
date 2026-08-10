@@ -121,7 +121,7 @@ function PulsingFab({
   return (
     <Animated.View entering={ZoomIn.springify().damping(15)} style={[styles.fabWrapper, { bottom }]}>
       <PressableScale
-        style={[styles.fab, { backgroundColor: bg }, animStyle]}
+        style={[styles.fab, { backgroundColor: bg, shadowColor: bg }, animStyle]}
         onPress={onPress}
       >
         <Feather name="plus" size={28} color="#fff" />
@@ -603,7 +603,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,

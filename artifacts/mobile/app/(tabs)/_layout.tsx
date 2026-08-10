@@ -8,7 +8,6 @@ import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import Animated, { FadeIn } from "react-native-reanimated";
 
 function NativeTabLayout() {
   const { user } = useAuth();
@@ -36,14 +35,6 @@ function NativeTabLayout() {
   );
 }
 
-function ActiveDot({ color }: { color: string }) {
-  return (
-    <Animated.View entering={FadeIn} style={styles.dotWrap} pointerEvents="none">
-      <View style={[styles.dot, { backgroundColor: color }]} />
-    </Animated.View>
-  );
-}
-
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
@@ -58,7 +49,11 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: true,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: "Inter_600SemiBold",
+        },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.background,
@@ -100,7 +95,6 @@ function ClassicTabLayout() {
                   color={color}
                 />
               )}
-              {focused ? <ActiveDot color={colors.primary} /> : null}
             </View>
           ),
         }}
@@ -124,7 +118,6 @@ function ClassicTabLayout() {
                   color={color}
                 />
               )}
-              {focused ? <ActiveDot color={colors.primary} /> : null}
             </View>
           ),
         }}
@@ -149,7 +142,6 @@ function ClassicTabLayout() {
                   color={color}
                 />
               )}
-              {focused ? <ActiveDot color={colors.primary} /> : null}
             </View>
           ),
         }}
@@ -173,7 +165,6 @@ function ClassicTabLayout() {
                   color={color}
                 />
               )}
-              {focused ? <ActiveDot color={colors.primary} /> : null}
             </View>
           ),
         }}
@@ -186,18 +177,6 @@ const styles = StyleSheet.create({
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  dotWrap: {
-    position: "absolute",
-    bottom: -12,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  dot: {
-    width: 28,
-    height: 4,
-    borderRadius: 2,
   },
 });
 

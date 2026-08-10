@@ -3,22 +3,17 @@ import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  ActivityIndicator,
   Platform,
   Share,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useGetBill, useJoinBill, getGetBillQueryKey } from "@workspace/api-client-react";
+import { useGetBill, getGetBillQueryKey } from "@workspace/api-client-react";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "expo-router";
 import { rememberBillCode } from "@/lib/billCodeStore";
 
 export default function ShareScreen() {
@@ -26,9 +21,6 @@ export default function ShareScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const billId = parseInt(id!);
-  const { user } = useAuth();
-  const nav = useRouter();
-  const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -47,17 +39,6 @@ export default function ShareScreen() {
   // recipients, not the app itself, so it must always point to tallybill.app
   // regardless of whether the app is running in dev or prod.
   const shareUrl = bill?.joinCode ? `https://tallybill.app/b/${bill.joinCode}` : null;
-
-  const joinMutation = useJoinBill({
-    mutation: {
-      onSuccess: (joinedBill) => {
-        nav.push(`/bill/${joinedBill.id}`);
-      },
-      onError: (err: Error) => {
-        Alert.alert("Error", err.message || "Could not join bill. Check the code and try again.");
-      },
-    },
-  });
 
   const handleCopy = async () => {
     if (!bill?.joinCode) return;
@@ -88,28 +69,17 @@ export default function ShareScreen() {
     }
   };
 
-  const handleJoin = () => {
-    if (!joinCode.trim()) {
-      Alert.alert("Error", "Please enter a join code");
-      return;
-    }
-    if (!user) {
-      Alert.alert("Sign in required", "You need to sign in to join a bill", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign In", onPress: () => router.push("/(auth)/login") },
-      ]);
-      return;
-    }
-    joinMutation.mutate({ data: { joinCode: joinCode.toUpperCase() } });
-  };
-
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => (router.canGoBack() ? router.back() : router.replace(`/bill/${billId}`))}
+          style={styles.backBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Share & Join</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Share Bill</Text>
       </View>
 
       <View style={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
@@ -120,7 +90,7 @@ export default function ShareScreen() {
               <Text style={[styles.codeLabel, { color: colors.mutedForeground }]}>Join code</Text>
               <Text style={[styles.code, { color: colors.foreground }]}>{bill.joinCode}</Text>
               <Text style={[styles.codeSub, { color: colors.mutedForeground }]}>
-                Share this code with others so they can join and collaborate on "{bill.title}"
+                Share this code so others can join and collaborate on "{bill.title}"
               </Text>
               <TouchableOpacity
                 style={[styles.copyBtn, { backgroundColor: copied ? colors.primary : colors.muted }]}
@@ -166,47 +136,15 @@ export default function ShareScreen() {
                 </View>
               </View>
             )}
+
+            <View style={[styles.tipRow, { backgroundColor: colors.primarySoft }]}>
+              <Feather name="info" size={14} color={colors.primary} />
+              <Text style={[styles.tipText, { color: colors.primaryDark }]}>
+                To join a different bill, use the Join tab.
+              </Text>
+            </View>
           </View>
         )}
-
-        <View style={[styles.divider, { borderTopColor: colors.border }]} />
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>JOIN ANOTHER BILL</Text>
-          <View style={[styles.joinCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.joinLabel, { color: colors.foreground }]}>Enter join code</Text>
-            <Text style={[styles.joinSub, { color: colors.mutedForeground }]}>
-              {user ? "Enter the 6-character code from the bill owner" : "You need to sign in to join a bill"}
-            </Text>
-            <View style={styles.joinRow}>
-              <TextInput
-                style={[styles.joinInput, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder="ABC123"
-                placeholderTextColor={colors.mutedForeground}
-                value={joinCode}
-                onChangeText={setJoinCode}
-                autoCapitalize="characters"
-                maxLength={6}
-              />
-              <TouchableOpacity
-                style={[styles.joinBtn, { backgroundColor: colors.primary }]}
-                onPress={handleJoin}
-                disabled={joinMutation.isPending}
-              >
-                {joinMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.joinBtnText}>Join</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-            {!user && (
-              <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-                <Text style={[styles.signInLink, { color: colors.primary }]}>Sign in to join bills</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -248,23 +186,13 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   linkBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
-  divider: { borderTopWidth: 1 },
-  joinCard: { borderRadius: RADIUS.md, borderWidth: 1, padding: SPACING.lg, gap: SPACING.sm },
-  joinLabel: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
-  joinSub: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  joinRow: { flexDirection: "row", gap: 10, alignItems: "center", marginTop: SPACING.xs },
-  joinInput: {
-    flex: 1,
-    borderWidth: 1.5,
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
     borderRadius: RADIUS.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 18, // TODO: one-off
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 4,
-    textAlign: "center",
+    padding: 12,
+    marginTop: SPACING.md,
   },
-  joinBtn: { borderRadius: RADIUS.sm, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md },
-  joinBtnText: { color: "#fff", fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
-  signInLink: { fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center" }, // TODO: one-off
+  tipText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });

@@ -49,8 +49,9 @@ import {
   ApiError,
 } from "@workspace/api-client-react";
 import { pickColor } from "@/utils/pickColor";
-import { getCurrencySymbol } from "@/utils/currency";
+import { getCurrencySymbol, formatMoney } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
+import { DateField } from "@/components/DateField";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 import { useAuth } from "@/context/AuthContext";
 import { removeGuestBill, listGuestBills, getCachedGuestOwnerId } from "@/utils/guestBillStore";
@@ -109,6 +110,15 @@ export default function BillDetailScreen() {
   const [splitQtyInput, setSplitQtyInput] = useState("");
 
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Close the overflow menu, then run the action on the next tick so the menu
+  // sheet finishes dismissing before another sheet/alert is presented (avoids
+  // modal-over-modal glitches on iOS).
+  const runMenuAction = (fn: () => void) => {
+    setShowMenu(false);
+    setTimeout(fn, 250);
+  };
 
   const { data, isLoading } = useGetBill(billId, {
     query: {
@@ -669,10 +679,8 @@ export default function BillDetailScreen() {
   const canEditHeader = isOwner || !!isMember || isGuestOwner || (!user && !!bill.isGuestBill && guestHasBill);
   const canRemoveFromList = !isOwner && !isGuestOwner && (!!isMember || guestHasBill);
 
-  const fmt = (n: number) => {
-    const symbol = getCurrencySymbol(bill.currency);
-    return `${symbol ? `${symbol} ` : ""}${n.toFixed(2)}`;
-  };
+  const currencySymbol = getCurrencySymbol(bill.currency);
+  const fmt = (n: number) => formatMoney(n, bill.currency);
 
   const subtotal = lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0);
   const taxPercent = parseFloat(String(bill.taxPercent)) || 0;
@@ -688,7 +696,7 @@ export default function BillDetailScreen() {
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          onPress={() => router.replace("/(tabs)/bills")}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)/bills"))}
           style={styles.headerBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
@@ -702,35 +710,19 @@ export default function BillDetailScreen() {
             </Text>
           ) : null}
         </View>
-        {canDelete && (
-          <TouchableOpacity
-            onPress={handleDeleteBill}
-            style={styles.headerBtn}
-            accessibilityLabel="Delete bill"
-            disabled={deleteBillMutation.isPending}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
-          </TouchableOpacity>
-        )}
-        {canEditHeader && (
-          <TouchableOpacity onPress={openEditHeader} style={styles.headerBtn} accessibilityLabel="Edit bill details" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="edit-2" size={18} color={colors.foreground} />
-          </TouchableOpacity>
-        )}
-        {canRemoveFromList && (
-          <TouchableOpacity
-            onPress={handleRemoveFromList}
-            style={styles.headerBtn}
-            accessibilityLabel="Remove from my list"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="log-out" size={18} color={colors.destructive ?? "#EF4444"} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity onPress={() => router.push(`/bill/${billId}/share`)} style={styles.headerBtn} accessibilityLabel="Share bill" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Feather name="share-2" size={20} color={colors.foreground} />
         </TouchableOpacity>
+        {(canEditHeader || canRemoveFromList || canDelete) && (
+          <TouchableOpacity
+            onPress={() => setShowMenu(true)}
+            style={styles.headerBtn}
+            accessibilityLabel="More options"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="more-vertical" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity onPress={() => router.push(`/bill/${billId}/totals`)} style={[styles.totalsBtn, { backgroundColor: colors.primary }]}>
           <Text style={styles.totalsBtnText}>Totals</Text>
         </TouchableOpacity>
@@ -973,14 +965,7 @@ export default function BillDetailScreen() {
               </View>
               <View style={styles.sheetFieldGroup}>
                 <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>DATE</Text>
-                <TextInput
-                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={editDate}
-                  onChangeText={setEditDate}
-                  autoCapitalize="none"
-                />
+                <DateField value={editDate} onChange={setEditDate} />
               </View>
               <View style={styles.sheetFieldGroup}>
                 <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>CURRENCY</Text>
@@ -995,18 +980,18 @@ export default function BillDetailScreen() {
                     placeholderTextColor={colors.mutedForeground}
                     value={editTaxPercent}
                     onChangeText={setEditTaxPercent}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                   />
                 </View>
                 <View style={styles.taxTipField}>
                   <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TIP %</Text>
                   <TextInput
                     style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
-                    placeholder="Leave 'em smiling"
+                    placeholder="e.g. 18"
                     placeholderTextColor={colors.mutedForeground}
                     value={editTipPercent}
                     onChangeText={setEditTipPercent}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                   />
                 </View>
               </View>
@@ -1048,16 +1033,21 @@ export default function BillDetailScreen() {
               </View>
               <View style={styles.addItemTotalWrap}>
                 <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TOTAL AMOUNT</Text>
-                <TextInput
-                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={newItemTotal}
-                  onChangeText={setNewItemTotal}
-                  keyboardType="numeric"
-                  returnKeyType="done"
-                  onSubmitEditing={handleAddItem}
-                />
+                <View style={[styles.amountInputWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                  {currencySymbol ? (
+                    <Text style={[styles.amountPrefix, { color: colors.mutedForeground }]}>{currencySymbol}</Text>
+                  ) : null}
+                  <TextInput
+                    style={[styles.amountInput, { color: colors.foreground }]}
+                    placeholder="0.00"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={newItemTotal}
+                    onChangeText={setNewItemTotal}
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                    onSubmitEditing={handleAddItem}
+                  />
+                </View>
               </View>
             </View>
             <PressableScale onPress={handleAddItem} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]}>
@@ -1187,6 +1177,29 @@ export default function BillDetailScreen() {
         onDeleted={invalidate}
       />
 
+      <BottomSheet visible={showMenu} onClose={() => setShowMenu(false)} title="Bill options">
+        <View style={styles.menuContent}>
+          {canEditHeader && (
+            <TouchableOpacity style={styles.menuRow} onPress={() => runMenuAction(openEditHeader)} activeOpacity={0.7}>
+              <Feather name="edit-2" size={18} color={colors.foreground} />
+              <Text style={[styles.menuRowText, { color: colors.foreground }]}>Edit bill details</Text>
+            </TouchableOpacity>
+          )}
+          {canRemoveFromList && (
+            <TouchableOpacity style={styles.menuRow} onPress={() => runMenuAction(handleRemoveFromList)} activeOpacity={0.7}>
+              <Feather name="log-out" size={18} color={colors.foreground} />
+              <Text style={[styles.menuRowText, { color: colors.foreground }]}>Remove from my list</Text>
+            </TouchableOpacity>
+          )}
+          {canDelete && (
+            <TouchableOpacity style={styles.menuRow} onPress={() => runMenuAction(handleDeleteBill)} activeOpacity={0.7}>
+              <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
+              <Text style={[styles.menuRowText, { color: colors.destructive ?? "#EF4444" }]}>Delete bill</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </BottomSheet>
+
       <Modal visible={showReceiptModal} transparent animationType="fade" onRequestClose={() => setShowReceiptModal(false)}>
         <View style={styles.receiptModalOverlay}>
           <TouchableOpacity
@@ -1220,7 +1233,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap: SPACING.sm,
   },
-  headerBtn: { padding: 6 },
+  headerBtn: { padding: SPACING.sm },
+  menuContent: { gap: 4 },
+  menuRow: { flexDirection: "row", alignItems: "center", gap: SPACING.md, paddingVertical: 14, paddingHorizontal: SPACING.xs },
+  menuRowText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
   headerTitleWrap: { flex: 1 },
   headerTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
@@ -1288,6 +1304,16 @@ const styles = StyleSheet.create({
   addItemAmountRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
   addItemQtyWrap: { width: 80 },
   addItemTotalWrap: { flex: 1 },
+  amountInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    gap: 6,
+  },
+  amountPrefix: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
+  amountInput: { flex: 1, paddingVertical: 14, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
   splitHint: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 }, // TODO: one-off
   scanBanner: {
     position: "absolute",

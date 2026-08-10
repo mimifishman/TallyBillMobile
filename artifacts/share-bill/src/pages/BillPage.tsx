@@ -299,6 +299,23 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const [confirmPersonId, setConfirmPersonId] = useState<number | null>(null);
   const confirmPerson = users.find((u) => u.id === confirmPersonId) ?? null;
 
+  // "That's me": lets a diner tap their name once and thereafter see their own
+  // share pinned at the top. Persisted per-bill so it survives refreshes.
+  const meStorageKey = `tallybill:me:${bill.joinCode}`;
+  const [meId, setMeId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(meStorageKey);
+    return raw ? Number(raw) : null;
+  });
+  useEffect(() => {
+    if (meId != null) window.localStorage.setItem(meStorageKey, String(meId));
+    else window.localStorage.removeItem(meStorageKey);
+  }, [meId, meStorageKey]);
+  // Clear the identity if that person is removed from the bill.
+  useEffect(() => {
+    if (meId != null && !users.some((u) => u.id === meId)) setMeId(null);
+  }, [users, meId]);
+
   const subtotal = useMemo(
     () => lines.reduce((s, l) => s + num(l.total), 0),
     [lines],
@@ -382,6 +399,13 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   };
 
   const hasUnassigned = totals && !totals.settled;
+  const myTotal =
+    meId != null ? totals?.perPerson.find((p) => p.billUserId === meId) ?? null : null;
+  const myName = users.find((u) => u.id === meId)?.name ?? "";
+
+  const scrollToPerPerson = () => {
+    document.getElementById("per-person")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="min-h-screen pb-24">
@@ -394,6 +418,29 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-8">
+        {myTotal && (
+          <div className="rounded-2xl p-4 flex items-center justify-between gap-3 bg-primary/10 border border-primary/20">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-primary uppercase tracking-wide truncate">
+                Your share{myName ? `, ${myName}` : ""}
+              </div>
+              <button
+                onClick={scrollToPerPerson}
+                className="text-3xl font-bold text-primary tabular-nums leading-tight text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                title="View your breakdown"
+              >
+                {fmt(myTotal.total)}
+              </button>
+            </div>
+            <button
+              onClick={() => setMeId(null)}
+              className="text-xs text-muted-foreground underline shrink-0 min-h-[44px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+            >
+              Not you?
+            </button>
+          </div>
+        )}
+
         <section>
           <SectionHeader
             title="PEOPLE"
@@ -405,15 +452,24 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
               Add people to start splitting
             </p>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 mt-3">
-              {users.map((u) => (
-                <PersonChip
-                  key={u.id}
-                  user={u}
-                  onRemove={() => setConfirmPersonId(u.id)}
-                />
-              ))}
-            </div>
+            <>
+              {!meId && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  👋 Tap your name to see what you owe.
+                </p>
+              )}
+              <div className="flex gap-3 overflow-x-auto pb-2 mt-3">
+                {users.map((u) => (
+                  <PersonChip
+                    key={u.id}
+                    user={u}
+                    isMe={u.id === meId}
+                    onIdentify={() => setMeId(u.id === meId ? null : u.id)}
+                    onRemove={() => setConfirmPersonId(u.id)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </section>
 
@@ -479,7 +535,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         </section>
 
         {totals && totals.perPerson.length > 0 && (
-          <section>
+          <section id="per-person" className="scroll-mt-16">
             <h2 className="text-xs font-semibold tracking-wider text-muted-foreground mb-3">
               PER PERSON
             </h2>
@@ -490,6 +546,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                   person={p}
                   currency={bill.currency ?? null}
                   billId={billId}
+                  isMe={p.billUserId === meId}
                   onChange={onChange}
                 />
               ))}
@@ -573,19 +630,32 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
 
       {/* Sticky mobile bottom bar */}
       <div className="fixed bottom-0 inset-x-0 lg:hidden bg-card border-t border-border px-4 py-3 flex items-center justify-between gap-3 z-30">
-        <div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Grand Total</div>
-          <div className="text-lg font-bold text-primary tabular-nums leading-tight">{fmt(grandTotal)}</div>
+        <div className="min-w-0">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+            {myTotal ? "You owe" : "Grand Total"}
+          </div>
+          <div className="text-lg font-bold text-primary tabular-nums leading-tight">
+            {fmt(myTotal ? myTotal.total : grandTotal)}
+          </div>
         </div>
-        <a
-          href="https://apps.apple.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-          Open in App
-        </a>
+        {myTotal ? (
+          <button
+            onClick={scrollToPerPerson}
+            className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+          >
+            View breakdown
+          </button>
+        ) : (
+          <a
+            href="https://apps.apple.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Open in App
+          </a>
+        )}
       </div>
 
       <ToastContainer toasts={toasts} />
@@ -817,7 +887,17 @@ function SectionHeader({
 
 /* ─── Person chip ───────────────────────────────────────────────────── */
 
-function PersonChip({ user, onRemove }: { user: BillMember; onRemove: () => void }) {
+function PersonChip({
+  user,
+  isMe,
+  onIdentify,
+  onRemove,
+}: {
+  user: BillMember;
+  isMe: boolean;
+  onIdentify: () => void;
+  onRemove: () => void;
+}) {
   const initials = user.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -825,19 +905,40 @@ function PersonChip({ user, onRemove }: { user: BillMember; onRemove: () => void
     .slice(0, 2)
     .toUpperCase();
   return (
-    <button
-      onClick={onRemove}
-      className="flex flex-col items-center gap-1 shrink-0 group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
-      title="Tap to remove"
-    >
-      <div
-        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-base shadow-sm group-hover:opacity-80 transition"
-        style={{ backgroundColor: user.color }}
+    <div className="relative shrink-0">
+      <button
+        onClick={onIdentify}
+        className="flex flex-col items-center gap-1 group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1"
+        title={isMe ? "This is you — tap to clear" : "Tap if this is you"}
+        aria-pressed={isMe}
       >
-        {initials}
-      </div>
-      <span className="text-xs text-foreground max-w-[64px] truncate">{user.name}</span>
-    </button>
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-base shadow-sm group-hover:opacity-90 transition relative"
+          style={{
+            backgroundColor: user.color,
+            boxShadow: isMe ? `0 0 0 3px hsl(var(--background)), 0 0 0 5px ${user.color}` : undefined,
+          }}
+        >
+          {initials}
+          {isMe && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary border-2 border-background flex items-center justify-center">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            </span>
+          )}
+        </div>
+        <span className={`text-xs max-w-[64px] truncate ${isMe ? "font-semibold text-primary" : "text-foreground"}`}>
+          {isMe ? "You" : user.name}
+        </span>
+      </button>
+      <button
+        onClick={onRemove}
+        aria-label={`Remove ${user.name}`}
+        title={`Remove ${user.name}`}
+        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-card border border-border text-muted-foreground hover:text-destructive hover:border-destructive flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+      </button>
+    </div>
   );
 }
 
@@ -1011,7 +1112,7 @@ function LineRow({
                 <button
                   key={u.id}
                   onClick={() => onToggle(u.id)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+                  className="relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
                   style={{
                     backgroundColor: on ? u.color : "transparent",
                     borderColor: u.color,
@@ -1021,6 +1122,11 @@ function LineRow({
                   aria-label={`${u.name} — ${on ? "assigned" : "not assigned"}`}
                 >
                   {initials}
+                  {on && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary border border-background flex items-center justify-center">
+                      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1037,11 +1143,13 @@ function PersonTotalRow({
   person,
   currency,
   billId,
+  isMe,
   onChange,
 }: {
   person: PersonTotal;
   currency: string | null;
   billId: number;
+  isMe: boolean;
   onChange: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -1094,7 +1202,7 @@ function PersonTotalRow({
   return (
     <>
       <div
-        className="bg-card border border-border rounded-2xl overflow-hidden"
+        className={`bg-card rounded-2xl overflow-hidden ${isMe ? "border-2 border-primary" : "border border-border"}`}
         style={{ boxShadow: "0 1px 4px 0 hsl(222 47% 11% / 0.06)" }}
       >
         <div className="p-3 flex items-center gap-3">
@@ -1106,7 +1214,12 @@ function PersonTotalRow({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="font-medium text-foreground truncate">{person.name}</span>
+              <span className="font-medium text-foreground truncate">
+                {person.name}
+                {isMe && (
+                  <span className="ml-1.5 text-[10px] font-bold text-primary uppercase tracking-wide align-middle">You</span>
+                )}
+              </span>
               <span className="text-base font-bold text-primary tabular-nums">
                 {fmt(person.total)}
               </span>

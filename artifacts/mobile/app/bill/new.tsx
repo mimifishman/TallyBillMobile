@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
+import { DateField } from "@/components/DateField";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateBill,
@@ -136,13 +137,7 @@ export default function NewBillScreen() {
           <View style={styles.row}>
             <View style={[styles.formGroup, styles.flex]}>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>DATE</Text>
-              <TextInput
-                style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.mutedForeground}
-                value={date}
-                onChangeText={setDate}
-              />
+              <DateField value={date} onChange={setDate} />
             </View>
             <View style={styles.formGroup}>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>CURRENCY</Text>
@@ -165,7 +160,7 @@ export default function NewBillScreen() {
                   placeholderTextColor={colors.mutedForeground}
                   value={taxPercent}
                   onChangeText={setTaxPercent}
-                  keyboardType="numeric"
+                  keyboardType="decimal-pad"
                 />
               </View>
             </View>
@@ -176,11 +171,11 @@ export default function NewBillScreen() {
                 <Feather name="heart" size={14} color={colors.mutedForeground} />
                 <TextInput
                   style={[styles.inputInner, { color: colors.foreground }]}
-                  placeholder="Leave 'em smiling"
+                  placeholder="e.g. 18"
                   placeholderTextColor={colors.mutedForeground}
                   value={tipPercent}
                   onChangeText={setTipPercent}
-                  keyboardType="numeric"
+                  keyboardType="decimal-pad"
                 />
               </View>
             </View>

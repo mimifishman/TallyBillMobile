@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -24,7 +25,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
-import { getCurrencySymbol } from "@/utils/currency";
+import { formatMoney } from "@/utils/currency";
 import { PersonBadge } from "@/components/PersonBadge";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Skeleton } from "@/components/Skeleton";
@@ -96,11 +97,26 @@ export default function TotalsScreen() {
     updateUserMutation.mutate({ billId, userId, data: { tipPercentOverride: null } });
   };
 
-  const currencySymbol = getCurrencySymbol(billData?.bill.currency);
-  const fmt = (n: number) => `${currencySymbol ? `${currencySymbol} ` : ""}${n.toFixed(2)}`;
+  const fmt = (n: number) => formatMoney(n, billData?.bill.currency);
   const fmtPct = (n: number) => {
     const rounded = Math.round(n * 100) / 100;
     return Number.isInteger(rounded) ? `${rounded}` : `${rounded}`;
+  };
+
+  const handleShareTotals = async () => {
+    if (!totals || totals.perPerson.length === 0) return;
+    const title = billData?.bill.title ?? "Bill";
+    const rows = totals.perPerson.map((p) => `• ${p.name}: ${fmt(p.total)}`).join("\n");
+    const unsplitNote =
+      totals.unsplitLines.length > 0
+        ? `\n\n⚠️ ${totals.unsplitLines.length} item${totals.unsplitLines.length === 1 ? "" : "s"} not yet assigned.`
+        : "";
+    const message = `${title}\nTotal: ${fmt(totals.grandTotal)}\n\nWhat each person owes:\n${rows}${unsplitNote}\n\nSplit with TallyBill`;
+    try {
+      await Share.share({ message, title });
+    } catch {
+      // user cancelled
+    }
   };
 
   const isSettled = totals?.settled === true;
@@ -151,7 +167,17 @@ export default function TotalsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Bill Totals</Text>
+        <Text style={[styles.headerTitle, styles.headerTitleFlex, { color: colors.foreground }]}>Bill Totals</Text>
+        {totals.perPerson.length > 0 && (
+          <TouchableOpacity
+            onPress={handleShareTotals}
+            style={styles.backBtn}
+            accessibilityLabel="Share totals"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="share-2" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}>
@@ -322,7 +348,7 @@ export default function TotalsScreen() {
             placeholderTextColor={colors.mutedForeground}
             value={editTipValue}
             onChangeText={setEditTipValue}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             autoFocus
             onFocus={() => setIsTipFocused(true)}
             onBlur={() => setIsTipFocused(false)}
@@ -359,6 +385,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: SPACING.xs },
   headerTitle: { fontSize: FONT_SIZE.title, fontFamily: "Inter_600SemiBold" },
+  headerTitleFlex: { flex: 1 },
   content: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, gap: SPACING.lg },
   grandCard: {
     borderRadius: RADIUS.xl,
