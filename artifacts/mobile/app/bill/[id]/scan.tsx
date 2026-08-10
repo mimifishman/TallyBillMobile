@@ -32,6 +32,12 @@ import { LanguagePicker } from "@/components/LanguagePicker";
 const THUMBNAIL_HEIGHT = 300;
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 
+// Selected items with a non-empty name — the only ones counted in the summary
+// and submitted on confirm. Blank "Add item" rows are ignored everywhere.
+function isCountedItem(item: { selected: boolean; description: string; translatedDescription?: string }) {
+  return item.selected && (item.translatedDescription ?? item.description).trim().length > 0;
+}
+
 const SCAN_MESSAGES = [
   "Preparing image…",
   "Reading receipt…",
@@ -148,7 +154,7 @@ export default function ScanScreen() {
     let count = 0;
     let total = 0;
     for (const item of scan.items) {
-      if (!item.selected) continue;
+      if (!isCountedItem(item)) continue;
       count += 1;
       total += Number.isFinite(item.total) ? item.total : 0;
     }
@@ -247,8 +253,19 @@ export default function ScanScreen() {
     scan.setItems((prev) => prev.map((item, i) => i === index ? { ...item, selected: !item.selected } : item));
   };
 
+  const handleAddItem = () => {
+    setEditingPriceIndex(null);
+    setPriceDraft("");
+    const newIndex = scan.items.length;
+    scan.setItems((prev) => [
+      ...prev,
+      { description: "", quantity: 1, unitPrice: 0, total: 0, selected: true },
+    ]);
+    setEditingIndex(newIndex);
+  };
+
   const handleConfirm = () => {
-    const selected = scan.items.filter((i) => i.selected);
+    const selected = scan.items.filter(isCountedItem);
     if (selected.length === 0) {
       Alert.alert("Nothing selected", "Select at least one item to add");
       return;
@@ -329,7 +346,7 @@ export default function ScanScreen() {
               {bulkCreateMutation.isPending ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.confirmBtnText}>Add {scan.items.filter(i => i.selected).length} Items</Text>
+                <Text style={styles.confirmBtnText}>Add {scan.items.filter(isCountedItem).length} Items</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -420,6 +437,16 @@ export default function ScanScreen() {
               )}
             </View>
           }
+          ListFooterComponent={
+            <TouchableOpacity
+              onPress={handleAddItem}
+              activeOpacity={0.7}
+              style={[styles.addItemRow, { borderColor: colors.border }]}
+            >
+              <Feather name="plus" size={16} color={colors.primaryText} />
+              <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
+            </TouchableOpacity>
+          }
           renderItem={({ item, index }) => {
             const isEditing = editingIndex === index;
             const isEditingPrice = editingPriceIndex === index;
@@ -482,6 +509,8 @@ export default function ScanScreen() {
                       onChangeText={(text) =>
                         scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text, translatedDescription: undefined } : it))
                       }
+                      placeholder="Item name"
+                      placeholderTextColor={colors.mutedForeground}
                       onBlur={() => setEditingIndex(null)}
                       autoFocus
                       returnKeyType="done"
@@ -675,6 +704,18 @@ const styles = StyleSheet.create({
   priceHitArea: { padding: SPACING.xs },
   reviewItemPriceInput: { fontSize: 14, fontFamily: "Inter_700Bold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 64, textAlign: "right" }, // TODO: one-off
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
+  addItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    paddingVertical: 12,
+    marginTop: SPACING.xs,
+  },
+  addItemText: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
 
   summaryBar: {
     flexDirection: "row",
