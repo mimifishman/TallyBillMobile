@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { BottomSheet } from "@/components/BottomSheet";
 import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
@@ -875,7 +876,7 @@ export default function BillDetailScreen() {
         title="Add someone"
       >
         <View style={styles.sheetContent}>
-          <TextInput
+          <AutoFocusTextInput
             style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
             placeholder="e.g. Jordan, Mom, The birthday person"
             placeholderTextColor={colors.mutedForeground}
@@ -956,7 +957,7 @@ export default function BillDetailScreen() {
         <View style={styles.sheetContent}>
               <View style={styles.sheetFieldGroup}>
                 <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TITLE</Text>
-                <TextInput
+                <AutoFocusTextInput
                   style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
                   placeholder="e.g. Sushi with the gang"
                   placeholderTextColor={colors.mutedForeground}
@@ -1012,7 +1013,7 @@ export default function BillDetailScreen() {
 
       <BottomSheet visible={showAddItem} onClose={() => setShowAddItem(false)} title="Add Item">
         <View style={styles.sheetContent}>
-            <TextInput
+            <AutoFocusTextInput
               style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
               placeholder="e.g. Spicy tuna roll, dessert, drinks"
               placeholderTextColor={colors.mutedForeground}
@@ -1118,7 +1119,7 @@ export default function BillDetailScreen() {
               has ×{parseFloat(String(splitLine.quantity))} units. How many to split off into a new row?
             </Text>
           )}
-          <TextInput
+          <AutoFocusTextInput
             style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center", fontSize: 22, fontFamily: "Inter_700Bold" }]}
             placeholder={splitLineMaxQty > 0 ? `1 – ${splitLineMaxQty}` : ""}
             placeholderTextColor={colors.mutedForeground}

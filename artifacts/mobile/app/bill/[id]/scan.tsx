@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import { useBulkCreateBillLines } from "@workspace/api-client-react";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
@@ -387,7 +388,7 @@ export default function ScanScreen() {
                     </Text>
                   )}
                   {isEditing ? (
-                    <TextInput
+                    <AutoFocusTextInput
                       style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
                       value={item.description}
                       onChangeText={(text) =>

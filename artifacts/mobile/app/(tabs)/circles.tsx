@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import {
   useGetCircles,
@@ -141,7 +142,7 @@ export default function CirclesScreen() {
             style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
           >
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>New Circle</Text>
-            <TextInput
+            <AutoFocusTextInput
               style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
               placeholder="e.g. Roommates"
               placeholderTextColor={colors.mutedForeground}

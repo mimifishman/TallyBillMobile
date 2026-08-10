@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
@@ -168,7 +169,7 @@ export default function IndexScreen() {
             <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
               We'll use this to identify you on bills you create or join.
             </Text>
-            <TextInput
+            <AutoFocusTextInput
               ref={inputRef}
               style={[
                 styles.modalInput,

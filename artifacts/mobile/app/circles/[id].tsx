@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import {
   useGetCircles,
@@ -369,7 +370,7 @@ export default function CircleDetailScreen() {
             style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
           >
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Rename Circle</Text>
-            <TextInput
+            <AutoFocusTextInput
               style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
               placeholder="Circle name"
               placeholderTextColor={colors.mutedForeground}
@@ -432,7 +433,7 @@ export default function CircleDetailScreen() {
               style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
             >
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Person</Text>
-              <TextInput
+              <AutoFocusTextInput
                 style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
                 placeholder="Name"
                 placeholderTextColor={colors.mutedForeground}
@@ -596,7 +597,7 @@ export default function CircleDetailScreen() {
               style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
             >
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Person</Text>
-              <TextInput
+              <AutoFocusTextInput
                 style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
                 placeholder="Name"
                 placeholderTextColor={colors.mutedForeground}

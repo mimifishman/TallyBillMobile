@@ -27,6 +27,12 @@ interface BottomSheetProps {
 
 const SHEET_MAX_RATIO = 0.85;
 
+// Android: BlurView overlays and Reanimated entering/exiting animations inside
+// a Modal are known to interfere with input focus (taps land but the software
+// keyboard never appears). Use a plain dimmed overlay and the Modal's native
+// slide animation there instead. iOS keeps the blur + spring animation.
+const IS_ANDROID = Platform.OS === "android";
+
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const colors = useColors();
   const { height: windowHeight } = useWindowDimensions();
@@ -63,14 +69,13 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 
   if (!visible) return null;
 
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <BlurView intensity={20} style={styles.overlay} tint="dark">
+  const overlayContent = (
+    <>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <Animated.View style={[styles.sheetWrapper, { marginBottom: bottomOffset }]}>
           <ReAnimated.View
-            entering={SlideInDown.springify().damping(20).stiffness(200)}
-            exiting={SlideOutDown.duration(200)}
+            entering={IS_ANDROID ? undefined : SlideInDown.springify().damping(20).stiffness(200)}
+            exiting={IS_ANDROID ? undefined : SlideOutDown.duration(200)}
             style={[
               styles.sheet,
               {
@@ -99,7 +104,23 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             </ScrollView>
           </ReAnimated.View>
         </Animated.View>
-      </BlurView>
+    </>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType={IS_ANDROID ? "slide" : "fade"}
+      onRequestClose={onClose}
+    >
+      {IS_ANDROID ? (
+        <View style={styles.overlay}>{overlayContent}</View>
+      ) : (
+        <BlurView intensity={20} style={styles.overlay} tint="dark">
+          {overlayContent}
+        </BlurView>
+      )}
     </Modal>
   );
 }

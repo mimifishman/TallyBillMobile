@@ -28,6 +28,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/utils/currency";
 import { PersonBadge } from "@/components/PersonBadge";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Skeleton } from "@/components/Skeleton";
 import { Confetti } from "@/components/Confetti";
@@ -358,7 +359,7 @@ export default function TotalsScreen() {
           <Text style={[styles.tipSheetSub, { color: colors.mutedForeground }]}>
             Enter a percentage like 20 for 20%. Reset to restore the bill default.
           </Text>
-          <TextInput
+          <AutoFocusTextInput
             style={[styles.tipInput, { borderColor: isTipFocused ? colors.primary : colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
             placeholder="e.g. 15"
             placeholderTextColor={colors.mutedForeground}

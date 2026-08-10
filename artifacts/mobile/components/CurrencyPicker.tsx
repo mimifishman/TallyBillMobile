@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AutoFocusTextInput } from "./AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
@@ -142,7 +143,7 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
 
           <View style={[styles.searchWrap, { borderColor: colors.border }]}>
             <Feather name="search" size={16} color={colors.mutedForeground} />
-            <TextInput
+            <AutoFocusTextInput
               style={[styles.searchInput, { color: colors.foreground }]}
               placeholder="Search by code or name..."
               placeholderTextColor={colors.mutedForeground}

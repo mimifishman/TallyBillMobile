@@ -18,6 +18,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
+import { AutoFocusTextInput } from "./AutoFocusTextInput";
 import { getCurrencySymbol } from "@/utils/currency";
 import { PersonBadge } from "./PersonBadge";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
@@ -138,7 +139,7 @@ export function LineItemRow({
       {editing ? (
         <View style={styles.editBlock}>
           <View style={styles.editRow}>
-            <TextInput
+            <AutoFocusTextInput
               style={[styles.editInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
               value={editDesc}
               onChangeText={setEditDesc}
