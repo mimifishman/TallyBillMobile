@@ -297,7 +297,7 @@ export default function SettingsScreen() {
               <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
                 <IconBox name="shield" color={colors.mutedForeground} />
                 <Text style={[styles.menuItemText, { color: colors.mutedForeground }]}>
-                  {clerkUser.externalAccounts.some((a) => a.provider === "oauth_apple")
+                  {clerkUser.externalAccounts.some((a) => a.provider === "apple")
                     ? "Signed in with Apple"
                     : "Signed in with Google"}
                 </Text>
