@@ -16,7 +16,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tallybill.mobile",
-      "associatedDomains": ["applinks:tallybill.app"]
+      "associatedDomains": [
+        "applinks:tallybill.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -35,7 +37,10 @@
               "pathPrefix": "/b/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -50,7 +55,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
