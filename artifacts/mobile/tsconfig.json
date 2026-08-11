@@ -6,6 +6,20 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      // Force every 'react' type lookup (including from third-party library
+      // .d.ts files deep in the pnpm virtual store) onto this app's single
+      // @types/react copy. Without this, packages like react-native-svg,
+      // expo-linear-gradient, expo-blur, and gesture-handler resolve 'react'
+      // to the untyped react JS package (their .pnpm dirs have no @types
+      // link), so their class components lose the Component base type and
+      // tsc reports ~100 TS2786/TS2607 "cannot be used as a JSX component"
+      // errors.
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react-dom": [
+        "./node_modules/@types/react-dom"
       ]
     }
   },
