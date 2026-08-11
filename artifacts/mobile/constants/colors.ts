@@ -59,10 +59,13 @@ const colors = {
     warningBackground: "#FEF3C7",
     warningForeground: "#92400E",
 
-    gradientPrimary: ["#10B981", "#059669"] as [string, string],
-    gradientAccent: ["#10B981", "#059669"] as [string, string],
+    // Gradients are FILLS that carry white text, so every stop must clear AA
+    // with white: #047857 (5.48:1) → #065F46 (7.65:1). Never start a
+    // white-text gradient on the light emeralds (#10B981 is only 2.54:1).
+    gradientPrimary: ["#047857", "#065F46"] as [string, string],
+    gradientAccent: ["#047857", "#065F46"] as [string, string],
     gradientHeader: ["#FAFAFA", "#F1F5F9"] as [string, string],
-    gradientAmber: ["#10B981", "#059669"] as [string, string],
+    gradientAmber: ["#047857", "#065F46"] as [string, string],
 
     people: [
       "#06B6D4",
@@ -167,10 +170,14 @@ const colors = {
     warningBackground: "#1C1200",
     warningForeground: "#FCD34D",
 
-    gradientPrimary: ["#34D399", "#10B981"] as [string, string],
-    gradientAccent: ["#34D399", "#10B981"] as [string, string],
+    // Same rule as light: white text must clear AA on every stop
+    // (#047857 → 5.48:1, #065F46 → 7.65:1) while the fill still separates
+    // from the near-black background (3.5:1 / 2.5:1). Never use the mint
+    // text greens (#34D399 is only 1.9:1 under white) as gradient fills.
+    gradientPrimary: ["#047857", "#065F46"] as [string, string],
+    gradientAccent: ["#047857", "#065F46"] as [string, string],
     gradientHeader: ["#0B0F14", "#161B22"] as [string, string],
-    gradientAmber: ["#FBBF24", "#F59E0B"] as [string, string],
+    gradientAmber: ["#047857", "#065F46"] as [string, string],
 
     people: [
       "#06B6D4",

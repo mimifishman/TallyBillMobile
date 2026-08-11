@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   grandLabel: { color: "rgba(255,255,255,0.9)", fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
   grandAmount: { color: "#fff", fontSize: 40, fontFamily: "Inter_700Bold", letterSpacing: -1 }, // TODO: one-off
-  grandSubline: { color: "rgba(255,255,255,0.8)", fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", marginBottom: 2 },
+  grandSubline: { color: "rgba(255,255,255,0.92)", fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", marginBottom: 2 },
   grandBreakdown: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: SPACING.sm, marginTop: 6 },
   grandSub: { color: "rgba(255,255,255,0.9)", fontSize: FONT_SIZE.caption, fontFamily: "Inter_500Medium" },
   settledBanner: {

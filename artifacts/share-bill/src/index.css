@@ -33,12 +33,15 @@
   --foreground: 222 47% 11%;        /* #0F172A slate-900 */
   --border: 214 32% 91%;            /* #E2E8F0 slate-200 */
   --input: 214 32% 91%;
-  --ring: 160 84% 39%;              /* #10B981 emerald */
+  --ring: 163 94% 24%;              /* #047857 emerald-deep (matches primary) */
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --primary: 160 84% 39%;           /* #10B981 emerald */
+  /* Primary is the emerald-deep from the mobile schema: white on it is
+     5.48:1 (AA) and it doubles as an AA green for text on white. The old
+     #10B981 emerald (2.54:1 under white) is decorative-only now. */
+  --primary: 163 94% 24%;           /* #047857 emerald-deep */
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96%;         /* #F1F5F9 slate-100 */
   --secondary-foreground: 222 47% 11%;
@@ -46,7 +49,7 @@
   --muted-foreground: 215 16% 47%;  /* #64748B slate-500 */
   --accent: 351 95% 71%;            /* #FB7185 coral */
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;         /* #EF4444 */
+  --destructive: 0 72% 51%;         /* #DC2626 — white on it is 4.5:1 (AA); #EF4444 was 3.76:1 */
   --destructive-foreground: 0 0% 100%;
   --coral: 351 95% 71%;             /* #FB7185 coral alias */
   --radius: 0.75rem;

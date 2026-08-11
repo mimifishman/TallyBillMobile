@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   backBtnGradient: { position: "absolute", top: SPACING.lg, left: SPACING.xl, zIndex: 10, padding: SPACING.xs },
   brandArea: { alignItems: "center", paddingTop: SPACING.xl, paddingBottom: SPACING.sm, gap: SPACING.sm },
   wordmark: { fontSize: FONT_SIZE.wordmark, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
-  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" }, // TODO: one-off
+  tagline: { fontSize: 16, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.92)" }, // TODO: one-off
   formSheet: { borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, marginTop: -RADIUS.xl },
   formCard: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.xxxl, gap: SPACING.xxl },
   iconCircle: { width: 64, height: 64, borderRadius: RADIUS.xl, alignItems: "center", justifyContent: "center", alignSelf: "center" },

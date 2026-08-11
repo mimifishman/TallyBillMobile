@@ -74,13 +74,13 @@ export default function IndexScreen() {
       ]}
     >
       <View style={styles.hero}>
-        <View style={[styles.logoWrap, { backgroundColor: colors.primary }]}>
-          <Image
-            source={require("@/assets/images/splash-icon.png")}
-            style={{ width: 60, height: 60 }}
-            resizeMode="contain"
-          />
-        </View>
+        {/* Brand mark: the icon asset already carries its own emerald tile,
+            so render it full-bleed — no darker frame behind it. */}
+        <Image
+          source={require("@/assets/images/splash-icon.png")}
+          style={styles.logo}
+          resizeMode="cover"
+        />
         <Text style={[styles.appName, { color: colors.foreground }]}>TallyBill</Text>
         {greeting ? (
           <Text style={[styles.greeting, { color: colors.foreground }]}>{greeting}</Text>
@@ -230,12 +230,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: SPACING.md,
   },
-  logoWrap: {
+  logo: {
     width: 96,
     height: 96,
     borderRadius: RADIUS.xl,
-    alignItems: "center",
-    justifyContent: "center",
     marginBottom: SPACING.sm,
   },
   appName: {

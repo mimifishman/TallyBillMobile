@@ -563,7 +563,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             <div className="flex justify-end mb-1">
               <span
                 className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ backgroundColor: "hsl(160 84% 39% / 0.12)", color: "#10B981" }}
+                style={{ backgroundColor: "hsl(160 84% 39% / 0.12)", color: "#047857" }}
               >
                 <span style={{ color: "hsl(351 95% 71%)" }}>✓</span>
                 All settled
