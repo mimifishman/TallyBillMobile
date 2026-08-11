@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import {
   useBulkCreateBillLines,
@@ -28,6 +27,7 @@ import { formatMoney } from "@/utils/currency";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useScan } from "@/context/ScanContext";
 import { LanguagePicker } from "@/components/LanguagePicker";
+import { ReviewItemSheet, type ReviewItemValues } from "@/components/ReviewItemSheet";
 
 const THUMBNAIL_HEIGHT = 300;
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
@@ -137,11 +137,7 @@ export default function ScanScreen() {
   const billId = parseInt(id!);
   const scan = useScan();
 
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(null);
-  const [priceDraft, setPriceDraft] = useState("");
-  const [editingQuantityIndex, setEditingQuantityIndex] = useState<number | null>(null);
-  const [quantityDraft, setQuantityDraft] = useState("");
+  const [editor, setEditor] = useState<{ mode: "add" } | { mode: "edit"; index: number } | null>(null);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
   const [showOriginals, setShowOriginals] = useState(true);
@@ -209,59 +205,61 @@ export default function ScanScreen() {
     }
   };
 
-  const commitPriceEdit = (index: number) => {
-    const normalized = priceDraft.trim().replace(",", ".");
-    const parsed = /^\d+(\.\d*)?$|^\.\d+$/.test(normalized) ? Number(normalized) : NaN;
-    if (Number.isFinite(parsed) && parsed >= 0) {
-      const rounded = Math.round(parsed * 100) / 100;
-      scan.setItems((prev) =>
-        prev.map((item, i) =>
-          i === index
-            ? {
-                ...item,
-                total: rounded,
-                unitPrice: item.quantity > 0 ? Math.round((rounded / item.quantity) * 100) / 100 : rounded,
-              }
-            : item,
-        ),
-      );
-    }
-    setEditingPriceIndex(null);
-    setPriceDraft("");
-  };
-
-  const commitQuantityEdit = (index: number) => {
-    const parsed = /^\d+$/.test(quantityDraft.trim()) ? Number(quantityDraft.trim()) : NaN;
-    if (Number.isInteger(parsed) && parsed >= 1) {
-      scan.setItems((prev) =>
-        prev.map((item, i) =>
-          i === index
-            ? {
-                ...item,
-                quantity: parsed,
-                unitPrice: Math.round((item.total / parsed) * 100) / 100,
-              }
-            : item,
-        ),
-      );
-    }
-    setEditingQuantityIndex(null);
-    setQuantityDraft("");
-  };
-
   const toggleItem = (index: number) => {
     scan.setItems((prev) => prev.map((item, i) => i === index ? { ...item, selected: !item.selected } : item));
   };
 
+  // Values shown in the edit sheet for the item being edited (null in add mode).
+  const editorInitial: ReviewItemValues | null = useMemo(() => {
+    if (editor?.mode !== "edit") return null;
+    const item = scan.items[editor.index];
+    if (!item) return null;
+    return {
+      name: item.translatedDescription ?? item.description,
+      quantity: item.quantity,
+      total: item.total,
+    };
+  }, [editor, scan.items]);
+
+  const handleEditorSave = (values: ReviewItemValues) => {
+    const unitPrice = values.quantity > 0
+      ? Math.round((values.total / values.quantity) * 100) / 100
+      : values.total;
+    if (editor?.mode === "edit") {
+      const index = editor.index;
+      scan.setItems((prev) =>
+        prev.map((item, i) => {
+          if (i !== index) return item;
+          const displayName = item.translatedDescription ?? item.description;
+          const nameChanged = values.name !== displayName;
+          return {
+            ...item,
+            // Renaming replaces the translated name, so drop the original.
+            description: nameChanged ? values.name : item.description,
+            translatedDescription: nameChanged ? undefined : item.translatedDescription,
+            quantity: values.quantity,
+            total: values.total,
+            unitPrice,
+          };
+        }),
+      );
+    } else {
+      scan.setItems((prev) => [
+        ...prev,
+        {
+          description: values.name,
+          quantity: values.quantity,
+          unitPrice,
+          total: values.total,
+          selected: true,
+        },
+      ]);
+    }
+    setEditor(null);
+  };
+
   const handleAddItem = () => {
-    setEditingPriceIndex(null);
-    setPriceDraft("");
-    const newIndex = scan.items.length;
-    scan.setItems((prev) => [
-      ...prev,
-      { description: "", quantity: 1, unitPrice: 0, total: 0, selected: true },
-    ]);
-    setEditingIndex(newIndex);
+    setEditor({ mode: "add" });
   };
 
   const handleConfirm = () => {
@@ -422,7 +420,7 @@ export default function ScanScreen() {
           ListHeaderComponent={
             <View style={styles.reviewHeader}>
               <Text style={[styles.reviewHint, { color: colors.mutedForeground }]}>
-                Tap items to deselect. All selected items will be added to the bill.
+                Tap an item to edit it, or uncheck it to leave it out. All checked items will be added to the bill.
               </Text>
               {hasTranslations && (
                 <TouchableOpacity
@@ -448,9 +446,6 @@ export default function ScanScreen() {
             </TouchableOpacity>
           }
           renderItem={({ item, index }) => {
-            const isEditing = editingIndex === index;
-            const isEditingPrice = editingPriceIndex === index;
-            const isEditingQuantity = editingQuantityIndex === index;
             const displayName = item.translatedDescription ?? item.description;
             const originalName = item.translatedDescription ? item.description : null;
             return (
@@ -465,7 +460,7 @@ export default function ScanScreen() {
                 ]}
               >
                 <TouchableOpacity
-                  onPress={() => { if (isEditing) setEditingIndex(null); toggleItem(index); }}
+                  onPress={() => toggleItem(index)}
                   activeOpacity={0.7}
                   style={styles.checkboxHitArea}
                 >
@@ -474,97 +469,31 @@ export default function ScanScreen() {
                   </View>
                 </TouchableOpacity>
 
-                <View style={styles.reviewItemMiddle}>
-                  {isEditingQuantity ? (
-                    <AutoFocusTextInput
-                      style={[styles.quantityInput, { color: colors.foreground, borderBottomColor: colors.primaryText }]}
-                      value={quantityDraft}
-                      onChangeText={setQuantityDraft}
-                      onBlur={() => commitQuantityEdit(index)}
-                      autoFocus
-                      keyboardType="number-pad"
-                      returnKeyType="done"
-                      onSubmitEditing={() => commitQuantityEdit(index)}
-                      selectTextOnFocus
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (isEditing) setEditingIndex(null);
-                        setQuantityDraft(String(item.quantity));
-                        setEditingQuantityIndex(index);
-                      }}
-                      activeOpacity={0.6}
-                      style={styles.quantityHitArea}
-                    >
-                      <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
-                        ×{item.quantity}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {isEditing ? (
-                    <AutoFocusTextInput
-                      style={[styles.reviewItemInput, { color: colors.foreground, borderBottomColor: colors.primaryText }]}
-                      value={item.description}
-                      onChangeText={(text) =>
-                        scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text, translatedDescription: undefined } : it))
-                      }
-                      placeholder="Item name"
-                      placeholderTextColor={colors.mutedForeground}
-                      onBlur={() => setEditingIndex(null)}
-                      autoFocus
-                      returnKeyType="done"
-                      onSubmitEditing={() => setEditingIndex(null)}
-                      selectTextOnFocus
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => setEditingIndex(index)}
-                      activeOpacity={0.6}
-                      style={styles.reviewItemNameBtn}
-                    >
-                      <View style={styles.reviewItemNameCol}>
-                        <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
-                          {displayName}
-                        </Text>
-                        {originalName && showOriginals && (
-                          <Text style={[styles.reviewItemOriginal, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {originalName}
-                          </Text>
-                        )}
-                      </View>
-                      <Feather name="edit-2" size={11} color={colors.mutedForeground} style={styles.editIcon} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {isEditingPrice ? (
-                  <AutoFocusTextInput
-                    style={[styles.reviewItemPriceInput, { color: colors.foreground, borderBottomColor: colors.primaryText }]}
-                    value={priceDraft}
-                    onChangeText={setPriceDraft}
-                    onBlur={() => commitPriceEdit(index)}
-                    autoFocus
-                    keyboardType="decimal-pad"
-                    returnKeyType="done"
-                    onSubmitEditing={() => commitPriceEdit(index)}
-                    selectTextOnFocus
-                  />
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (isEditing) setEditingIndex(null);
-                      setPriceDraft(item.total.toFixed(2));
-                      setEditingPriceIndex(index);
-                    }}
-                    activeOpacity={0.6}
-                    style={styles.priceHitArea}
-                  >
-                    <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
-                      {item.total.toFixed(2)}
+                <TouchableOpacity
+                  onPress={() => setEditor({ mode: "edit", index })}
+                  activeOpacity={0.6}
+                  style={styles.reviewItemBody}
+                >
+                  <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
+                    ×{item.quantity}
+                  </Text>
+                  <View style={styles.reviewItemNameCol}>
+                    <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
+                      {displayName}
                     </Text>
-                  </TouchableOpacity>
-                )}
+                    {originalName && showOriginals && (
+                      <Text style={[styles.reviewItemOriginal, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        {originalName}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
+                    {item.total.toFixed(2)}
+                  </Text>
+                  <View style={[styles.editIconBtn, { backgroundColor: colors.muted }]}>
+                    <Feather name="edit-2" size={13} color={colors.primaryText} />
+                  </View>
+                </TouchableOpacity>
               </View>
             );
           }}
@@ -602,6 +531,14 @@ export default function ScanScreen() {
         selectedLanguage={preferredLanguage}
         onConfirm={handleLanguageConfirm}
         onClose={() => setShowLanguagePicker(false)}
+      />
+
+      <ReviewItemSheet
+        visible={editor !== null}
+        mode={editor?.mode ?? "edit"}
+        initial={editorInitial}
+        onSave={handleEditorSave}
+        onClose={() => setEditor(null)}
       />
     </View>
   );
@@ -691,18 +628,12 @@ const styles = StyleSheet.create({
   reviewItem: { flexDirection: "row", alignItems: "center", borderRadius: RADIUS.sm, borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: SPACING.md, gap: SPACING.sm },
   checkboxHitArea: { padding: SPACING.xs },
   checkbox: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  reviewItemMiddle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 },
+  reviewItemBody: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACING.sm, minHeight: 36 },
   quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 }, // TODO: one-off
-  quantityHitArea: { paddingVertical: 4 }, // TODO: one-off
-  quantityInput: { fontSize: 12, fontFamily: "Inter_600SemiBold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 28 }, // TODO: one-off
-  reviewItemNameBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   reviewItemNameCol: { flex: 1, gap: 2 },
   reviewItemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
   reviewItemOriginal: { fontSize: 11, fontFamily: "Inter_400Regular" }, // TODO: one-off
-  editIcon: { marginTop: 1 },
-  reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 }, // TODO: one-off
-  priceHitArea: { padding: SPACING.xs },
-  reviewItemPriceInput: { fontSize: 14, fontFamily: "Inter_700Bold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 64, textAlign: "right" }, // TODO: one-off
+  editIconBtn: { width: 28, height: 28, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center" },
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
   addItemRow: {
     flexDirection: "row",
