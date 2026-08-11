@@ -21,6 +21,7 @@
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-coral: hsl(var(--coral));
+  --color-primary-text: hsl(var(--primary-text));
 
   --font-sans: 'Inter', sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
@@ -52,7 +53,41 @@
   --destructive: 0 72% 51%;         /* #DC2626 — white on it is 4.5:1 (AA); #EF4444 was 3.76:1 */
   --destructive-foreground: 0 0% 100%;
   --coral: 351 95% 71%;             /* #FB7185 coral alias */
+  /* Green used AS TEXT. In light mode it equals primary (#047857, 5.5:1 on
+     white); in dark mode it becomes the mobile palette's mint #34D399, which
+     is AA on the dark background (fills stay #047857 with white on them). */
+  --primary-text: 163 94% 24%;      /* #047857 */
   --radius: 0.75rem;
+  color-scheme: light dark;
+}
+
+/* Dark theme — mirrors the mobile app's AA-audited dark palette:
+   background #0B0F14, card #161B22, green text = mint #34D399,
+   fills carrying white stay emerald-deep #047857. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 213 29% 6%;         /* #0B0F14 */
+    --foreground: 210 40% 96%;        /* #F1F5F9 slate-100 */
+    --border: 215 16% 20%;            /* ~#2B323B subtle line on dark */
+    --input: 215 16% 20%;
+    --ring: 160 64% 52%;              /* #34D399 mint — visible focus on dark */
+    --card: 215 21% 11%;              /* #161B22 */
+    --card-foreground: 210 40% 96%;
+    --popover: 215 21% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 163 94% 24%;           /* #047857 — white on it stays AA */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 19% 15%;         /* ~#1F252D */
+    --secondary-foreground: 210 40% 96%;
+    --muted: 215 19% 15%;
+    --muted-foreground: 215 20% 65%;  /* #94A3B8 slate-400 — AA on card & bg */
+    --accent: 351 95% 71%;            /* coral reads well on dark */
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;         /* #EF4444 — brighter red for dark bg */
+    --destructive-foreground: 0 0% 100%;
+    --coral: 351 95% 71%;
+    --primary-text: 160 64% 52%;      /* #34D399 mint for green text */
+  }
 }
 
 * {

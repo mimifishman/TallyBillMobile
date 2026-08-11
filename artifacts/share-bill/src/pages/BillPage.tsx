@@ -152,7 +152,7 @@ export default function BillPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "hsl(210 40% 98%)" }}>
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
         <div className="text-center max-w-sm">
           <div className="flex items-center justify-center gap-2.5 mb-6">
             <img src={import.meta.env.BASE_URL + "favicon.svg"} alt="TallyBill" className="w-9 h-9 rounded-xl" />
@@ -167,7 +167,7 @@ export default function BillPage() {
             href="https://apps.apple.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-6 py-3 rounded-xl min-h-[44px] hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-6 py-3 rounded-xl min-h-[44px] hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
             Get TallyBill
@@ -422,12 +422,12 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         {myTotal && (
           <div className="rounded-2xl p-4 flex items-center justify-between gap-3 bg-primary/10 border border-primary/20">
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-primary uppercase tracking-wide truncate">
+              <div className="text-xs font-semibold text-primary-text uppercase tracking-wide truncate">
                 Your share{myName ? `, ${myName}` : ""}
               </div>
               <button
                 onClick={scrollToPerPerson}
-                className="text-3xl font-bold text-primary tabular-nums leading-tight text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                className="text-3xl font-bold text-primary-text tabular-nums leading-tight text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                 title="View your breakdown"
               >
                 {fmt(myTotal.total)}
@@ -435,7 +435,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             </div>
             <button
               onClick={() => setMeId(null)}
-              className="text-xs text-muted-foreground underline shrink-0 min-h-[44px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+              className="text-xs text-muted-foreground underline shrink-0 min-h-[44px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
               Not you?
             </button>
@@ -482,7 +482,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           />
 
           {hasUnassigned && (
-            <div className="mt-3 flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3">
+            <div className="mt-3 flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200 rounded-xl px-4 py-3">
               <span className="text-lg leading-none">⚠️</span>
               <span className="text-sm font-semibold">
                 Some items aren't assigned yet — totals will update as you assign them.
@@ -562,10 +562,9 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           {totals?.settled && (
             <div className="flex justify-end mb-1">
               <span
-                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ backgroundColor: "hsl(160 84% 39% / 0.12)", color: "#047857" }}
+                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/15 text-primary-text"
               >
-                <span style={{ color: "hsl(351 95% 71%)" }}>✓</span>
+                <span className="text-coral">✓</span>
                 All settled
               </span>
             </div>
@@ -588,7 +587,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           <div className="h-px bg-border my-1" />
           <div className="flex justify-between items-center">
             <span className="text-base font-bold text-foreground">Grand Total</span>
-            <span className="text-xl font-bold text-primary tabular-nums">{fmt(grandTotal)}</span>
+            <span className="text-xl font-bold text-primary-text tabular-nums">{fmt(grandTotal)}</span>
           </div>
         </section>
       </main>
@@ -607,7 +606,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
               href="https://apps.apple.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-xl min-h-[44px] hover:opacity-80 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-xl min-h-[44px] hover:opacity-80 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
               App Store
@@ -616,7 +615,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
               href="https://play.google.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-xl min-h-[44px] hover:opacity-80 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-xl min-h-[44px] hover:opacity-80 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.36.6 1.24 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
               Google Play
@@ -635,14 +634,14 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
             {myTotal ? "You owe" : "Grand Total"}
           </div>
-          <div className="text-lg font-bold text-primary tabular-nums leading-tight">
+          <div className="text-lg font-bold text-primary-text tabular-nums leading-tight">
             {fmt(myTotal ? myTotal.total : grandTotal)}
           </div>
         </div>
         {myTotal ? (
           <button
             onClick={scrollToPerPerson}
-            className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+            className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
           >
             View breakdown
           </button>
@@ -651,7 +650,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             href="https://apps.apple.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+            className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-1.5 hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
             Open in App
@@ -670,7 +669,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             onChange={(e) => setNewPersonName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddPerson()}
             placeholder="Name"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
           />
           <ModalButtons
             onCancel={() => setShowAddPerson(false)}
@@ -689,7 +688,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             onChange={(e) => setNewItemDesc(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
             placeholder="Item description"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="flex gap-2">
             <div className="flex flex-col gap-1">
@@ -700,7 +699,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                 onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                 placeholder="1"
                 inputMode="decimal"
-                className="w-16 border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary text-center focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-16 border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary text-center focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
             <div className="flex flex-col gap-1 flex-1">
@@ -711,7 +710,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                 onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                 placeholder="e.g. 12.50"
                 inputMode="decimal"
-                className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
           </div>
@@ -742,7 +741,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
               onKeyDown={(e) => e.key === "Enter" && handleConfirmSplit()}
               inputMode="decimal"
               placeholder={`e.g. 1 (max ${currentQty - 0.01})`}
-              className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
             />
             {splitError && (
               <p className="text-sm text-destructive font-medium -mt-1">{splitError}</p>
@@ -809,7 +808,7 @@ function HeaderEditable({
         onBlur={() => {
           if (title.trim() && title !== bill.title) onSave({ title: title.trim() });
         }}
-        className="w-full text-xl font-bold text-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1 focus-visible:ring-2 focus-visible:ring-primary"
+        className="w-full text-xl font-bold text-foreground bg-transparent focus:outline-none focus:bg-muted rounded px-1 -mx-1 focus-visible:ring-2 focus-visible:ring-ring"
       />
       <div className="flex flex-wrap items-center gap-2 px-1 -mx-1">
         <span className="text-xs text-muted-foreground">By {ownerName}</span>
@@ -833,7 +832,7 @@ function HeaderEditable({
             onBlur={() => {
               if (date && date !== bill.date) onSave({ date });
             }}
-            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
+            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
           />
         </label>
         <label className="w-32 text-xs text-muted-foreground">
@@ -845,7 +844,7 @@ function HeaderEditable({
               setCurrency(v);
               if (v !== (bill.currency ?? "")) onSave({ currency: v || null });
             }}
-            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
+            className="w-full border border-border rounded-md px-2 py-1.5 text-sm text-foreground bg-card focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
           >
             <option value="">—</option>
             {CURRENCY_OPTIONS.map((c) => (
@@ -878,7 +877,7 @@ function SectionHeader({
       </h2>
       <button
         onClick={onAction}
-        className="text-sm font-semibold text-primary bg-muted px-3 py-1.5 rounded-lg hover:bg-secondary transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="text-sm font-semibold text-primary-text bg-muted px-3 py-1.5 rounded-lg hover:bg-secondary transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {actionLabel}
       </button>
@@ -904,7 +903,7 @@ function PersonChip({
     <div className="relative shrink-0">
       <button
         onClick={onIdentify}
-        className="flex flex-col items-center gap-1 group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1"
+        className="flex flex-col items-center gap-1 group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg px-1"
         title={isMe ? "This is you — tap to clear" : "Tap if this is you"}
         aria-pressed={isMe}
       >
@@ -922,7 +921,7 @@ function PersonChip({
             </span>
           )}
         </div>
-        <span className={`text-xs max-w-[64px] truncate ${isMe ? "font-semibold text-primary" : "text-foreground"}`}>
+        <span className={`text-xs max-w-[64px] truncate ${isMe ? "font-semibold text-primary-text" : "text-foreground"}`}>
           {isMe ? "You" : user.name}
         </span>
       </button>
@@ -930,7 +929,7 @@ function PersonChip({
         onClick={onRemove}
         aria-label={`Remove ${user.name}`}
         title={`Remove ${user.name}`}
-        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-card border border-border text-muted-foreground hover:text-destructive hover:border-destructive flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-card border border-border text-muted-foreground hover:text-destructive hover:border-destructive flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
       </button>
@@ -995,7 +994,7 @@ function LineRow({
             <input
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
+              className="w-full border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
             />
             <div className="flex gap-2">
               <input
@@ -1003,18 +1002,18 @@ function LineRow({
                 onChange={(e) => setQty(e.target.value)}
                 inputMode="decimal"
                 placeholder="Qty"
-                className="w-16 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
+                className="w-16 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
               />
               <input
                 value={total}
                 onChange={(e) => setTotal(e.target.value)}
                 inputMode="decimal"
                 placeholder="Total"
-                className="flex-1 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
+                className="flex-1 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
               />
               <button
                 onClick={save}
-                className="px-3 py-1.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="px-3 py-1.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Save
               </button>
@@ -1023,7 +1022,7 @@ function LineRow({
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+            className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
             <div className="flex items-baseline justify-between gap-2">
               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
@@ -1048,7 +1047,7 @@ function LineRow({
             {lineQty > 1 && (
               <button
                 onClick={onSplit}
-                className="flex items-center gap-1 text-xs font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex items-center gap-1 text-xs font-medium text-primary-text border border-primary/30 bg-primary/5 hover:bg-primary/15 px-2 py-1 rounded-md transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 title="Split into two lines"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
@@ -1057,7 +1056,7 @@ function LineRow({
             )}
             <button
               onClick={() => setEditing(true)}
-              className="text-muted-foreground hover:text-foreground p-1.5 rounded transition min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="text-muted-foreground hover:text-foreground p-1.5 rounded transition min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               title="Edit item"
               aria-label="Edit item"
             >
@@ -1065,7 +1064,7 @@ function LineRow({
             </button>
             <button
               onClick={onDelete}
-              className="text-muted-foreground hover:text-destructive p-1.5 rounded transition min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="text-muted-foreground hover:text-destructive p-1.5 rounded transition min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               title="Delete"
               aria-label="Delete item"
             >
@@ -1084,7 +1083,7 @@ function LineRow({
                   if (!assigned.has(u.id)) onToggle(u.id);
                 });
               }}
-              className="px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+              className="px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               All
             </button>
@@ -1095,7 +1094,7 @@ function LineRow({
                   if (assigned.has(u.id)) onToggle(u.id);
                 });
               }}
-              className="px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+              className="px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               None
             </button>
@@ -1108,7 +1107,7 @@ function LineRow({
                 <button
                   key={u.id}
                   onClick={() => onToggle(u.id)}
-                  className="relative w-8 h-8 rounded-full flex items-center justify-center text-[11px] leading-none font-bold tracking-tight border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+                  className="relative w-8 h-8 rounded-full flex items-center justify-center text-[11px] leading-none font-bold tracking-tight border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
                   style={{
                     backgroundColor: on ? u.color : "transparent",
                     borderColor: u.color,
@@ -1208,10 +1207,10 @@ function PersonTotalRow({
               <span className="font-medium text-foreground truncate">
                 {person.name}
                 {isMe && (
-                  <span className="ml-1.5 text-[10px] font-bold text-primary uppercase tracking-wide align-middle">You</span>
+                  <span className="ml-1.5 text-[10px] font-bold text-primary-text uppercase tracking-wide align-middle">You</span>
                 )}
               </span>
-              <span className="text-base font-bold text-primary tabular-nums">
+              <span className="text-base font-bold text-primary-text tabular-nums">
                 {fmt(person.total)}
               </span>
             </div>
@@ -1219,7 +1218,7 @@ function PersonTotalRow({
           {hasItems && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="text-muted-foreground hover:text-foreground transition text-sm px-1 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+              className="text-muted-foreground hover:text-foreground transition text-sm px-1 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               aria-label={expanded ? "Collapse" : "Expand"}
             >
               {expanded ? "▲" : "▼"}
@@ -1267,12 +1266,12 @@ function PersonTotalRow({
               Tip ({fmtPct(person.tipPercent)}%)
             </span>
             <div className="flex items-center gap-1.5">
-              <span className={`text-xs font-semibold tabular-nums ${person.tipIsCustom ? "text-primary" : "text-foreground"}`}>
+              <span className={`text-xs font-semibold tabular-nums ${person.tipIsCustom ? "text-primary-text" : "text-foreground"}`}>
                 {fmt(person.tipAmount)}
               </span>
               <button
                 onClick={openTipModal}
-                className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 title="Set custom tip %"
                 aria-label="Edit tip percentage"
               >
@@ -1281,7 +1280,7 @@ function PersonTotalRow({
               {person.tipIsCustom && (
                 <button
                   onClick={resetTip}
-                  className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   title="Reset to bill default tip"
                   aria-label="Reset tip to default"
                 >
@@ -1305,7 +1304,7 @@ function PersonTotalRow({
             onKeyDown={(e) => e.key === "Enter" && saveTip()}
             inputMode="decimal"
             placeholder="15"
-            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base text-center focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base text-center focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
           />
           <ModalButtons
             onCancel={() => setTipModalOpen(false)}
@@ -1357,7 +1356,7 @@ function PercentRow({
             else setVal(String(percent));
           }}
           inputMode="decimal"
-          className="w-12 text-center border border-border rounded px-1 py-0.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary"
+          className="w-12 text-center border border-border rounded px-1 py-0.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
         />
         <span>%</span>
       </div>
@@ -1410,13 +1409,13 @@ function ModalButtons({
     <div className="flex gap-2 pt-1">
       <button
         onClick={onCancel}
-        className="flex-1 border-2 border-border rounded-lg py-2.5 text-sm font-medium text-muted-foreground min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="flex-1 border-2 border-border rounded-lg py-2.5 text-sm font-medium text-muted-foreground min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Cancel
       </button>
       <button
         onClick={onConfirm}
-        className={`flex-1 rounded-lg py-2.5 text-sm font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        className={`flex-1 rounded-lg py-2.5 text-sm font-semibold min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
           destructive
             ? "bg-destructive text-destructive-foreground hover:opacity-90"
             : "bg-primary text-primary-foreground hover:opacity-90"
