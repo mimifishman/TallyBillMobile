@@ -11,10 +11,10 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
@@ -411,7 +411,11 @@ export default function ScanScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          enabled={Platform.OS !== "web"}
+        >
         <FlatList
           data={scan.items}
           keyExtractor={(_, i) => String(i)}
@@ -523,7 +527,7 @@ export default function ScanScreen() {
             {formatMoney(selectedTotal, billData?.bill.currency)}
           </Text>
         </View>
-        </>
+        </KeyboardAvoidingView>
       )}
 
       <LanguagePicker
