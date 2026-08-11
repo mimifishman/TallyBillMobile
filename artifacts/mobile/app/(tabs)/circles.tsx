@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
+import { useTabContentBottomPadding } from "@/hooks/useTabContentBottomPadding";
 import {
   useGetCircles,
   useCreateCircle,
@@ -27,6 +28,7 @@ import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 export default function CirclesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useTabContentBottomPadding();
   const queryClient = useQueryClient();
 
   const [showNewCircle, setShowNewCircle] = useState(false);
@@ -99,7 +101,7 @@ export default function CirclesScreen() {
       ) : (
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 40 }]}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomPadding }]}
         >
           {circles.map((circle) => (
             <TouchableOpacity

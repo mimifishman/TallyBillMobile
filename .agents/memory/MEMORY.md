@@ -3,3 +3,4 @@
 - [React version pins](react-version-pin.md) — mobile react must EXACTLY equal RN's renderer version (19.1.0 on RN 0.81) or Expo Go hard-crashes; web stays 19.1.9 for Clerk. Never bump mobile react to fix Clerk peer warnings.
 - [Previewing the scan Review step](mobile-scan-review-preview.md) — the review UI is unreachable without a camera; seed ScanProvider with `status: "ready"` + fake items to screenshot it.
 - [Clerk auth testing](clerk-testing.md) — Turnstile captcha blocks automated sign-up tests (spinner hangs); pre-create users via Backend API and test sign-in instead; +clerk_test code is 424242.
+- [pnpm shared-context deps](pnpm-shared-context-deps.md) — deps whose React context must match expo-router's copy (e.g. bottom-tabs) must be pinned to its exact resolved version or useContext silently reads undefined.

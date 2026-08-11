@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useTabContentBottomPadding } from "@/hooks/useTabContentBottomPadding";
 import { useAuth } from "@/context/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
 import { LanguagePicker } from "@/components/LanguagePicker";
@@ -36,6 +37,7 @@ function IconBox({ name, color }: { name: React.ComponentProps<typeof Feather>["
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useTabContentBottomPadding();
   const { user, logout, isGuest, guestName, saveGuestName, setDisplayNameOverride, setDbProfile } = useAuth();
   const { user: clerkUser } = useUser();
 
@@ -138,7 +140,7 @@ export default function SettingsScreen() {
       contentContainerStyle={[
         styles.content,
         {
-          paddingBottom: insets.bottom + 40,
+          paddingBottom: bottomPadding,
           paddingTop: Platform.OS === "web" ? 67 : insets.top + 12,
         },
       ]}

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useTabContentBottomPadding } from "@/hooks/useTabContentBottomPadding";
 import { PressableScale } from "@/components/PressableScale";
 import * as Haptics from "expo-haptics";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
@@ -19,6 +20,7 @@ import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 export default function JoinScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useTabContentBottomPadding();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -60,7 +62,7 @@ export default function JoinScreen() {
           styles.container,
           {
             paddingTop: Platform.OS === "web" ? 67 : insets.top + 40,
-            paddingBottom: insets.bottom + 40,
+            paddingBottom: bottomPadding,
           },
         ]}
       >
