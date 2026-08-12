@@ -27,7 +27,7 @@ if (!basePath) {
   );
 }
 
-function billRoutePlugin(base: string): Plugin {
+function htmlRoutePlugin(base: string): Plugin {
   const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
 
   const rewrite = (
@@ -40,12 +40,14 @@ function billRoutePlugin(base: string): Plugin {
     const pathname = (withoutBase.split("?")[0] ?? "/").replace(/^\/+/, "");
     if (/^b\/[A-Za-z0-9]+$/.test(pathname)) {
       req.url = `${normalizedBase}/app.html`;
+    } else if (pathname === "privacy" || pathname === "privacy/") {
+      req.url = `${normalizedBase}/privacy.html`;
     }
     next();
   };
 
   return {
-    name: "bill-route",
+    name: "html-routes",
     configureServer(server) {
       server.middlewares.use(rewrite);
     },
@@ -58,7 +60,7 @@ function billRoutePlugin(base: string): Plugin {
 export default defineConfig({
   base: basePath,
   plugins: [
-    billRoutePlugin(basePath),
+    htmlRoutePlugin(basePath),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
@@ -91,6 +93,7 @@ export default defineConfig({
       input: {
         marketing: path.resolve(import.meta.dirname, "index.html"),
         app: path.resolve(import.meta.dirname, "app.html"),
+        privacy: path.resolve(import.meta.dirname, "privacy.html"),
       },
     },
   },
