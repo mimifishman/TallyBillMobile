@@ -12,3 +12,5 @@ description: Why Google/Apple SSO can fail instantly in @clerk/expo and how erro
 **How to apply:** If OAuth fails *instantly* with no browser opening, suspect client-side module/SDK issues, not network or Clerk config. Check the logged `[OAuth sign-in error]` / `[OAuth sign-up error]` JSON (utils/clerkErrors.ts in the mobile app logs full code/message/errors). OAuth user-cancellation returns normally (no session) — it must stay silent. On web inside the embedded workspace preview iframe, messaging points users to open the app in a new tab.
 
 Note: `useSSO` in @clerk/expo 3.x still uses Clerk's legacy sign-in resource internally while the app's screens use the new hooks API (`signIn.password`, `signIn.mfa`) — the mix is fine; both worked in verification.
+
+**iOS store builds:** `@clerk/expo` v4 requires its config plugin (`"@clerk/expo"` in app.json `plugins`) and therefore iOS 17 as the minimum version. Without the plugin, pod install fails during publish. Expo Go/dev is unaffected (plugins only apply at prebuild).
