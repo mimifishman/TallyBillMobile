@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — TallyBill</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #5c6670;
+    --accent: #1F883D;
+    --rule: #e3e6e8;
+    --card: #f6f8f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --fg: #e8eaed;
+      --muted: #9aa4ae;
+      --accent: #3fb95f;
+      --rule: #2a2f35;
+      --card: #1c2126;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+  header { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--rule); margin-bottom: 2.5rem; }
+  .brand { color: var(--accent); font-weight: 700; letter-spacing: -0.01em; font-size: 1.05rem; margin: 0 0 0.75rem; }
+  h1 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 0.5rem; }
+  .updated { color: var(--muted); font-size: 0.9rem; margin: 0; }
+  h2 { font-size: 1.2rem; letter-spacing: -0.01em; margin: 2.5rem 0 0.75rem; }
+  h3 { font-size: 1rem; margin: 1.5rem 0 0.4rem; }
+  p, li { color: var(--fg); }
+  ul { padding-left: 1.25rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent); }
+  .lede { font-size: 1.05rem; color: var(--muted); }
+  .callout {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0;
+  }
+  .callout p { margin: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 0.6rem 0.75rem 0.6rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="brand">TallyBill</p>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: August 12, 2026</p>
+  </header>
+
+  <p class="lede">TallyBill scans restaurant receipts and splits them between people. This policy explains what the app collects, who it is shared with, how long it is kept, and how to delete it.</p>
+
+  <h2>You can use TallyBill without an account</h2>
+  <p>You can create a bill, scan a receipt, assign items and see per-person totals as a guest, without registering. If you use TallyBill this way, we do not collect your name or email address. Guest bills are not saved to a history you can return to across devices.</p>
+  <p>Signing in is optional and exists so your bills persist, so you can save groups of people as Circles, and so you can join a bill someone shares with you.</p>
+
+  <h2>What we collect</h2>
+  <table>
+    <tr><th>Data</th><th>Why</th></tr>
+    <tr><td>Name and email address</td><td>To create and identify your account. Collected only if you register.</td></tr>
+    <tr><td>Account identifier</td><td>To associate your bills, circles and receipts with your account.</td></tr>
+    <tr><td>Receipt photographs</td><td>To read the line items, prices and totals off your receipt.</td></tr>
+    <tr><td>Bill contents</td><td>Bill names, item names, prices, the names you give people on a bill, and the amounts each person owes.</td></tr>
+    <tr><td>Approximate country</td><td>Determined from your network address to pick a sensible default currency. Not stored, and not associated with your account.</td></tr>
+  </table>
+
+  <p>We do not collect your precise location, your contacts, your browsing or search history, or usage analytics. TallyBill contains no advertising and no advertising or analytics SDKs. <strong>We do not sell or share your data, and we do not use it for tracking or advertising.</strong></p>
+
+  <h2>Who else processes your data</h2>
+  <p>TallyBill relies on three external services, each for a specific task:</p>
+  <ul>
+    <li><strong>Clerk</strong> handles registration, sign-in and session management. Your name, email address and credentials are held by Clerk.</li>
+    <li><strong>An AI vision provider</strong> reads the text off your receipt. Receipt images are transmitted to this provider to extract line items and, if you ask for it, to translate item names. The provider processes these images under its own terms, which may include retaining them for a limited period for abuse monitoring.</li>
+    <li><strong>ip-api.com</strong> converts your network address into a country code so the app can default to the right currency. We do not store the result.</li>
+  </ul>
+  <p>None of these are advertising networks or data brokers. They act on our instructions to deliver features you asked for.</p>
+
+  <h2>How long we keep things</h2>
+  <div class="callout">
+    <p><strong>Receipt images are kept indefinitely.</strong> When you scan a receipt, the photograph is stored so you can refer back to it from the bill. It remains stored until you delete the bill it belongs to, or delete your account.</p>
+  </div>
+  <p>Bill contents and account details are retained for as long as your account exists. Guest bills persist on our servers until deleted.</p>
+
+  <h2>Deleting your data</h2>
+  <p>You can delete an individual bill at any time from the bill screen. Deleting a bill removes the bill, its line items, and its stored receipt image.</p>
+  <p>To remove everything, open <strong>Settings → Delete account</strong> in the app. This permanently deletes:</p>
+  <ul>
+    <li>your account and sign-in credentials;</li>
+    <li>every bill you own, with its line items and stored receipt images;</li>
+    <li>your Circles and their members;</li>
+    <li>your participation in bills owned by other people.</li>
+  </ul>
+  <p>This cannot be undone, and we do not retain a copy. Bills owned by other people that you were part of remain theirs; your entry is removed from them.</p>
+
+  <h2>Bills you share</h2>
+  <p>Every bill has a six-character join code. Anyone you give that code to can open the bill and see its contents — item names, the names of the people on it and what each person owes. Share codes only with people you intend to split with.</p>
+
+  <h2>Security</h2>
+  <p>Data is transmitted over encrypted connections and stored on access-controlled infrastructure. Receipt images are served only to people authorised to view the bill they belong to. No system is perfectly secure, and we cannot guarantee absolute security.</p>
+
+  <h2>Children</h2>
+  <p>TallyBill is not directed at children under 13, and we do not knowingly collect personal information from them. If you believe a child has provided us with personal information, contact us and we will delete it.</p>
+
+  <h2>Your rights</h2>
+  <p>Depending on where you live, you may have the right to access, correct, export or delete your personal data, and to object to certain processing. The in-app deletion described above satisfies deletion requests immediately. For anything else, contact us using the address below.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes materially, we will update the date at the top of this page and, where appropriate, notify you in the app.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy or your data: <a href="mailto:support@tallybill.app">support@tallybill.app</a></p>
+
+  <footer>
+    TallyBill · <a href="/">tallybill.app</a>
+  </footer>
+</main>
+</body>
+</html>
