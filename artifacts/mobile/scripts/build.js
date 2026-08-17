@@ -142,6 +142,20 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   const clerkProxyPath =
     process.env.TALLYBILL_CLERK_PROXY_URL || process.env.CLERK_PROXY_URL || "";
 
+  // Build-time guardrail: publishable key must start with "pk_".
+  // A value that starts with "sk_" means a secret key was pasted into the
+  // publishable-key slot, which would expose credentials in the bundle.
+  if (clerkPublishableKey && !clerkPublishableKey.startsWith("pk_")) {
+    const likelyMistake = clerkPublishableKey.startsWith("sk_")
+      ? " — looks like a SECRET key was pasted into the publishable-key slot"
+      : "";
+    exitWithError(
+      `ERROR: TALLYBILL_CLERK_PUBLISHABLE_KEY does not start with "pk_"${likelyMistake}. ` +
+        `Visit your Clerk dashboard → API Keys and copy the pk_live_... value.`,
+    );
+    return;
+  }
+
   // Build-time guardrail: a test/dev key must never be paired with the
   // production proxy — the proxy only works for production instances and
   // Clerk returns host_invalid for dev keys, blocking the whole app.

@@ -3,9 +3,19 @@ import { getAuth, createClerkClient } from "@clerk/express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { validateClerkSecretKey } from "../lib/clerkKeyValidation.js";
+
+const resolvedSecretKey =
+  process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
+
+const secretKeyEnvVar = process.env.TALLYBILL_CLERK_SECRET_KEY
+  ? "TALLYBILL_CLERK_SECRET_KEY"
+  : "CLERK_SECRET_KEY";
+
+validateClerkSecretKey(resolvedSecretKey, secretKeyEnvVar);
 
 const clerk = createClerkClient({
-  secretKey: process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY,
+  secretKey: resolvedSecretKey,
 });
 
 export interface AuthRequest extends Request {

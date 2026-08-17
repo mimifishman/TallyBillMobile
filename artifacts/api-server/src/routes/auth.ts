@@ -6,6 +6,27 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.js";
 import type { AuthRequest } from "../middlewares/auth.js";
 import { sendEmail } from "../lib/resend.js";
+import { validateClerkSecretKey } from "../lib/clerkKeyValidation.js";
+
+/**
+ * Resolves and validates the Clerk secret key once at module load so any
+ * misconfiguration (e.g. a publishable key pasted into the wrong slot) is
+ * immediately visible in startup logs.
+ */
+function getClerkSecretKey(): string | undefined {
+  const key =
+    process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
+  const envVarName = process.env.TALLYBILL_CLERK_SECRET_KEY
+    ? "TALLYBILL_CLERK_SECRET_KEY"
+    : "CLERK_SECRET_KEY";
+  // validateClerkSecretKey logs an error on mismatch; callers still see
+  // the (wrong) key, but the proxy middleware will already be disabled so
+  // Clerk API calls will fail with a clear auth error rather than silently.
+  validateClerkSecretKey(key, envVarName);
+  return key;
+}
+
+const clerkSecretKey = getClerkSecretKey();
 
 const router = Router();
 
@@ -40,8 +61,6 @@ router.put("/password", requireAuth, async (req: AuthRequest, res) => {
     }
 
     let valid = false;
-
-    const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
 
     if (user.clerkId) {
       const clerkVerifyRes = await fetch(
@@ -131,7 +150,6 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     if (user.clerkId) {
-      const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
       const clerkRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
         headers: { Authorization: `Bearer ${clerkSecretKey}` },
       });
@@ -227,7 +245,6 @@ router.post("/reset-password", async (req, res) => {
       .where(eq(usersTable.id, user.id));
 
     if (user.clerkId) {
-      const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
       const clerkRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
         method: "PATCH",
         headers: {

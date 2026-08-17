@@ -22,6 +22,7 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "http";
+import { validateClerkSecretKey } from "../lib/clerkKeyValidation.js";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
@@ -58,8 +59,24 @@ export function clerkProxyMiddleware(): RequestHandler {
     return (_req, _res, next) => next();
   }
 
-  const secretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
+  const secretKey =
+    process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
   if (!secretKey) {
+    return (_req, _res, next) => next();
+  }
+
+  const secretKeyEnvVar = process.env.TALLYBILL_CLERK_SECRET_KEY
+    ? "TALLYBILL_CLERK_SECRET_KEY"
+    : "CLERK_SECRET_KEY";
+
+  // If the secret key has the wrong shape (e.g. a publishable key was pasted
+  // into the secret-key slot), forwarding it would cause Clerk to return
+  // host_invalid for every proxied request, silently breaking all auth.
+  // Disable the proxy and log a clear error instead.
+  if (!validateClerkSecretKey(secretKey, secretKeyEnvVar)) {
+    console.error(
+      "[Clerk proxy] Proxy disabled — fix the secret key above to re-enable it.",
+    );
     return (_req, _res, next) => next();
   }
 

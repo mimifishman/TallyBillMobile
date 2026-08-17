@@ -8,6 +8,7 @@ import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
+import { validateClerkPublishableKey } from "./lib/clerkKeyValidation";
 
 const app: Express = express();
 
@@ -37,6 +38,12 @@ app.use(cors({ credentials: true, origin: true }));
 
 const clerkPublishableKey =
   process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY;
+
+const publishableKeyEnvVar = process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY
+  ? "TALLYBILL_CLERK_PUBLISHABLE_KEY"
+  : "CLERK_PUBLISHABLE_KEY";
+
+validateClerkPublishableKey(clerkPublishableKey, publishableKeyEnvVar);
 
 app.use(
   clerkMiddleware({
