@@ -150,6 +150,7 @@ externalPort = 4200
 [userenv]
 
 [userenv.shared]
+TALLYBILL_CLERK_PROXY_URL = "/api/__clerk"
 
 [userenv.production]
 EXPO_PUBLIC_DOMAIN = "tallybill.app"

@@ -41,13 +41,15 @@ router.put("/password", requireAuth, async (req: AuthRequest, res) => {
 
     let valid = false;
 
+    const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
+
     if (user.clerkId) {
       const clerkVerifyRes = await fetch(
         `https://api.clerk.com/v1/users/${user.clerkId}/verify_password`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+            Authorization: `Bearer ${clerkSecretKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ password: currentPassword }),
@@ -86,7 +88,7 @@ router.put("/password", requireAuth, async (req: AuthRequest, res) => {
       const clerkUpdateRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          Authorization: `Bearer ${clerkSecretKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ password: newPassword, skip_password_checks: true }),
@@ -129,8 +131,9 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     if (user.clerkId) {
+      const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
       const clerkRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
-        headers: { Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}` },
+        headers: { Authorization: `Bearer ${clerkSecretKey}` },
       });
       if (clerkRes.ok) {
         const clerkUser = (await clerkRes.json()) as {
@@ -224,10 +227,11 @@ router.post("/reset-password", async (req, res) => {
       .where(eq(usersTable.id, user.id));
 
     if (user.clerkId) {
+      const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
       const clerkRes = await fetch(`https://api.clerk.com/v1/users/${user.clerkId}`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          Authorization: `Bearer ${clerkSecretKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ password: newPassword, skip_password_checks: true }),

@@ -41,7 +41,12 @@ setExtraHeadersGetter(({ url }) => {
 });
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+// Only use proxy for production keys — dev instances (pk_test_) don't support
+// Frontend API proxying and will return host_invalid if a proxy URL is set.
+const proxyUrl =
+  publishableKey?.startsWith("pk_test_")
+    ? undefined
+    : process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: true, duration: 400 });

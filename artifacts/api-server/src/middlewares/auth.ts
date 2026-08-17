@@ -4,7 +4,9 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+const clerk = createClerkClient({
+  secretKey: process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY,
+});
 
 export interface AuthRequest extends Request {
   user?: {

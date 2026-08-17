@@ -136,14 +136,33 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
 
   console.log("Starting Metro...");
   console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
-  const clerkProxyUrl = process.env.CLERK_PROXY_URL
-    ? `https://${expoPublicDomain}${process.env.CLERK_PROXY_URL}`
+
+  const clerkPublishableKey =
+    process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "";
+  const clerkProxyPath =
+    process.env.TALLYBILL_CLERK_PROXY_URL || process.env.CLERK_PROXY_URL || "";
+
+  // Build-time guardrail: a test/dev key must never be paired with the
+  // production proxy — the proxy only works for production instances and
+  // Clerk returns host_invalid for dev keys, blocking the whole app.
+  if (clerkPublishableKey.startsWith("pk_test_") && clerkProxyPath) {
+    exitWithError(
+      "ERROR: TALLYBILL_CLERK_PUBLISHABLE_KEY starts with 'pk_test_' but a proxy URL is " +
+        "configured. Clerk Frontend API proxying only works for production instances " +
+        "(pk_live_... keys). Either remove the proxy URL or use a production publishable key.",
+    );
+    return;
+  }
+
+  const clerkProxyUrl = clerkProxyPath
+    ? `https://${expoPublicDomain}${clerkProxyPath}`
     : "";
+
   const env = {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
-    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || "",
+    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKey,
     EXPO_PUBLIC_CLERK_PROXY_URL: clerkProxyUrl,
   };
 
