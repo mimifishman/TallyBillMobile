@@ -14,15 +14,11 @@ import { validateClerkSecretKey } from "../lib/clerkKeyValidation.js";
  * immediately visible in startup logs.
  */
 function getClerkSecretKey(): string | undefined {
-  const key =
-    process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
-  const envVarName = process.env.TALLYBILL_CLERK_SECRET_KEY
-    ? "TALLYBILL_CLERK_SECRET_KEY"
-    : "CLERK_SECRET_KEY";
+  const key = process.env.TALLYBILL_CLERK_SECRET_KEY;
   // validateClerkSecretKey logs an error on mismatch; callers still see
   // the (wrong) key, but the proxy middleware will already be disabled so
   // Clerk API calls will fail with a clear auth error rather than silently.
-  validateClerkSecretKey(key, envVarName);
+  validateClerkSecretKey(key, "TALLYBILL_CLERK_SECRET_KEY");
   return key;
 }
 

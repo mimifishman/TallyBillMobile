@@ -137,10 +137,8 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   console.log("Starting Metro...");
   console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
 
-  const clerkPublishableKey =
-    process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY || "";
-  const clerkProxyPath =
-    process.env.TALLYBILL_CLERK_PROXY_URL || process.env.CLERK_PROXY_URL || "";
+  const clerkPublishableKey = process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY || "";
+  const clerkProxyPath = process.env.TALLYBILL_CLERK_PROXY_URL || "";
 
   // Build-time guardrail: publishable key must start with "pk_".
   // A value that starts with "sk_" means a secret key was pasted into the

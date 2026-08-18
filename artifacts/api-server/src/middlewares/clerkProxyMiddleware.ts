@@ -59,22 +59,17 @@ export function clerkProxyMiddleware(): RequestHandler {
     return (_req, _res, next) => next();
   }
 
-  const secretKey =
-    process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
+  const secretKey = process.env.TALLYBILL_CLERK_SECRET_KEY;
   if (!secretKey) {
     return (_req, _res, next) => next();
   }
-
-  const secretKeyEnvVar = process.env.TALLYBILL_CLERK_SECRET_KEY
-    ? "TALLYBILL_CLERK_SECRET_KEY"
-    : "CLERK_SECRET_KEY";
 
   // If the secret key has the wrong shape (e.g. a publishable key was pasted
   // into the secret-key slot), forwarding it would cause Clerk to return
   // host_invalid for every proxied request, silently breaking all auth.
   // In production the server must not start with a bad key; exit immediately
   // so the deploy is flagged as failed rather than serving broken auth.
-  if (!validateClerkSecretKey(secretKey, secretKeyEnvVar)) {
+  if (!validateClerkSecretKey(secretKey, "TALLYBILL_CLERK_SECRET_KEY")) {
     // assertClerkKeysForProduction in app.ts already handles the exit for the
     // production case before any middleware is mounted.  This fallback handles
     // any edge case where the middleware is constructed outside that guard.

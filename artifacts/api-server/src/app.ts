@@ -14,24 +14,14 @@ import { assertClerkKeysForProduction } from "./lib/clerkKeyValidation";
 // In production, both keys must have the correct shape. If either is wrong the
 // server exits immediately with a non-zero status so the deploy is flagged as
 // failed rather than serving a broken auth experience.
-const clerkSecretKey =
-  process.env.TALLYBILL_CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY;
-const clerkSecretKeyEnvVar = process.env.TALLYBILL_CLERK_SECRET_KEY
-  ? "TALLYBILL_CLERK_SECRET_KEY"
-  : "CLERK_SECRET_KEY";
-
-const clerkPublishableKey =
-  process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY ||
-  process.env.CLERK_PUBLISHABLE_KEY;
-const clerkPublishableKeyEnvVar = process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY
-  ? "TALLYBILL_CLERK_PUBLISHABLE_KEY"
-  : "CLERK_PUBLISHABLE_KEY";
+const clerkSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY;
+const clerkPublishableKey = process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY;
 
 assertClerkKeysForProduction(
   clerkSecretKey,
-  clerkSecretKeyEnvVar,
+  "TALLYBILL_CLERK_SECRET_KEY",
   clerkPublishableKey,
-  clerkPublishableKeyEnvVar,
+  "TALLYBILL_CLERK_PUBLISHABLE_KEY",
 );
 
 const app: Express = express();
@@ -63,6 +53,7 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(
   clerkMiddleware({
     publishableKey: clerkPublishableKey,
+    secretKey: clerkSecretKey,
   }),
 );
 
