@@ -25,7 +25,7 @@ Recreate the TallyBill Django web app (https://github.com/mimifishman/TallyBill)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Mobile**: Expo SDK 54, Expo Router, TanStack Query, Inter fonts
-- **Auth**: Clerk (social login + email/password). Server uses `@clerk/express` with `getAuth()` to validate tokens and map Clerk user IDs to local integer user IDs via a `clerkId` column on the users table. Mobile uses `@clerk/expo` (ClerkProvider + useSignIn/useSignUp/useSSO hooks). Proxy middleware routes Clerk FAPI requests through the API server in production.
+- **Auth**: Clerk (social login + email/password). Server uses `@clerk/express` with `getAuth()` to validate tokens and map Clerk user IDs to local integer user IDs via a `clerkId` column on the users table. Mobile uses `@clerk/expo` (ClerkProvider + useSignIn/useSignUp/useSSO hooks). Clerk SDKs talk directly to the instance's Frontend API at `clerk.tallybill.app` (derived from the publishable key); there is no Clerk proxy.
 
 ## Artifacts
 
