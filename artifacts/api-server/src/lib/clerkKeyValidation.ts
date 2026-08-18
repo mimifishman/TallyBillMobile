@@ -6,10 +6,10 @@
  *   - Publishable keys: pk_live_... / pk_test_...
  *
  * A common mistake is pasting the publishable key into the secret-key
- * environment variable (or vice-versa). These helpers detect that at
- * startup so the error is immediately visible in logs rather than
- * producing confusing downstream failures like `host_invalid` from
- * the Frontend API proxy.
+ * environment variable (or vice-versa), or letting development-instance
+ * (test) keys reach production. These helpers detect both at startup so
+ * the error is immediately visible in logs rather than producing
+ * confusing downstream failures like `host_invalid` from Clerk.
  */
 
 /**
@@ -75,6 +75,34 @@ export function assertClerkKeysForProduction(
   }
   if (!validateClerkPublishableKey(publishableKey, publishableKeyEnvVar)) {
     valid = false;
+  }
+
+  // Production must use production-instance (live) keys. Development-instance
+  // keys reaching production usually means the deployment secrets are still
+  // synced to the workspace (development) values.
+  const testKeySlots = [
+    [secretKey, secretKeyEnvVar, "sk_test_"],
+    [publishableKey, publishableKeyEnvVar, "pk_test_"],
+  ] as const;
+  for (const [key, envVarName, testPrefix] of testKeySlots) {
+    if (key?.startsWith(testPrefix)) {
+      console.error(
+        `\n` +
+          `╔══════════════════════════════════════════════════════════════════╗\n` +
+          `║  CLERK CONFIGURATION ERROR                                       ║\n` +
+          `╠══════════════════════════════════════════════════════════════════╣\n` +
+          `║  ${envVarName} is a DEVELOPMENT-instance key (${testPrefix}...)\n`.padEnd(
+            68,
+          ) +
+          `║  but this server is running in production.                       ║\n` +
+          `║\n` +
+          `║  To fix: in the deployment's secrets settings, unsync this       ║\n` +
+          `║  secret from the workspace value and set the live key            ║\n` +
+          `║  (sk_live_... / pk_live_...) from your Clerk dashboard.          ║\n` +
+          `╚══════════════════════════════════════════════════════════════════╝\n`,
+      );
+      valid = false;
+    }
   }
 
   if (!valid) {

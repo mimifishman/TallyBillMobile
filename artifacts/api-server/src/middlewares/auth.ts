@@ -5,9 +5,9 @@ import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { validateClerkSecretKey } from "../lib/clerkKeyValidation.js";
 
-const resolvedSecretKey = process.env.TALLYBILL_CLERK_SECRET_KEY;
+const resolvedSecretKey = process.env.CLERK_SECRET_KEY;
 
-validateClerkSecretKey(resolvedSecretKey, "TALLYBILL_CLERK_SECRET_KEY");
+validateClerkSecretKey(resolvedSecretKey, "CLERK_SECRET_KEY");
 
 const clerk = createClerkClient({
   secretKey: resolvedSecretKey,

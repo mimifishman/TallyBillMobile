@@ -137,7 +137,7 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   console.log("Starting Metro...");
   console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
 
-  const clerkPublishableKey = process.env.TALLYBILL_CLERK_PUBLISHABLE_KEY || "";
+  const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || "";
 
   // Build-time guardrail: publishable key must start with "pk_".
   // A value that starts with "sk_" means a secret key was pasted into the
@@ -147,8 +147,22 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
       ? " — looks like a SECRET key was pasted into the publishable-key slot"
       : "";
     exitWithError(
-      `ERROR: TALLYBILL_CLERK_PUBLISHABLE_KEY does not start with "pk_"${likelyMistake}. ` +
+      `ERROR: CLERK_PUBLISHABLE_KEY does not start with "pk_"${likelyMistake}. ` +
         `Visit your Clerk dashboard → API Keys and copy the pk_live_... value.`,
+    );
+    return;
+  }
+
+  // This script only runs for production (published) builds. A pk_test_ key
+  // here means the deployment secret is still synced to the workspace
+  // (development) value — shipping it would point the live app at the
+  // development Clerk instance.
+  if (clerkPublishableKey.startsWith("pk_test_")) {
+    exitWithError(
+      "ERROR: CLERK_PUBLISHABLE_KEY is a development-instance key (pk_test_...) " +
+        "but this is a production build. In the deployment's secrets settings, " +
+        "unsync CLERK_PUBLISHABLE_KEY from the workspace value and set your " +
+        "pk_live_... key from the Clerk dashboard.",
     );
     return;
   }
