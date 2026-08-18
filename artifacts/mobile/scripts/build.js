@@ -139,30 +139,33 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
 
   const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || "";
 
-  // Build-time guardrail: publishable key must start with "pk_".
-  // A value that starts with "sk_" means a secret key was pasted into the
-  // publishable-key slot, which would expose credentials in the bundle.
-  if (clerkPublishableKey && !clerkPublishableKey.startsWith("pk_")) {
-    const likelyMistake = clerkPublishableKey.startsWith("sk_")
-      ? " — looks like a SECRET key was pasted into the publishable-key slot"
-      : "";
+  // Build-time guardrail: this script only runs for production (published)
+  // builds, so the publishable key must be present and be a production
+  // (pk_live_...) key. A pk_test_ key means the deployment secret is still
+  // synced to the workspace (development) value; an sk_ value means a secret
+  // key was pasted into the publishable-key slot (which would expose
+  // credentials in the bundle); an empty value would ship a bundle whose
+  // auth cannot work at all.
+  if (!clerkPublishableKey.startsWith("pk_live_")) {
+    let detail;
+    if (!clerkPublishableKey) {
+      detail = "CLERK_PUBLISHABLE_KEY is not set";
+    } else if (clerkPublishableKey.startsWith("pk_test_")) {
+      detail =
+        "CLERK_PUBLISHABLE_KEY is a development-instance key (pk_test_...) — " +
+        "the deployment secret is likely still synced to the workspace value";
+    } else if (clerkPublishableKey.startsWith("sk_")) {
+      detail =
+        "CLERK_PUBLISHABLE_KEY looks like a SECRET key pasted into the " +
+        "publishable-key slot";
+    } else {
+      detail = 'CLERK_PUBLISHABLE_KEY does not start with "pk_live_"';
+    }
     exitWithError(
-      `ERROR: CLERK_PUBLISHABLE_KEY does not start with "pk_"${likelyMistake}. ` +
-        `Visit your Clerk dashboard → API Keys and copy the pk_live_... value.`,
-    );
-    return;
-  }
-
-  // This script only runs for production (published) builds. A pk_test_ key
-  // here means the deployment secret is still synced to the workspace
-  // (development) value — shipping it would point the live app at the
-  // development Clerk instance.
-  if (clerkPublishableKey.startsWith("pk_test_")) {
-    exitWithError(
-      "ERROR: CLERK_PUBLISHABLE_KEY is a development-instance key (pk_test_...) " +
-        "but this is a production build. In the deployment's secrets settings, " +
-        "unsync CLERK_PUBLISHABLE_KEY from the workspace value and set your " +
-        "pk_live_... key from the Clerk dashboard.",
+      `ERROR: ${detail}. This is a production build, so it requires your ` +
+        "pk_live_... key: in the deployment's secrets settings, unsync " +
+        "CLERK_PUBLISHABLE_KEY from the workspace value and paste the " +
+        "pk_live_... value from your Clerk dashboard → API Keys.",
     );
     return;
   }
