@@ -72,11 +72,18 @@ export function clerkProxyMiddleware(): RequestHandler {
   // If the secret key has the wrong shape (e.g. a publishable key was pasted
   // into the secret-key slot), forwarding it would cause Clerk to return
   // host_invalid for every proxied request, silently breaking all auth.
-  // Disable the proxy and log a clear error instead.
+  // In production the server must not start with a bad key; exit immediately
+  // so the deploy is flagged as failed rather than serving broken auth.
   if (!validateClerkSecretKey(secretKey, secretKeyEnvVar)) {
+    // assertClerkKeysForProduction in app.ts already handles the exit for the
+    // production case before any middleware is mounted.  This fallback handles
+    // any edge case where the middleware is constructed outside that guard.
     console.error(
       "[Clerk proxy] Proxy disabled — fix the secret key above to re-enable it.",
     );
+    if (process.env.NODE_ENV === "production") {
+      process.exit(1);
+    }
     return (_req, _res, next) => next();
   }
 

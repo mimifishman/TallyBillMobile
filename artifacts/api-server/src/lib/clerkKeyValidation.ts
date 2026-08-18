@@ -48,6 +48,50 @@ export function validateClerkSecretKey(
 }
 
 /**
+ * Asserts that both Clerk keys have the correct shape when running in
+ * production. Exits the process with code 1 if either key is missing or has
+ * the wrong prefix, so a misconfigured deploy fails fast rather than serving
+ * a broken auth experience.
+ *
+ * Safe to call in development — it is a no-op outside of production.
+ *
+ * @param secretKey          - The resolved secret key value.
+ * @param secretKeyEnvVar    - The env var name for the secret key.
+ * @param publishableKey     - The resolved publishable key value.
+ * @param publishableKeyEnvVar - The env var name for the publishable key.
+ */
+export function assertClerkKeysForProduction(
+  secretKey: string | undefined,
+  secretKeyEnvVar: string,
+  publishableKey: string | undefined,
+  publishableKeyEnvVar: string,
+): void {
+  if (process.env.NODE_ENV !== "production") return;
+
+  let valid = true;
+
+  if (!validateClerkSecretKey(secretKey, secretKeyEnvVar)) {
+    valid = false;
+  }
+  if (!validateClerkPublishableKey(publishableKey, publishableKeyEnvVar)) {
+    valid = false;
+  }
+
+  if (!valid) {
+    console.error(
+      `\n` +
+        `╔══════════════════════════════════════════════════════════════════╗\n` +
+        `║  SERVER STARTUP ABORTED                                          ║\n` +
+        `╠══════════════════════════════════════════════════════════════════╣\n` +
+        `║  Clerk key misconfiguration detected in production.              ║\n` +
+        `║  Fix the errors above and redeploy.                              ║\n` +
+        `╚══════════════════════════════════════════════════════════════════╝\n`,
+    );
+    process.exit(1);
+  }
+}
+
+/**
  * Validates that `key` is a Clerk publishable key (starts with "pk_").
  * Logs a loud, actionable error if the shape is wrong and returns false.
  *
