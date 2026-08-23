@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TallyBill Mobile",
+    "name": "TallyBill",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.tallybill.mobile",
+      "bundleIdentifier": "app.tallybill",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "associatedDomains": [
         "applinks:tallybill.app"
       ]
@@ -25,7 +28,7 @@
         "foregroundImage": "./assets/images/adaptive-foreground.png",
         "backgroundColor": "#10B981"
       },
-      "package": "com.tallybill.mobile",
+      "package": "app.tallybill",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -56,6 +59,13 @@
       ],
       "expo-font",
       "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow TallyBill to use the camera to scan receipts.",
+          "recordAudioAndroid": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       "@clerk/expo"
     ],
