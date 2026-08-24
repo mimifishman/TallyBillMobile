@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — TallyBill</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #5c6670;
+    --accent: #1F883D;
+    --rule: #e3e6e8;
+    --card: #f6f8f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --fg: #e8eaed;
+      --muted: #9aa4ae;
+      --accent: #3fb95f;
+      --rule: #2a2f35;
+      --card: #1c2126;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+  header { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--rule); margin-bottom: 2.5rem; }
+  .brand { color: var(--accent); font-weight: 700; letter-spacing: -0.01em; font-size: 1.05rem; margin: 0 0 0.75rem; }
+  h1 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 0.5rem; }
+  .updated { color: var(--muted); font-size: 0.9rem; margin: 0; }
+  h2 { font-size: 1.2rem; letter-spacing: -0.01em; margin: 2.5rem 0 0.75rem; }
+  h3 { font-size: 1rem; margin: 1.5rem 0 0.4rem; }
+  p, li { color: var(--fg); }
+  ul { padding-left: 1.25rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent); }
+  .lede { font-size: 1.05rem; color: var(--muted); }
+  .callout {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0;
+  }
+  .callout p { margin: 0; }
+  .contact-email { font-size: 1.15rem; font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 0.6rem 0.75rem 0.6rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="brand">TallyBill</p>
+    <h1>Support</h1>
+    <p class="updated">Last updated: August 24, 2026</p>
+  </header>
+
+  <p class="lede">TallyBill scans a restaurant receipt in any language and splits it between the people at the table. If something is not working, or you cannot find what you need below, email us.</p>
+
+  <div class="callout">
+    <p class="contact-email"><a href="mailto:support@tallybill.app">support@tallybill.app</a></p>
+    <p style="margin-top:0.5rem;color:var(--muted);font-size:0.95rem">We read every message. To help us answer quickly, tell us what device you are using and what you expected to happen.</p>
+  </div>
+
+  <h2>Getting started</h2>
+
+  <h3>Do I need an account?</h3>
+  <p>No. You can create a bill, scan a receipt, split it and share it without registering. An account is only needed if you want your bills saved across devices, or want to use Circles.</p>
+
+  <h3>How do I split a bill?</h3>
+  <ul>
+    <li>Create a bill and photograph the receipt. TallyBill reads the line items and prices.</li>
+    <li>Check the results on the Review screen. You can correct anything the scan got wrong, and add items it missed.</li>
+    <li>Add the people at the table, then tap items to assign them. An item can be shared between several people.</li>
+    <li>Open Totals to see what each person owes, including their share of tax and tip.</li>
+  </ul>
+
+  <h3>How do other people join my bill?</h3>
+  <p>Every bill has a six-character join code, and a link you can send. Anyone with either can open the bill and see the items, the names on it and what each person owes. Codes use only unambiguous characters — there is no letter O or I, and no digit 0 or 1.</p>
+
+  <h2>Scanning receipts</h2>
+
+  <h3>Which languages can it read?</h3>
+  <p>49, including Arabic, Chinese, Hebrew, Hindi, Japanese, Korean, Russian, Thai and most European languages. You do not need to tell the app which language a receipt is in — it works it out.</p>
+
+  <h3>The scan got some items wrong</h3>
+  <p>Receipts vary enormously, and some are genuinely hard to read — faded thermal paper, handwriting, unusual layouts. Every item and price on the Review screen is editable, and you can add a line the scan missed or remove one it invented. Nothing is final until you confirm.</p>
+
+  <h3>The scan failed completely</h3>
+  <p>Try again with the receipt flat, well lit, and filling most of the frame. Avoid shadows falling across the paper. If a particular receipt never works, email it to us — real examples are the most useful thing we can get.</p>
+
+  <h2>Money and currency</h2>
+
+  <h3>The currency is wrong</h3>
+  <p>TallyBill guesses the currency from your approximate location, so that a receipt in Tokyo defaults to yen rather than to your home currency. If the guess is wrong you can change it on the bill.</p>
+
+  <h3>Does TallyBill move money between people?</h3>
+  <p>No. TallyBill works out who owes what. Settling up happens however you normally do it — cash, bank transfer, or any payment app. You do not need to connect a bank account or card, and we never ask for payment details.</p>
+
+  <h2>Your account and data</h2>
+
+  <h3>I forgot my password</h3>
+  <p>Use <strong>Forgot password</strong> on the sign-in screen. We email a six-digit code that is valid for 15 minutes. If it does not arrive within a few minutes, check your spam folder.</p>
+
+  <h3>How do I delete a bill?</h3>
+  <p>Open the bill and delete it from the bill screen. This removes the bill, its items and the receipt photograph stored with it.</p>
+
+  <h3>How do I delete my account?</h3>
+  <p>Open <strong>Settings → Delete account</strong> in the app. This permanently removes your account, every bill you own together with its receipt images, your Circles, and your entry in bills other people shared with you. It cannot be undone and we do not keep a copy.</p>
+
+  <h3>What do you do with my data?</h3>
+  <p>The <a href="/privacy">privacy policy</a> sets out exactly what is collected, who processes it, how long it is kept and how to remove it. TallyBill does not sell or share your data, and does not use it for advertising.</p>
+
+  <h2>Reporting a problem</h2>
+  <p>If something is broken, email <a href="mailto:support@tallybill.app">support@tallybill.app</a> and include:</p>
+  <ul>
+    <li>your device and its operating system version;</li>
+    <li>what you did, and what happened instead of what you expected;</li>
+    <li>a screenshot, if the problem is something you can see.</li>
+  </ul>
+  <p>If the problem is with a particular receipt, a photograph of that receipt helps more than anything else.</p>
+
+  <footer>
+    TallyBill · <a href="/">tallybill.app</a> · <a href="/privacy">Privacy Policy</a>
+  </footer>
+</main>
+</body>
+</html>

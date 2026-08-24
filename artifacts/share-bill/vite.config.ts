@@ -42,6 +42,8 @@ function htmlRoutePlugin(base: string): Plugin {
       req.url = `${normalizedBase}/app.html`;
     } else if (pathname === "privacy" || pathname === "privacy/") {
       req.url = `${normalizedBase}/privacy.html`;
+    } else if (pathname === "support" || pathname === "support/") {
+      req.url = `${normalizedBase}/support.html`;
     }
     next();
   };
@@ -94,6 +96,7 @@ export default defineConfig({
         marketing: path.resolve(import.meta.dirname, "index.html"),
         app: path.resolve(import.meta.dirname, "app.html"),
         privacy: path.resolve(import.meta.dirname, "privacy.html"),
+        support: path.resolve(import.meta.dirname, "support.html"),
       },
     },
   },
