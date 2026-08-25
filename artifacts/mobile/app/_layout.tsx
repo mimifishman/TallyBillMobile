@@ -25,15 +25,17 @@ import { getOrCreateGuestOwnerId, getCachedGuestOwnerId } from "@/utils/guestBil
 // without them ships with these undefined, which previously surfaced as an
 // instant launch crash (ClerkProvider with no key) or requests to
 // "https://undefined". Capture them here and fail loudly instead.
-const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+// Metro substitutes each `process.env.EXPO_PUBLIC_*` occurrence with a
+// literal at build time, so these must be written out in full here rather
+// than read through a variable or a helper.
+const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
-const missingEnv = [
-  !apiDomain && "EXPO_PUBLIC_DOMAIN",
-  !publishableKey && "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
-].filter(Boolean) as string[];
+const missingEnv: string[] = [];
+if (apiDomain.trim() === "") missingEnv.push("EXPO_PUBLIC_DOMAIN");
+if (publishableKey.trim() === "") missingEnv.push("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY");
 
-if (apiDomain) {
+if (apiDomain.trim() !== "") {
   setBaseUrl(`https://${apiDomain}`);
 }
 
