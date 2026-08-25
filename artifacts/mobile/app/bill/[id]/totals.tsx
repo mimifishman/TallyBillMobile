@@ -137,7 +137,13 @@ export default function TotalsScreen() {
   };
 
   const isSettled = totals?.settled === true;
-  const totalLines = totals ? totals.perPerson.reduce((sum, p) => sum + p.items.length, 0) : 0;
+  // Count distinct receipt lines, not per-person allocations: a shared item
+  // appears in every assignee's list, so summing p.items over-counts it. Unsplit
+  // lines aren't in anyone's list, so add them on.
+  const totalLines = totals
+    ? new Set(totals.perPerson.flatMap((p) => p.items.map((i) => i.billLineId))).size +
+      totals.unsplitLines.length
+    : 0;
   const totalPeople = totals?.perPerson.length ?? 0;
 
   const checkScale = useSharedValue(0);
