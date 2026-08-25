@@ -13,6 +13,8 @@ import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth
 import { requireBillAccess, type BillAccessRequest } from "../middlewares/billAccess.js";
 import { generateJoinCode } from "../lib/auth.js";
 import { subscribe, unsubscribe, notifyBillChanged } from "../lib/sseManager.js";
+import { ObjectStorageService } from "../lib/objectStorage.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -401,7 +403,23 @@ router.delete("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+  const receiptImagePath = bill.receiptImagePath;
+
   await db.delete(billsTable).where(eq(billsTable.id, billId));
+
+  // Best effort: the row is already gone, so a storage failure must not fail the
+  // request — but it leaves a photograph of the user's receipt behind, so log loudly.
+  if (receiptImagePath) {
+    try {
+      await new ObjectStorageService().deleteObjectEntity(receiptImagePath);
+    } catch (err) {
+      logger.error(
+        { err, billId, objectPath: receiptImagePath },
+        "ORPHANED RECEIPT IMAGE: bill deleted but its receipt object could not be removed from object storage — delete it manually",
+      );
+    }
+  }
+
   res.status(204).send();
 });
 

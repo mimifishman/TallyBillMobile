@@ -153,6 +153,25 @@ export class ObjectStorageService {
     return objectFile;
   }
 
+  /**
+   * Permanently removes an uploaded object (e.g. a receipt photo).
+   *
+   * Missing objects are treated as already-deleted so callers can retry
+   * safely; anything else propagates so the caller can report it.
+   */
+  async deleteObjectEntity(objectPath: string): Promise<void> {
+    let objectFile: File;
+    try {
+      objectFile = await this.getObjectEntityFile(objectPath);
+    } catch (err) {
+      if (err instanceof ObjectNotFoundError) {
+        return;
+      }
+      throw err;
+    }
+    await objectFile.delete({ ignoreNotFound: true });
+  }
+
   normalizeObjectEntityPath(rawPath: string): string {
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;
