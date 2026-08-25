@@ -395,6 +395,86 @@ export const useLogin = <
 };
 
 /**
+ * Deletes the user's own bills and circles, their saved receipt images, and the sign-in itself. On bills and circles owned by other people the user's name is kept but unlinked from their account. Cannot be undone.
+ * @summary Permanently delete the signed-in user's account
+ */
+export const getDeleteAccountUrl = () => {
+  return `/api/me`;
+};
+
+export const deleteAccount = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteAccountUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAccountMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAccount>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAccount>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAccount>>,
+    void
+  > = () => {
+    return deleteAccount(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAccount>>
+>;
+
+export type DeleteAccountMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Permanently delete the signed-in user's account
+ */
+export const useDeleteAccount = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAccount>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAccount>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteAccountMutationOptions(options));
+};
+
+/**
  * @summary Get user's bills
  */
 export const getGetBillsUrl = () => {

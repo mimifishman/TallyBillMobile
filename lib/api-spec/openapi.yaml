@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: auth
     description: Authentication
+  - name: account
+    description: The signed-in user's own account
   - name: bills
     description: Bill management
   - name: bill-members
@@ -123,6 +125,33 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me:
+    delete:
+      operationId: deleteAccount
+      tags: [account]
+      summary: Permanently delete the signed-in user's account
+      description: >-
+        Deletes the user's own bills and circles, their saved receipt images,
+        and the sign-in itself. On bills and circles owned by other people the
+        user's name is kept but unlinked from their account. Cannot be undone.
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Account deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Deletion failed
           content:
             application/json:
               schema:

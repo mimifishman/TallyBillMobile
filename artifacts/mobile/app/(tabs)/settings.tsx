@@ -15,20 +15,29 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useTabContentBottomPadding } from "@/hooks/useTabContentBottomPadding";
 import { useAuth } from "@/context/AuthContext";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, useDeleteAccount } from "@workspace/api-client-react";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { getInitials } from "@workspace/utils";
 
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 
-function IconBox({ name, color }: { name: React.ComponentProps<typeof Feather>["name"]; color: string }) {
+function IconBox({
+  name,
+  color,
+  background,
+}: {
+  name: React.ComponentProps<typeof Feather>["name"];
+  color: string;
+  background?: string;
+}) {
   const colors = useColors();
   return (
-    <View style={[styles.iconBox, { backgroundColor: colors.primarySoft }]}>
+    <View style={[styles.iconBox, { backgroundColor: background ?? colors.primarySoft }]}>
       <Feather name={name} size={16} color={color} />
     </View>
   );
@@ -40,6 +49,7 @@ export default function SettingsScreen() {
   const bottomPadding = useTabContentBottomPadding();
   const { user, logout, isGuest, guestName, saveGuestName, setDisplayNameOverride, setDbProfile } = useAuth();
   const { user: clerkUser } = useUser();
+  const queryClient = useQueryClient();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -129,6 +139,55 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const deleteAccountMutation = useDeleteAccount({
+    mutation: {
+      onSuccess: async () => {
+        // Only sign out once the server confirms the account is gone.
+        queryClient.clear();
+        try {
+          await logout();
+        } catch (e) {
+          if (__DEV__) console.warn("[delete account: sign out error]", e);
+        }
+        router.replace("/(auth)/login");
+      },
+      onError: () => {
+        Alert.alert(
+          "Couldn't delete your account",
+          "Something went wrong, so we stopped and left you signed in. Please check your connection and try again.",
+        );
+      },
+    },
+  });
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete your account?",
+      "This permanently deletes your TallyBill account, every bill you created, your circles, and the receipt photos saved with those bills. On bills other people shared with you, your name and items stay so their totals don't change, but they're no longer linked to your account. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Last chance",
+              "There is no way to undo this and no way to get your data back. Delete your account for good?",
+              [
+                { text: "Keep my account", style: "cancel" },
+                {
+                  text: "Delete forever",
+                  style: "destructive",
+                  onPress: () => deleteAccountMutation.mutate(),
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const guestDisplayName = guestName || "Guest";
@@ -306,6 +365,25 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             ) : null}
+            <TouchableOpacity
+              style={[styles.menuItem, { borderBottomColor: colors.border }]}
+              onPress={handleDeleteAccount}
+              disabled={deleteAccountMutation.isPending}
+              activeOpacity={0.75}
+            >
+              <IconBox name="trash-2" color={colors.destructive} background={colors.muted} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.menuItemText, { color: colors.destructive }]}>Delete account</Text>
+                <Text style={[styles.menuItemSub, { color: colors.mutedForeground }]}>
+                  Erases your bills, circles and saved receipt images
+                </Text>
+              </View>
+              {deleteAccountMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.destructive} />
+              ) : (
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       )}
