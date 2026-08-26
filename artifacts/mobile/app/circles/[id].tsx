@@ -231,7 +231,7 @@ export default function CircleDetailScreen() {
     return (
       <View style={[styles.flex, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
         </View>
@@ -246,7 +246,7 @@ export default function CircleDetailScreen() {
     return (
       <View style={[styles.flex, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Circle not found</Text>
@@ -261,7 +261,7 @@ export default function CircleDetailScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <TouchableOpacity
@@ -279,7 +279,9 @@ export default function CircleDetailScreen() {
           onPress={handleDelete}
           style={styles.backBtn}
           disabled={deleteMutation.isPending}
-        >
+        
+        accessibilityLabel="Delete circle"
+        hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}>
           <Feather name="trash-2" size={18} color={colors.destructive ?? "#EF4444"} />
         </TouchableOpacity>
       </View>
@@ -345,7 +347,8 @@ export default function CircleDetailScreen() {
                     onPress={() => handleRemoveMember(member.id, member.name)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={styles.removeMemberBtn}
-                  >
+                  
+                  accessibilityLabel={`Remove ${member.name}`}>
                     <Feather name="x" size={16} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 </View>

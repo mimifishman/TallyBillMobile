@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import React from "react";
-import { Pressable } from "react-native";
+import { Pressable, type PressableProps } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,9 +14,27 @@ interface PressableScaleProps {
   onPress?: () => void;
   style?: object | object[];
   disabled?: boolean;
+  // Forwarded explicitly: this component does not spread the rest of its props,
+  // so anything not named here is silently dropped. Without these, no
+  // PressableScale in the app can carry a screen-reader label or a hit target.
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: PressableProps["accessibilityRole"];
+  accessibilityState?: PressableProps["accessibilityState"];
+  hitSlop?: PressableProps["hitSlop"];
 }
 
-export function PressableScale({ children, onPress, style, disabled }: PressableScaleProps) {
+export function PressableScale({
+  children,
+  onPress,
+  style,
+  disabled,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole,
+  accessibilityState,
+  hitSlop,
+}: PressableScaleProps) {
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -38,6 +56,11 @@ export function PressableScale({ children, onPress, style, disabled }: Pressable
       }}
       onPress={onPress}
       disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={accessibilityState}
+      hitSlop={hitSlop}
       style={[animStyle, style]}
     >
       {children}

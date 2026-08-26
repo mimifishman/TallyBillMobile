@@ -702,7 +702,8 @@ export default function BillDetailScreen() {
           onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)/bills"))}
           style={styles.headerBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        
+        accessibilityLabel="Go back">
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
@@ -1104,7 +1105,8 @@ export default function BillDetailScreen() {
               onPress={scan.reset}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{ marginLeft: 8 }}
-            >
+            
+            accessibilityLabel="Dismiss scan error">
               <Feather name="x" size={16} color="#fff" />
             </TouchableOpacity>
           )}
@@ -1209,7 +1211,8 @@ export default function BillDetailScreen() {
             style={styles.receiptModalClose}
             onPress={() => setShowReceiptModal(false)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
+          
+          accessibilityLabel="Close receipt image">
             <Feather name="x" size={22} color="#fff" />
           </TouchableOpacity>
           {receiptImageUri ? (

@@ -189,7 +189,7 @@ export default function RegisterScreen() {
     return (
       <KeyboardAvoidingView style={[styles.flex, { backgroundColor: colors.background }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={[styles.verifyCard, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={abandonSignUp} style={styles.backBtn}>
+          <TouchableOpacity onPress={abandonSignUp} style={styles.backBtn} accessibilityLabel="Go back" hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
@@ -219,7 +219,7 @@ export default function RegisterScreen() {
     <View style={styles.flex}>
       <LinearGradient colors={colors.gradientPrimary} style={styles.gradient}>
         <View style={{ height: insets.top + 16 }} />
-        <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+        <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Go back">
           <Feather name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
         </TouchableOpacity>
         <View style={styles.brandArea}>
@@ -262,14 +262,14 @@ export default function RegisterScreen() {
             <View style={[styles.inputWrap, { borderColor: passwordError ? colors.destructive : colors.border }]}>
               <Feather name="lock" size={18} color={colors.mutedForeground} />
               <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Password (min. 8 characters)" placeholderTextColor={colors.mutedForeground} value={password} onChangeText={(t) => { setPassword(t); setPasswordError(""); setConfirmPasswordError(""); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} />
-              <TouchableOpacity onPress={() => setShowPassword((v) => !v)}><Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? "Hide password" : "Show password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}><Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
             </View>
             {!!passwordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>}
 
             <View style={[styles.inputWrap, { borderColor: confirmPasswordError ? colors.destructive : colors.border }]}>
               <Feather name="lock" size={18} color={colors.mutedForeground} />
               <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Confirm password" placeholderTextColor={colors.mutedForeground} value={confirmPassword} onChangeText={(t) => { setConfirmPassword(t); setConfirmPasswordError(""); }} secureTextEntry={!showConfirmPassword} autoCapitalize="none" autoCorrect={false} />
-              <TouchableOpacity onPress={() => setShowConfirmPassword((v) => !v)}><Feather name={showConfirmPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowConfirmPassword((v) => !v)} accessibilityLabel={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}><Feather name={showConfirmPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
             </View>
             {!!confirmPasswordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{confirmPasswordError}</Text>}
 

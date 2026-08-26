@@ -226,7 +226,7 @@ export default function LoginScreen() {
       <LinearGradient colors={colors.gradientPrimary} style={styles.gradient}>
         <View style={{ height: insets.top + 16 }} />
         {canGoBack && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Go back">
             <Feather name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
           </TouchableOpacity>
         )}
@@ -274,7 +274,7 @@ export default function LoginScreen() {
             <View style={[styles.inputWrap, { borderColor: passwordError ? colors.destructive : colors.border }]}>
               <Feather name="lock" size={18} color={colors.mutedForeground} />
               <TextInput style={[styles.input, { color: colors.foreground }]} placeholder="Password" placeholderTextColor={colors.mutedForeground} value={password} onChangeText={(t) => { setPassword(t); setPasswordError(""); }} secureTextEntry={!showPassword} />
-              <TouchableOpacity onPress={() => setShowPassword((v) => !v)}><Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? "Hide password" : "Show password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}><Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} /></TouchableOpacity>
             </View>
             {!!passwordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>}
 

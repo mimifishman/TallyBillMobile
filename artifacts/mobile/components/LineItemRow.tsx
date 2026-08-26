@@ -209,10 +209,10 @@ export function LineItemRow({
               <Text style={[styles.splitBtnText, { color: colors.primaryText }]}>Split</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleEdit} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={handleEdit} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={`Edit ${description}`}>
             <Feather name="edit-2" size={15} color={colors.mutedForeground} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={handleDelete} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={`Delete ${description}`}>
             <Feather name="trash-2" size={15} color={colors.destructive} />
           </TouchableOpacity>
         </View>

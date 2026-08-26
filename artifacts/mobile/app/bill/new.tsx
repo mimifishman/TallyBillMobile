@@ -104,7 +104,7 @@ export default function NewBillScreen() {
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Close" hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}>
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>New Bill</Text>

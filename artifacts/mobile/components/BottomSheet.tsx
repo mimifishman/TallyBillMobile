@@ -98,7 +98,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             </View>
             <View style={styles.header}>
               <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
-              <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.muted }]}>
+              <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.muted }]} accessibilityLabel="Close" hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                 <Feather name="x" size={20} color={colors.foreground} />
               </TouchableOpacity>
             </View>

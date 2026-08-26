@@ -123,7 +123,7 @@ export function LanguagePicker({ visible, selectedLanguage, onConfirm, onClose }
             autoCorrect={false}
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
+            <TouchableOpacity onPress={() => setSearch("")} accessibilityLabel="Clear search" hitSlop={{ top: 15, bottom: 15, left: 8, right: 12 }}>
               <Feather name="x" size={14} color={colors.mutedForeground} />
             </TouchableOpacity>
           )}

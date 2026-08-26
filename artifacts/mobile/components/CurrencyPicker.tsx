@@ -136,7 +136,7 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
         <View style={[styles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
           <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Select Currency</Text>
-            <TouchableOpacity onPress={() => { setOpen(false); setSearch(""); }} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => { setOpen(false); setSearch(""); }} style={styles.closeBtn} accessibilityLabel="Close" hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}>
               <Feather name="x" size={22} color={colors.foreground} />
             </TouchableOpacity>
           </View>
@@ -154,7 +154,7 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
               autoCapitalize="none"
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch("")}>
+              <TouchableOpacity onPress={() => setSearch("")} accessibilityLabel="Clear search" hitSlop={{ top: 14, bottom: 14, left: 8, right: 12 }}>
                 <Feather name="x-circle" size={16} color={colors.mutedForeground} />
               </TouchableOpacity>
             )}
