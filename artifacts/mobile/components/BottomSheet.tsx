@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Keyboard,
@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import ReAnimated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -36,13 +37,18 @@ const IS_ANDROID = Platform.OS === "android";
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const colors = useColors();
   const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const bottomOffset = useRef(new Animated.Value(0)).current;
+  // bottomOffset drives the slide animation, but an Animated.Value can't be read
+  // during layout — keep the height in state too so maxHeight can shrink with it.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
     const onShow = (e: KeyboardEvent) => {
+      setKeyboardHeight(e.endCoordinates.height);
       Animated.timing(bottomOffset, {
         toValue: e.endCoordinates.height,
         duration: Platform.OS === "ios" ? (e.duration ?? 250) : 150,
@@ -51,6 +57,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
     };
 
     const onHide = (e: KeyboardEvent) => {
+      setKeyboardHeight(0);
       Animated.timing(bottomOffset, {
         toValue: 0,
         duration: Platform.OS === "ios" ? (e.duration ?? 200) : 150,
@@ -64,6 +71,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
       showSub.remove();
       hideSub.remove();
       bottomOffset.setValue(0);
+      setKeyboardHeight(0);
     };
   }, [bottomOffset]);
 
@@ -81,7 +89,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
               {
                 backgroundColor: colors.background,
                 borderColor: colors.border,
-                maxHeight: windowHeight * SHEET_MAX_RATIO,
+                maxHeight: (windowHeight - keyboardHeight) * SHEET_MAX_RATIO,
               },
             ]}
           >
@@ -96,7 +104,10 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             </View>
             <ScrollView
               style={styles.scrollView}
-              contentContainerStyle={styles.content}
+              contentContainerStyle={[
+                styles.content,
+                { paddingBottom: SPACING.xl + (keyboardHeight > 0 ? 0 : insets.bottom) },
+              ]}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
