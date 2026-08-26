@@ -6,10 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OcrLineItem } from "./ocrLineItem";
+import type { OcrResultLegibility } from "./ocrResultLegibility";
 
 export interface OcrResult {
   items: OcrLineItem[];
   taxAmount?: number | null;
   tipAmount?: number | null;
   currency?: string | null;
+  /** The total as printed on the receipt, read rather than computed. */
+  printedTotal?: number | null;
+  /** true when the extracted items match the printed total, false when they disagree, and null when the receipt had no legible total to check against. Null means "not checked" and warrants no warning. */
+  reconciled?: boolean | null;
+  /** How readable the receipt was, for prompting a better retake. */
+  legibility?: OcrResultLegibility;
 }

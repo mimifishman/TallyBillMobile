@@ -11,11 +11,13 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import {
   useBulkCreateBillLines,
@@ -26,7 +28,6 @@ import { formatMoney } from "@/utils/currency";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useScan } from "@/context/ScanContext";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { ReviewItemSheet, type ReviewItemValues } from "@/components/ReviewItemSheet";
 
 const THUMBNAIL_HEIGHT = 300;
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
@@ -35,6 +36,19 @@ const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 // and submitted on confirm. Blank "Add item" rows are ignored everywhere.
 function isCountedItem(item: { selected: boolean; description: string; translatedDescription?: string }) {
   return item.selected && (item.translatedDescription ?? item.description).trim().length > 0;
+}
+
+// Hebrew, Arabic, Syriac, Thaana and the Arabic presentation forms.
+const RTL_PATTERN = /[֐-׿؀-ۿ܀-ݏހ-޿יִ-﷿ﹰ-﻿]/;
+
+// A single bill can mix scripts — a Hebrew receipt translated to English keeps
+// both — so direction is decided per string rather than from the app locale.
+// Without this a Hebrew name renders and edits with the cursor and punctuation
+// in the wrong place.
+function textDirection(text: string) {
+  return RTL_PATTERN.test(text)
+    ? ({ writingDirection: "rtl", textAlign: "right" } as const)
+    : ({ writingDirection: "ltr", textAlign: "left" } as const);
 }
 
 const SCAN_MESSAGES = [
@@ -136,7 +150,11 @@ export default function ScanScreen() {
   const billId = parseInt(id!);
   const scan = useScan();
 
-  const [editor, setEditor] = useState<{ mode: "add" } | { mode: "edit"; index: number } | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(null);
+  const [priceDraft, setPriceDraft] = useState("");
+  const [editingQuantityIndex, setEditingQuantityIndex] = useState<number | null>(null);
+  const [quantityDraft, setQuantityDraft] = useState("");
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
   const [showOriginals, setShowOriginals] = useState(true);
@@ -144,6 +162,18 @@ export default function ScanScreen() {
   const hasTranslations = scan.items.some((i) => i.translatedDescription != null);
 
   const { data: billData } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
+
+  // Every extracted item, not just the selected ones — this is what gets
+  // compared against the receipt's printed total.
+  const itemsTotal = useMemo(
+    () => scan.items.reduce((sum, item) => sum + (Number.isFinite(item.total) ? item.total : 0), 0),
+    [scan.items],
+  );
+
+  const lowConfidenceCount = useMemo(
+    () => scan.items.filter((item) => item.confidence === "low").length,
+    [scan.items],
+  );
 
   const { selectedCount, selectedTotal } = useMemo(() => {
     let count = 0;
@@ -178,87 +208,78 @@ export default function ScanScreen() {
     },
   });
 
-  const pickImage = async (fromCamera: boolean) => {
-    let result;
-    if (fromCamera) {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("Permission Required", "Camera access is needed to scan receipts");
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync({
-        base64: false,
-        quality: 1,
-        allowsEditing: false,
-      });
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync({
-        base64: false,
-        quality: 1,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      });
-    }
+  // Native capture goes through the dedicated camera screen, which offers the
+  // torch and a framing guide — the two things that actually decide whether a
+  // faded thermal receipt is readable. The system picker has neither.
+  const openCamera = () => {
+    router.push({ pathname: "/bill/[id]/camera", params: { id: String(billId) } });
+  };
+
+  const pickFromLibrary = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      base64: false,
+      quality: 1,
+      mediaTypes: ["images"],
+    });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      scan.startScan(billId, asset.uri, asset.width ?? 1800);
+      scan.startScan(billId, asset.uri, asset.width ?? 1800, asset.height ?? 2400);
     }
+  };
+
+  const commitPriceEdit = (index: number) => {
+    const normalized = priceDraft.trim().replace(",", ".");
+    const parsed = /^\d+(\.\d*)?$|^\.\d+$/.test(normalized) ? Number(normalized) : NaN;
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      const rounded = Math.round(parsed * 100) / 100;
+      scan.setItems((prev) =>
+        prev.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                total: rounded,
+                unitPrice: item.quantity > 0 ? Math.round((rounded / item.quantity) * 100) / 100 : rounded,
+              }
+            : item,
+        ),
+      );
+    }
+    setEditingPriceIndex(null);
+    setPriceDraft("");
+  };
+
+  const commitQuantityEdit = (index: number) => {
+    const parsed = /^\d+$/.test(quantityDraft.trim()) ? Number(quantityDraft.trim()) : NaN;
+    if (Number.isInteger(parsed) && parsed >= 1) {
+      scan.setItems((prev) =>
+        prev.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                quantity: parsed,
+                unitPrice: Math.round((item.total / parsed) * 100) / 100,
+              }
+            : item,
+        ),
+      );
+    }
+    setEditingQuantityIndex(null);
+    setQuantityDraft("");
   };
 
   const toggleItem = (index: number) => {
     scan.setItems((prev) => prev.map((item, i) => i === index ? { ...item, selected: !item.selected } : item));
   };
 
-  // Values shown in the edit sheet for the item being edited (null in add mode).
-  const editorInitial: ReviewItemValues | null = useMemo(() => {
-    if (editor?.mode !== "edit") return null;
-    const item = scan.items[editor.index];
-    if (!item) return null;
-    return {
-      name: item.translatedDescription ?? item.description,
-      quantity: item.quantity,
-      total: item.total,
-    };
-  }, [editor, scan.items]);
-
-  const handleEditorSave = (values: ReviewItemValues) => {
-    const unitPrice = values.quantity > 0
-      ? Math.round((values.total / values.quantity) * 100) / 100
-      : values.total;
-    if (editor?.mode === "edit") {
-      const index = editor.index;
-      scan.setItems((prev) =>
-        prev.map((item, i) => {
-          if (i !== index) return item;
-          const displayName = item.translatedDescription ?? item.description;
-          const nameChanged = values.name !== displayName;
-          return {
-            ...item,
-            // Renaming replaces the translated name, so drop the original.
-            description: nameChanged ? values.name : item.description,
-            translatedDescription: nameChanged ? undefined : item.translatedDescription,
-            quantity: values.quantity,
-            total: values.total,
-            unitPrice,
-          };
-        }),
-      );
-    } else {
-      scan.setItems((prev) => [
-        ...prev,
-        {
-          description: values.name,
-          quantity: values.quantity,
-          unitPrice,
-          total: values.total,
-          selected: true,
-        },
-      ]);
-    }
-    setEditor(null);
-  };
-
   const handleAddItem = () => {
-    setEditor({ mode: "add" });
+    setEditingPriceIndex(null);
+    setPriceDraft("");
+    const newIndex = scan.items.length;
+    scan.setItems((prev) => [
+      ...prev,
+      { description: "", quantity: 1, unitPrice: 0, total: 0, selected: true },
+    ]);
+    setEditingIndex(newIndex);
   };
 
   const handleConfirm = () => {
@@ -357,6 +378,58 @@ export default function ScanScreen() {
         </View>
       ) : null}
 
+      {/* Previously the scan just dropped the user back at the picker with no
+          explanation — the message only appeared on the bill detail screen. */}
+      {scan.errorMessage && !isScanning ? (
+        <View style={[styles.errorBanner, { backgroundColor: colors.destructive + "18", borderColor: colors.destructive + "40" }]}>
+          <Feather name="alert-circle" size={14} color={colors.destructive} />
+          <Text style={[styles.errorBannerText, { color: colors.destructive }]}>{scan.errorMessage}</Text>
+        </View>
+      ) : null}
+
+      {/* Only when the receipt actually disagrees with the items. `reconciled`
+          is null when the receipt had no legible total, and a missing total is
+          not worth warning anyone about. */}
+      {step === "review" && scan.reconciled === false ? (
+        <View style={[styles.warnBanner, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "50" }]}>
+          <Feather name="alert-triangle" size={14} color={colors.primaryText} />
+          <Text style={[styles.warnBannerText, { color: colors.primaryText }]}>
+            {scan.printedTotal != null
+              ? `Items add up to ${formatMoney(itemsTotal, billData?.bill.currency)} but the receipt shows ${formatMoney(scan.printedTotal, billData?.bill.currency)} — something may be missing.`
+              : "The items may not match the receipt total — something may be missing."}
+          </Text>
+          <TouchableOpacity
+            onPress={scan.recheck}
+            disabled={scan.rechecking}
+            style={[styles.recheckBtn, { borderColor: colors.primary }]}
+          >
+            {scan.rechecking ? (
+              <ActivityIndicator color={colors.primaryText} size="small" />
+            ) : (
+              <Text style={[styles.recheckBtnText, { color: colors.primaryText }]}>Recheck</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {step === "review" && scan.legibility === "poor" ? (
+        <View style={[styles.warnBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+          <Feather name="zap" size={14} color={colors.mutedForeground} />
+          <Text style={[styles.warnBannerText, { color: colors.mutedForeground }]}>
+            This receipt was hard to read. Retaking it with the light on usually helps.
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              scan.reset();
+              openCamera();
+            }}
+            style={[styles.recheckBtn, { borderColor: colors.border }]}
+          >
+            <Text style={[styles.recheckBtnText, { color: colors.mutedForeground }]}>Retake</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       {isScanning && scan.capturedUri ? (
         <View style={styles.scanContainer}>
           <View style={styles.thumbnailWrapper}>
@@ -379,14 +452,14 @@ export default function ScanScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.pickBtn, { backgroundColor: colors.primary }]}
-            onPress={() => Platform.OS !== "web" ? pickImage(true) : pickImage(false)}
+            onPress={() => (Platform.OS !== "web" ? openCamera() : pickFromLibrary())}
           >
             <Feather name="camera" size={20} color="#fff" />
             <Text style={styles.pickBtnText}>Take Photo</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.pickBtnGhost, { borderColor: colors.border }]}
-            onPress={() => pickImage(false)}
+            onPress={pickFromLibrary}
           >
             <Feather name="image" size={20} color={colors.foreground} />
             <Text style={[styles.pickBtnGhostText, { color: colors.foreground }]}>Choose from Library</Text>
@@ -410,11 +483,7 @@ export default function ScanScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        // No KeyboardAvoidingView here: the list has no text inputs (editing
-        // happens in ReviewItemSheet, which handles the keyboard itself), and
-        // Android's "height" behavior could leave the screen permanently
-        // compressed after the keyboard hid.
-        <View style={styles.flex}>
+        <>
         <FlatList
           data={scan.items}
           keyExtractor={(_, i) => String(i)}
@@ -423,8 +492,19 @@ export default function ScanScreen() {
           ListHeaderComponent={
             <View style={styles.reviewHeader}>
               <Text style={[styles.reviewHint, { color: colors.mutedForeground }]}>
-                Tap an item to edit it, or uncheck it to leave it out. All checked items will be added to the bill.
+                Tap items to deselect. All selected items will be added to the bill.
               </Text>
+              {/* Turns a silently wrong reading into a two-second check. */}
+              {lowConfidenceCount > 0 && (
+                <View style={[styles.checkChip, { backgroundColor: colors.primarySoft }]}>
+                  <Feather name="alert-circle" size={12} color={colors.primaryText} />
+                  <Text style={[styles.checkChipText, { color: colors.primaryText }]}>
+                    {lowConfidenceCount === 1
+                      ? "1 item needs a check"
+                      : `${lowConfidenceCount} items need a check`}
+                  </Text>
+                </View>
+              )}
               {hasTranslations && (
                 <TouchableOpacity
                   onPress={() => setShowOriginals((v) => !v)}
@@ -444,13 +524,17 @@ export default function ScanScreen() {
               activeOpacity={0.7}
               style={[styles.addItemRow, { borderColor: colors.border }]}
             >
-              <Feather name="plus" size={16} color={colors.primaryText} />
-              <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
+              <Feather name="plus" size={16} color={colors.primary} />
+              <Text style={[styles.addItemText, { color: colors.primary }]}>Add item</Text>
             </TouchableOpacity>
           }
           renderItem={({ item, index }) => {
+            const isEditing = editingIndex === index;
+            const isEditingPrice = editingPriceIndex === index;
+            const isEditingQuantity = editingQuantityIndex === index;
             const displayName = item.translatedDescription ?? item.description;
             const originalName = item.translatedDescription ? item.description : null;
+            const needsCheck = item.confidence === "low";
             return (
               <View
                 style={[
@@ -460,10 +544,13 @@ export default function ScanScreen() {
                     borderColor: item.selected ? colors.primary : colors.border,
                     opacity: item.selected ? 1 : 0.5,
                   },
+                  // A row the model was unsure about. Marked rather than hidden
+                  // so the user knows exactly which values to glance at.
+                  needsCheck && { borderLeftWidth: 3, borderLeftColor: colors.primaryText },
                 ]}
               >
                 <TouchableOpacity
-                  onPress={() => toggleItem(index)}
+                  onPress={() => { if (isEditing) setEditingIndex(null); toggleItem(index); }}
                   activeOpacity={0.7}
                   style={styles.checkboxHitArea}
                 >
@@ -472,31 +559,113 @@ export default function ScanScreen() {
                   </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => setEditor({ mode: "edit", index })}
-                  activeOpacity={0.6}
-                  style={styles.reviewItemBody}
-                >
-                  <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
-                    ×{item.quantity}
-                  </Text>
-                  <View style={styles.reviewItemNameCol}>
-                    <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
-                      {displayName}
-                    </Text>
-                    {originalName && showOriginals && (
-                      <Text style={[styles.reviewItemOriginal, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {originalName}
+                <View style={styles.reviewItemMiddle}>
+                  {isEditingQuantity ? (
+                    <AutoFocusTextInput
+                      style={[styles.quantityInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                      value={quantityDraft}
+                      onChangeText={setQuantityDraft}
+                      onBlur={() => commitQuantityEdit(index)}
+                      autoFocus
+                      keyboardType="number-pad"
+                      returnKeyType="done"
+                      onSubmitEditing={() => commitQuantityEdit(index)}
+                      selectTextOnFocus
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (isEditing) setEditingIndex(null);
+                        setQuantityDraft(String(item.quantity));
+                        setEditingQuantityIndex(index);
+                      }}
+                      activeOpacity={0.6}
+                      style={styles.quantityHitArea}
+                    >
+                      <Text style={[styles.quantityBadge, { color: colors.mutedForeground }]}>
+                        ×{item.quantity}
                       </Text>
-                    )}
-                  </View>
-                  <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
-                    {item.total.toFixed(2)}
-                  </Text>
-                  <View style={[styles.editIconBtn, { backgroundColor: colors.muted }]}>
-                    <Feather name="edit-2" size={13} color={colors.primaryText} />
-                  </View>
-                </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
+                  {isEditing ? (
+                    <AutoFocusTextInput
+                      style={[
+                        styles.reviewItemInput,
+                        { color: colors.foreground, borderBottomColor: colors.primary },
+                        textDirection(item.description),
+                      ]}
+                      value={item.description}
+                      onChangeText={(text) =>
+                        scan.setItems((prev) => prev.map((it, i) => i === index ? { ...it, description: text, translatedDescription: undefined } : it))
+                      }
+                      placeholder="Item name"
+                      placeholderTextColor={colors.mutedForeground}
+                      onBlur={() => setEditingIndex(null)}
+                      autoFocus
+                      returnKeyType="done"
+                      onSubmitEditing={() => setEditingIndex(null)}
+                      selectTextOnFocus
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setEditingIndex(index)}
+                      activeOpacity={0.6}
+                      style={styles.reviewItemNameBtn}
+                    >
+                      <View style={styles.reviewItemNameCol}>
+                        <Text
+                          style={[styles.reviewItemName, { color: colors.foreground }, textDirection(displayName)]}
+                          numberOfLines={2}
+                        >
+                          {displayName}
+                        </Text>
+                        {originalName && showOriginals && (
+                          <Text
+                            style={[
+                              styles.reviewItemOriginal,
+                              { color: colors.mutedForeground },
+                              // The original is often Hebrew sitting under an
+                              // English translation, so it needs its own direction.
+                              textDirection(originalName),
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {originalName}
+                          </Text>
+                        )}
+                      </View>
+                      <Feather name="edit-2" size={11} color={colors.mutedForeground} style={styles.editIcon} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {isEditingPrice ? (
+                  <AutoFocusTextInput
+                    style={[styles.reviewItemPriceInput, { color: colors.foreground, borderBottomColor: colors.primary }]}
+                    value={priceDraft}
+                    onChangeText={setPriceDraft}
+                    onBlur={() => commitPriceEdit(index)}
+                    autoFocus
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                    onSubmitEditing={() => commitPriceEdit(index)}
+                    selectTextOnFocus
+                  />
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (isEditing) setEditingIndex(null);
+                      setPriceDraft(item.total.toFixed(2));
+                      setEditingPriceIndex(index);
+                    }}
+                    activeOpacity={0.6}
+                    style={styles.priceHitArea}
+                  >
+                    <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
+                      {item.total.toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           }}
@@ -526,7 +695,7 @@ export default function ScanScreen() {
             {formatMoney(selectedTotal, billData?.bill.currency)}
           </Text>
         </View>
-        </View>
+        </>
       )}
 
       <LanguagePicker
@@ -534,14 +703,6 @@ export default function ScanScreen() {
         selectedLanguage={preferredLanguage}
         onConfirm={handleLanguageConfirm}
         onClose={() => setShowLanguagePicker(false)}
-      />
-
-      <ReviewItemSheet
-        visible={editor !== null}
-        mode={editor?.mode ?? "edit"}
-        initial={editorInitial}
-        onSave={handleEditorSave}
-        onClose={() => setEditor(null)}
       />
     </View>
   );
@@ -589,6 +750,39 @@ const styles = StyleSheet.create({
   },
   errorBannerText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
 
+  warnBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.lg,
+    marginTop: 10,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 9,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+  },
+  warnBannerText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  recheckBtn: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    minWidth: 72,
+    alignItems: "center",
+  },
+  recheckBtnText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+
+  checkChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+  },
+  checkChipText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+
   scanContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: SPACING.xl, gap: SPACING.xl },
   thumbnailWrapper: { width: "100%", height: THUMBNAIL_HEIGHT, borderRadius: RADIUS.md, overflow: "hidden" },
   thumbnail: { width: "100%", height: "100%" },
@@ -631,12 +825,18 @@ const styles = StyleSheet.create({
   reviewItem: { flexDirection: "row", alignItems: "center", borderRadius: RADIUS.sm, borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: SPACING.md, gap: SPACING.sm },
   checkboxHitArea: { padding: SPACING.xs },
   checkbox: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  reviewItemBody: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACING.sm, minHeight: 36 },
+  reviewItemMiddle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 },
   quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 }, // TODO: one-off
+  quantityHitArea: { paddingVertical: 4 }, // TODO: one-off
+  quantityInput: { fontSize: 12, fontFamily: "Inter_600SemiBold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 28 }, // TODO: one-off
+  reviewItemNameBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   reviewItemNameCol: { flex: 1, gap: 2 },
   reviewItemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
   reviewItemOriginal: { fontSize: 11, fontFamily: "Inter_400Regular" }, // TODO: one-off
-  editIconBtn: { width: 28, height: 28, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center" },
+  editIcon: { marginTop: 1 },
+  reviewItemInput: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0 }, // TODO: one-off
+  priceHitArea: { padding: SPACING.xs },
+  reviewItemPriceInput: { fontSize: 14, fontFamily: "Inter_700Bold", borderBottomWidth: 1.5, paddingVertical: 2, paddingHorizontal: 0, minWidth: 64, textAlign: "right" }, // TODO: one-off
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
   addItemRow: {
     flexDirection: "row",

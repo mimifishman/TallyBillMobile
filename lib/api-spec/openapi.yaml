@@ -636,7 +636,7 @@ paths:
     post:
       operationId: ocrReceipt
       tags: [ocr]
-      summary: Parse a receipt image via Veryfi OCR
+      summary: Extract line items from a receipt image using a vision model
       requestBody:
         required: true
         content:
@@ -649,6 +649,23 @@ paths:
                   description: Base64-encoded image
                 fileName:
                   type: string
+                platform:
+                  type: string
+                  description: >-
+                    Capturing platform (ios, android, web). Logged so scan
+                    quality can be compared across platforms.
+                width:
+                  type: number
+                  description: Width of the captured image, before any client resizing.
+                height:
+                  type: number
+                  description: Height of the captured image, before any client resizing.
+                forceRecheck:
+                  type: boolean
+                  description: >-
+                    Run the reconciliation second pass even if the latency
+                    budget would normally skip it. Set by the user-initiated
+                    "Recheck receipt" action.
               required:
                 - imageBase64
       responses:
@@ -1384,11 +1401,19 @@ components:
           type: number
         total:
           type: number
+        confidence:
+          type: string
+          enum: [high, low]
+          description: >-
+            "low" when the model was unsure of the description or price —
+            faint, smudged, or ambiguous characters. Surfaced in the review
+            screen so the user knows which rows to check.
       required:
         - description
         - quantity
         - unitPrice
         - total
+        - confidence
 
     OcrResult:
       type: object
@@ -1406,6 +1431,22 @@ components:
         currency:
           type: string
           nullable: true
+        printedTotal:
+          type: number
+          nullable: true
+          description: The total as printed on the receipt, read rather than computed.
+        reconciled:
+          type: boolean
+          nullable: true
+          description: >-
+            true when the extracted items match the printed total, false when
+            they disagree, and null when the receipt had no legible total to
+            check against. Null means "not checked" and warrants no warning.
+        legibility:
+          type: string
+          nullable: true
+          enum: [good, poor]
+          description: How readable the receipt was, for prompting a better retake.
       required:
         - items
 
@@ -1431,6 +1472,12 @@ components:
           type: string
         linkedUserId:
           type: integer
+          nullable: true
+        linkedUserDisplayName:
+          type: string
+          nullable: true
+        linkedUserEmail:
+          type: string
           nullable: true
         createdAt:
           type: string
@@ -1496,5 +1543,8 @@ components:
       properties:
         name:
           type: string
+        linkedEmail:
+          type: string
+          nullable: true
       required:
         - name

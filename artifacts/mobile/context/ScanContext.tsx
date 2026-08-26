@@ -1,6 +1,8 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useOcrReceipt, useOcrTranslate, customFetch } from "@workspace/api-client-react";
+import type { OcrLineItemConfidence, OcrResultLegibility } from "@workspace/api-client-react";
 import { uploadFileToStorage } from "../utils/objectStorageExpo";
 
 export type ScanStatus = "idle" | "scanning" | "ready" | "error";
@@ -12,6 +14,8 @@ export interface ParsedItem {
   unitPrice: number;
   total: number;
   selected: boolean;
+  /** "low" when the model was unsure — surfaced in review so the user can check. */
+  confidence?: OcrLineItemConfidence;
 }
 
 interface ScanState {
@@ -23,25 +27,70 @@ interface ScanState {
   receiptImagePath: string | null;
   translating: boolean;
   translateError: string | null;
+  /** true = items match the printed total, false = they disagree, null = not checked. */
+  reconciled: boolean | null;
+  printedTotal: number | null;
+  legibility: OcrResultLegibility | null;
+  /** True while the user-initiated "Recheck receipt" pass is running. */
+  rechecking: boolean;
 }
 
 interface ScanContextValue extends ScanState {
-  startScan: (billId: number, uri: string, imageWidth: number) => void;
+  startScan: (billId: number, uri: string, imageWidth: number, imageHeight: number) => void;
   reset: () => void;
   setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>>;
   translateItems: (targetLanguage: string) => Promise<void>;
+  recheck: () => void;
 }
 
-const MAX_WIDTH = 1800;
+/**
+ * The server re-processes the image anyway (contrast, cropping to bands,
+ * resizing), so sending more than this buys upload time, not accuracy — and
+ * upload is a big slice of the ~20s scan budget on a mobile connection.
+ */
+const MAX_LONG_SIDE = 2200;
+const JPEG_QUALITY = 0.88;
 
-async function preprocessImage(uri: string, width: number): Promise<string> {
-  let context = ImageManipulator.manipulate(uri);
-  if (width > MAX_WIDTH) {
-    context = context.resize({ width: MAX_WIDTH });
-  }
+/** Server accepts 20 MB of JSON; stay clear of it so a big photo never 413s. */
+const MAX_BASE64_CHARS = 14 * 1024 * 1024;
+
+/**
+ * A scan should finish well inside this. It exists so a hung request cannot
+ * strand the user on the scanning overlay forever, not as a target.
+ */
+const SCAN_TIMEOUT_MS = 35_000;
+
+async function encode(uri: string, longSide: number, isPortrait: boolean, quality: number) {
+  const context = ImageManipulator.manipulate(uri).resize(
+    isPortrait ? { height: longSide } : { width: longSide },
+  );
   const imageRef = await context.renderAsync();
-  const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: 0.85, base64: true });
+  const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: quality, base64: true });
   return result.base64 ?? "";
+}
+
+/**
+ * Shrink and encode the capture for upload.
+ *
+ * Note this no longer double-compresses: capture happens at high quality and
+ * this is the only lossy step. Orientation is deliberately not handled here —
+ * the server applies the EXIF rotation, so iOS and Android go through
+ * identical processing rather than diverging on the device.
+ */
+async function preprocessImage(uri: string, width: number, height: number): Promise<string> {
+  const isPortrait = height >= width;
+  let longSide = Math.min(Math.max(width, height) || MAX_LONG_SIDE, MAX_LONG_SIDE);
+
+  let base64 = await encode(uri, longSide, isPortrait, JPEG_QUALITY);
+
+  // A very detailed photo can still encode large. Step down rather than let
+  // the user hit an opaque request-too-large error.
+  while (base64.length > MAX_BASE64_CHARS && longSide > 900) {
+    longSide = Math.round(longSide * 0.75);
+    base64 = await encode(uri, longSide, isPortrait, 0.8);
+  }
+
+  return base64;
 }
 
 async function saveReceiptImage(
@@ -68,96 +117,152 @@ async function saveReceiptImage(
   }
 }
 
+const INITIAL_STATE: ScanState = {
+  status: "idle",
+  billId: null,
+  capturedUri: null,
+  items: [],
+  errorMessage: null,
+  receiptImagePath: null,
+  translating: false,
+  translateError: null,
+  reconciled: null,
+  printedTotal: null,
+  legibility: null,
+  rechecking: false,
+};
+
 const ScanContext = createContext<ScanContextValue | null>(null);
 
 export function ScanProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<ScanState>({
-    status: "idle",
-    billId: null,
-    capturedUri: null,
-    items: [],
-    errorMessage: null,
-    receiptImagePath: null,
-    translating: false,
-    translateError: null,
-  });
+  const [state, setState] = useState<ScanState>(INITIAL_STATE);
 
   const generationRef = useRef(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Kept so the user-initiated re-check can resend the same photo. */
+  const lastCaptureRef = useRef<{ uri: string; width: number; height: number } | null>(null);
   const ocrMutation = useOcrReceipt();
   const translateMutation = useOcrTranslate();
 
-  const startScan = useCallback(
-    (billId: number, uri: string, imageWidth: number) => {
+  const clearWatchdog = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearWatchdog, [clearWatchdog]);
+
+  const run = useCallback(
+    (billId: number, uri: string, width: number, height: number, forceRecheck: boolean) => {
       generationRef.current += 1;
       const myGeneration = generationRef.current;
+      const isCurrent = () => myGeneration === generationRef.current;
 
-      setState({
-        status: "scanning",
-        billId,
-        capturedUri: uri,
-        items: [],
-        errorMessage: null,
-        receiptImagePath: null,
-        translating: false,
-        translateError: null,
-      });
+      // A re-check is an optional extra on top of a scan the user already has
+      // in front of them. If it fails, keep them in the review list with their
+      // edits intact and just say so — dropping to "error" would send them back
+      // to the picker and throw the whole scan away.
+      const fail = (message: string) => {
+        clearWatchdog();
+        setState((prev) => ({
+          ...prev,
+          status: forceRecheck ? prev.status : "error",
+          rechecking: false,
+          errorMessage: message,
+        }));
+      };
 
-      preprocessImage(uri, imageWidth)
+      clearWatchdog();
+      timeoutRef.current = setTimeout(() => {
+        if (!isCurrent()) return;
+        generationRef.current += 1; // abandon the in-flight result
+        fail("Taking too long — try again.");
+      }, SCAN_TIMEOUT_MS);
+
+      preprocessImage(uri, width, height)
         .then((base64) => {
-          if (myGeneration !== generationRef.current) return;
+          if (!isCurrent()) return;
           if (!base64) {
-            setState((prev) => ({
-              ...prev,
-              status: "error",
-              errorMessage: "Could not process image",
-            }));
+            fail("Could not process image");
             return;
           }
           ocrMutation.mutate(
-            { data: { imageBase64: base64, fileName: "receipt.jpg" } },
+            {
+              data: {
+                imageBase64: base64,
+                fileName: "receipt.jpg",
+                // Logged server-side so the iOS/Android gap can be measured
+                // instead of guessed at.
+                platform: Platform.OS,
+                width,
+                height,
+                ...(forceRecheck ? { forceRecheck: true } : {}),
+              },
+            },
             {
               onSuccess: (data) => {
-                if (myGeneration !== generationRef.current) return;
+                if (!isCurrent()) return;
+                clearWatchdog();
                 setState((prev) => ({
                   ...prev,
                   status: "ready",
+                  rechecking: false,
                   items: data.items.map((item) => ({ ...item, selected: true })),
+                  reconciled: data.reconciled ?? null,
+                  printedTotal: data.printedTotal ?? null,
+                  legibility: data.legibility ?? null,
                 }));
                 saveReceiptImage(uri, billId).then((objectPath) => {
-                  if (myGeneration !== generationRef.current) return;
+                  if (!isCurrent()) return;
                   if (objectPath) {
                     setState((prev) => ({ ...prev, receiptImagePath: objectPath }));
                   }
                 });
               },
               onError: (err: Error) => {
-                if (myGeneration !== generationRef.current) return;
-                setState((prev) => ({
-                  ...prev,
-                  status: "error",
-                  errorMessage: err.message || "Could not read the receipt. Try again.",
-                }));
+                if (!isCurrent()) return;
+                fail(err.message || "Could not read the receipt. Try again.");
               },
             },
           );
         })
         .catch((err) => {
-          if (myGeneration !== generationRef.current) return;
+          if (!isCurrent()) return;
           console.warn("preprocessImage failed:", err);
-          setState((prev) => ({
-            ...prev,
-            status: "error",
-            errorMessage: "Could not process image",
-          }));
+          fail("Could not process image");
         });
     },
-    [ocrMutation],
+    [clearWatchdog, ocrMutation],
   );
+
+  const startScan = useCallback(
+    (billId: number, uri: string, imageWidth: number, imageHeight: number) => {
+      lastCaptureRef.current = { uri, width: imageWidth, height: imageHeight };
+      setState({ ...INITIAL_STATE, status: "scanning", billId, capturedUri: uri });
+      run(billId, uri, imageWidth, imageHeight, false);
+    },
+    [run],
+  );
+
+  /**
+   * Re-read the receipt, telling the server to spend the extra pass it skipped
+   * to stay inside the scan budget. Only offered once the user has seen that
+   * the items disagree with the printed total.
+   */
+  const recheck = useCallback(() => {
+    const capture = lastCaptureRef.current;
+    if (!capture || state.billId == null) return;
+    setState((prev) => ({ ...prev, rechecking: true, errorMessage: null }));
+    run(state.billId, capture.uri, capture.width, capture.height, true);
+  }, [run, state.billId]);
 
   const reset = useCallback(() => {
     generationRef.current += 1;
-    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, translating: false, translateError: null });
-  }, []);
+    clearWatchdog();
+    lastCaptureRef.current = null;
+    setState(INITIAL_STATE);
+  }, [clearWatchdog]);
 
   const setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>> = useCallback(
     (action) => {
@@ -208,7 +313,9 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ScanContext.Provider value={{ ...state, startScan, reset, setItems, translateItems }}>
+    <ScanContext.Provider
+      value={{ ...state, startScan, reset, setItems, translateItems, recheck }}
+    >
       {children}
     </ScanContext.Provider>
   );

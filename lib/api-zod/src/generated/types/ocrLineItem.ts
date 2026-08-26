@@ -5,10 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OcrLineItemConfidence } from "./ocrLineItemConfidence";
 
 export interface OcrLineItem {
   description: string;
   quantity: number;
   unitPrice: number;
   total: number;
+  /** "low" when the model was unsure of the description or price — faint, smudged, or ambiguous characters. Surfaced in the review screen so the user knows which rows to check. */
+  confidence: OcrLineItemConfidence;
 }

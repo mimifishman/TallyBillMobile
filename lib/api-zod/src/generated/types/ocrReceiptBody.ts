@@ -10,4 +10,12 @@ export type OcrReceiptBody = {
   /** Base64-encoded image */
   imageBase64: string;
   fileName?: string;
+  /** Capturing platform (ios, android, web). Logged so scan quality can be compared across platforms. */
+  platform?: string;
+  /** Width of the captured image, before any client resizing. */
+  width?: number;
+  /** Height of the captured image, before any client resizing. */
+  height?: number;
+  /** Run the reconciliation second pass even if the latency budget would normally skip it. Set by the user-initiated "Recheck receipt" action. */
+  forceRecheck?: boolean;
 };
