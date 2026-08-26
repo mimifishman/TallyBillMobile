@@ -63,7 +63,7 @@
   <header>
     <p class="brand">TallyBill</p>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: August 12, 2026</p>
+    <p class="updated">Last updated: August 26, 2026</p>
   </header>
 
   <p class="lede">TallyBill scans restaurant receipts and splits them between people. This policy explains what the app collects, who it is shared with, how long it is kept, and how to delete it.</p>
@@ -85,13 +85,17 @@
   <p>We do not collect your precise location, your contacts, your browsing or search history, or usage analytics. TallyBill contains no advertising and no advertising or analytics SDKs. <strong>We do not sell or share your data, and we do not use it for tracking or advertising.</strong></p>
 
   <h2>Who else processes your data</h2>
-  <p>TallyBill relies on three external services, each for a specific task:</p>
+  <p>TallyBill relies on the following external services, each for a specific task:</p>
   <ul>
     <li><strong>Clerk</strong> handles registration, sign-in and session management. Your name, email address and credentials are held by Clerk.</li>
-    <li><strong>An AI vision provider</strong> reads the text off your receipt. Receipt images are transmitted to this provider to extract line items and, if you ask for it, to translate item names. The provider processes these images under its own terms, which may include retaining them for a limited period for abuse monitoring.</li>
+    <li><strong>Replit</strong> hosts the TallyBill server and database, and operates the AI gateway that receipt scanning runs through. Receipt photographs pass through Replit on their way to the vision model.</li>
+    <li><strong>OpenAI</strong> supplies the vision model (GPT-4o) that reads the line items, prices and totals off your receipt, and that translates item names when you ask it to. Your receipt photograph is sent to it for that purpose and for no other.</li>
+    <li><strong>Google Cloud Storage</strong> holds the receipt photographs themselves. Deleting a bill removes its photograph from storage; deleting your account removes all of them.</li>
     <li><strong>ip-api.com</strong> converts your network address into a country code so the app can default to the right currency. We do not store the result.</li>
   </ul>
   <p>None of these are advertising networks or data brokers. They act on our instructions to deliver features you asked for.</p>
+
+  <p>Replit and OpenAI process receipt photographs under their own terms rather than ours, and those terms may allow them to retain a copy for a limited period for abuse monitoring. We do not control that retention and we do not receive any copy back. We never send your name, your email address, or the names you give people on a bill to either of them &mdash; only the receipt photograph, plus the item names themselves when you ask for a translation.</p>
 
   <h2>How long we keep things</h2>
   <div class="callout">
