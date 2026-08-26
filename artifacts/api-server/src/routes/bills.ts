@@ -52,7 +52,7 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
   const allAssignments = allLineIds.length > 0
     ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, allLineIds))
     : [];
-  const allMembers = await db.select().from(billMembersTable).where(inArray(billMembersTable.billId, billIds));
+  const allMembers = await db.select().from(billMembersTable).where(inArray(billMembersTable.billId, billIds)).orderBy(asc(billMembersTable.id));
 
   const assignedLineIds = new Set(allAssignments.map((a) => a.billLineId));
   const linesByBill = new Map<number, typeof allLines>();
@@ -109,7 +109,7 @@ router.get("/guest", async (req, res) => {
   const allAssignments = allLineIds.length > 0
     ? await db.select().from(billLineMembersTable).where(inArray(billLineMembersTable.billLineId, allLineIds))
     : [];
-  const allMembers = await db.select().from(billMembersTable).where(inArray(billMembersTable.billId, billIds));
+  const allMembers = await db.select().from(billMembersTable).where(inArray(billMembersTable.billId, billIds)).orderBy(asc(billMembersTable.id));
 
   const assignedLineIds = new Set(allAssignments.map((a) => a.billLineId));
   const linesByBill = new Map<number, typeof allLines>();
@@ -219,7 +219,7 @@ router.get("/by-code/:joinCode", async (req, res) => {
     return;
   }
   const lines = await getBillLines(bill.id);
-  const users = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, bill.id));
+  const users = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, bill.id)).orderBy(asc(billMembersTable.id));
   let ownerName = "Guest";
   if (bill.ownerUserId) {
     const [owner] = await db.select({ displayName: usersTable.displayName }).from(usersTable)
@@ -237,7 +237,7 @@ router.get("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     return;
   }
   const lines = await getBillLines(billId);
-  const rawUsers = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
+  const rawUsers = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId)).orderBy(asc(billMembersTable.id));
   const linkedUserIds = [...new Set(rawUsers.map((u) => u.linkedUserId).filter((id): id is number => id != null))];
   const linkedUsers = linkedUserIds.length > 0
     ? await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, linkedUserIds))

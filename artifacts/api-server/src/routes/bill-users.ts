@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { billMembersTable, billUsersTable, billsTable, usersTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { notifyBillChanged, notifyUserBillsChanged } from "../lib/sseManager.js";
 
 const router = Router({ mergeParams: true });
@@ -12,7 +12,10 @@ function parseBillId(req: { params: Record<string, unknown> }): number {
 
 router.get("/", async (req, res) => {
   const billId = parseBillId(req);
-  const members = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId));
+  // Ordered by id (a serial) so members always list in the order they were
+  // added. Without this Postgres returns heap order, which reshuffles as soon
+  // as a row is updated.
+  const members = await db.select().from(billMembersTable).where(eq(billMembersTable.billId, billId)).orderBy(asc(billMembersTable.id));
   res.json(members);
 });
 
