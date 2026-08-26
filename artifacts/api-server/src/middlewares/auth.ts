@@ -74,11 +74,46 @@ async function getOrCreateUserByClerkId(clerkId: string) {
     return updated!;
   }
 
+  // A brand-new account has several authenticated requests in flight at once —
+  // each one gets here, sees no row, and tries to insert. clerk_id and email are
+  // both unique, so all but one insert would raise, and requireAuth turns that
+  // into a 500. Let the losers no-op and read back whatever the winner wrote.
   const [newUser] = await db
     .insert(usersTable)
     .values({ email, clerkId, displayName, firstName, lastName })
+    .onConflictDoNothing()
     .returning();
-  return newUser!;
+  if (newUser) {
+    return newUser;
+  }
+
+  const [raced] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, clerkId))
+    .limit(1);
+  if (raced) {
+    return raced;
+  }
+
+  // The conflict was on email rather than clerk_id: a pre-existing row for this
+  // address that no Clerk id has been attached to yet. Same repair the byEmail
+  // branch above performs.
+  const [racedByEmail] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+  if (racedByEmail) {
+    const [adopted] = await db
+      .update(usersTable)
+      .set({ clerkId, displayName, firstName, lastName })
+      .where(eq(usersTable.id, racedByEmail.id))
+      .returning();
+    return adopted!;
+  }
+
+  throw new Error("Could not create or load the user record for this account.");
 }
 
 export function requireAuth(
