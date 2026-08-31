@@ -110,7 +110,9 @@ export default function ChangePasswordScreen() {
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => router.back()}
-          >
+          
+          accessibilityLabel="Go back"
+          hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}>
             <Feather name="arrow-left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.foreground }]}>Change Password</Text>
@@ -131,7 +133,7 @@ export default function ChangePasswordScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity onPress={() => setShowCurrent((v) => !v)}>
+            <TouchableOpacity onPress={() => setShowCurrent((v) => !v)} accessibilityLabel={showCurrent ? "Hide current password" : "Show current password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}>
               <Feather name={showCurrent ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
@@ -149,7 +151,7 @@ export default function ChangePasswordScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity onPress={() => setShowNew((v) => !v)}>
+            <TouchableOpacity onPress={() => setShowNew((v) => !v)} accessibilityLabel={showNew ? "Hide new password" : "Show new password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}>
               <Feather name={showNew ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
@@ -167,7 +169,7 @@ export default function ChangePasswordScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity onPress={() => setShowConfirm((v) => !v)}>
+            <TouchableOpacity onPress={() => setShowConfirm((v) => !v)} accessibilityLabel={showConfirm ? "Hide confirmed password" : "Show confirmed password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}>
               <Feather name={showConfirm ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>

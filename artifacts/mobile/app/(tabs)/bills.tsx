@@ -129,7 +129,8 @@ function PulsingFab({
       <PressableScale
         style={[styles.fab, { backgroundColor: bg, shadowColor: bg }, animStyle]}
         onPress={onPress}
-      >
+      
+      accessibilityLabel="New bill">
         <Feather name="plus" size={28} color="#fff" />
       </PressableScale>
     </Animated.View>

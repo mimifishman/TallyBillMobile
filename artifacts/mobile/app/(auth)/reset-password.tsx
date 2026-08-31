@@ -108,7 +108,9 @@ export default function ResetPasswordScreen() {
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => router.back()}
-          >
+          
+          accessibilityLabel="Go back"
+          hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}>
             <Feather name="arrow-left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.foreground }]}>Reset Password</Text>
@@ -159,7 +161,7 @@ export default function ResetPasswordScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity onPress={() => setShowNew((v) => !v)}>
+            <TouchableOpacity onPress={() => setShowNew((v) => !v)} accessibilityLabel={showNew ? "Hide new password" : "Show new password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}>
               <Feather name={showNew ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
@@ -179,7 +181,7 @@ export default function ResetPasswordScreen() {
               returnKeyType="done"
               onSubmitEditing={handleReset}
             />
-            <TouchableOpacity onPress={() => setShowConfirm((v) => !v)}>
+            <TouchableOpacity onPress={() => setShowConfirm((v) => !v)} accessibilityLabel={showConfirm ? "Hide confirmed password" : "Show confirmed password"} hitSlop={{ top: 13, bottom: 13, left: 8, right: 12 }}>
               <Feather name={showConfirm ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>

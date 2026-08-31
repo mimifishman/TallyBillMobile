@@ -145,7 +145,8 @@ export default function IndexScreen() {
         style={[styles.settingsBtn, { top: insets.top + 12, backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => router.push("/(tabs)/settings")}
         activeOpacity={0.8}
-      >
+      
+      accessibilityLabel="Settings">
         <Feather name="settings" size={20} color={colors.mutedForeground} />
       </TouchableOpacity>
 

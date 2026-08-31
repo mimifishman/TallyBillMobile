@@ -63,7 +63,7 @@ export default function ForgotPasswordScreen() {
     <View style={styles.flex}>
       <LinearGradient colors={colors.gradientPrimary} style={styles.gradient}>
         <View style={{ height: insets.top + 16 }} />
-        <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+        <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Go back">
           <Feather name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
         </TouchableOpacity>
         <View style={styles.brandArea}>

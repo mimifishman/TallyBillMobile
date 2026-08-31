@@ -76,7 +76,8 @@ export default function ShareScreen() {
           onPress={() => (router.canGoBack() ? router.back() : router.replace(`/bill/${billId}`))}
           style={styles.backBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        
+        accessibilityLabel="Go back">
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Share Bill</Text>

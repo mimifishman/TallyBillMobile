@@ -308,14 +308,14 @@ export default function ScanScreen() {
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
+        <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close" hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}>
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           {isScanning ? "Scanning…" : step === "pick" ? "Scan Receipt" : "Review Items"}
         </Text>
         {isScanning && (
-          <TouchableOpacity onPress={handleMinimize} style={styles.minimizeBtn}>
+          <TouchableOpacity onPress={handleMinimize} style={styles.minimizeBtn} accessibilityLabel="Minimize" hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}>
             <Feather name="chevron-down" size={22} color={colors.foreground} />
           </TouchableOpacity>
         )}
@@ -466,7 +466,10 @@ export default function ScanScreen() {
                   onPress={() => toggleItem(index)}
                   activeOpacity={0.7}
                   style={styles.checkboxHitArea}
-                >
+                
+                accessibilityLabel={displayName}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: item.selected }}>
                   <View style={[styles.checkbox, { borderColor: item.selected ? colors.primary : colors.border, backgroundColor: item.selected ? colors.primary : "transparent" }]}>
                     {item.selected && <Feather name="check" size={12} color="#fff" />}
                   </View>

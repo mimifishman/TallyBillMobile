@@ -187,7 +187,7 @@ export default function TotalsScreen() {
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Go back">
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, styles.headerTitleFlex, { color: colors.foreground }]}>Bill Totals</Text>
@@ -340,11 +340,11 @@ export default function TotalsScreen() {
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Tip ({fmtPct(person.tipPercent)}%)</Text>
                   <View style={styles.tipRow}>
                     <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>{fmt(person.tipAmount)}</Text>
-                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Edit tip">
                       <Feather name="edit-2" size={13} color={colors.mutedForeground} />
                     </TouchableOpacity>
                     {person.tipIsCustom && (
-                      <TouchableOpacity onPress={() => handleResetTip(person.billUserId)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                      <TouchableOpacity onPress={() => handleResetTip(person.billUserId)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Reset tip">
                         <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
                       </TouchableOpacity>
                     )}
