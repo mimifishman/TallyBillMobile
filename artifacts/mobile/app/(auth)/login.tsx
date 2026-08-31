@@ -51,6 +51,8 @@ export default function LoginScreen() {
   const [secondFactor, setSecondFactor] = useState<"totp" | "phone_code" | "email_code" | null>(null);
 
   const isPending = fetchStatus === "fetching";
+  // Same reason as the social buttons: signIn is unusable until Clerk loads.
+  const canSubmit = clerkLoaded && !isPending;
 
   const pickSecondFactor = (): "totp" | "phone_code" | "email_code" | null => {
     const factors = signIn.supportedSecondFactors ?? [];
@@ -246,12 +248,22 @@ export default function LoginScreen() {
           <Text style={[styles.formSub, { color: colors.mutedForeground }]}>Your friends are waiting.</Text>
 
           <View style={styles.socialSection}>
-            <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#fff" }]} onPress={() => { void handleOAuth("oauth_google"); }} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#fff", opacity: clerkLoaded ? 1 : 0.5 }]}
+              onPress={() => { void handleOAuth("oauth_google"); }}
+              disabled={!clerkLoaded}
+              activeOpacity={0.8}
+            >
               <Text style={styles.googleG}>G</Text>
               <Text style={[styles.socialBtnText, { color: "#1F2937" }]}>Continue with Google</Text>
             </TouchableOpacity>
             {Platform.OS === "ios" && (
-              <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]} onPress={() => { void handleOAuth("oauth_apple"); }} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000", opacity: clerkLoaded ? 1 : 0.5 }]}
+                onPress={() => { void handleOAuth("oauth_apple"); }}
+                disabled={!clerkLoaded}
+                activeOpacity={0.8}
+              >
                 <Ionicons name="logo-apple" size={18} color="#fff" />
                 <Text style={[styles.socialBtnText, { color: "#fff" }]}>Continue with Apple</Text>
               </TouchableOpacity>
@@ -282,7 +294,7 @@ export default function LoginScreen() {
               <Text style={[styles.forgotText, { color: colors.primaryText }]}>Forgot password?</Text>
             </TouchableOpacity>
 
-            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleEmailLogin} disabled={isPending}>
+            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.6 }]} onPress={handleEmailLogin} disabled={!canSubmit}>
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Sign In</Text>}
             </PressableScale>
 
