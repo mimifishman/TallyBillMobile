@@ -158,8 +158,16 @@ export default function LoginScreen() {
           redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }),
         });
         if (createdSessionId && setActive) {
+          // Signing up and signing in share this button, so a first-time user
+          // arrives here too. Send them through the name screen exactly as the
+          // register screen does — it pre-fills whatever Google or Apple gave
+          // us and lets them correct it. Apple only returns a name on the very
+          // first authorization, and only with the user's consent, so without
+          // this they end up displayed as "User" or as the local part of their
+          // email address.
+          const isNewUser = ssoSignUp != null && ssoSignUp.status === "complete";
           await setActive({ session: createdSessionId });
-          router.replace("/");
+          router.replace(isNewUser ? "/(auth)/name" : "/");
           return;
         }
         // The browser was closed/cancelled before finishing — stay silent.
