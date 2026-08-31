@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useAuth as useClerkAuth, useSSO, useSignIn } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -252,7 +252,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
             {Platform.OS === "ios" && (
               <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]} onPress={() => { void handleOAuth("oauth_apple"); }} activeOpacity={0.8}>
-                <Feather name="smartphone" size={18} color="#fff" />
+                <Ionicons name="logo-apple" size={18} color="#fff" />
                 <Text style={[styles.socialBtnText, { color: "#fff" }]}>Continue with Apple</Text>
               </TouchableOpacity>
             )}
