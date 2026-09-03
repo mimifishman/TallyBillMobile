@@ -61,6 +61,10 @@ export default function RegisterScreen() {
   const [showVerification, setShowVerification] = useState(false);
 
   const isPending = fetchStatus === "fetching";
+  // signUp only works once Clerk has loaded. Without this the button is live on
+  // first launch, signUp.password() fails locally, nothing reaches Clerk, and the
+  // user sees the generic "Could not create account" with no event logged.
+  const canSubmit = clerkLoaded && !isPending;
 
   const routeSignUpError = (error: { code?: string; message?: string }) => {
     const msg = (error.message ?? "").toLowerCase();
@@ -234,12 +238,22 @@ export default function RegisterScreen() {
           <Text style={[styles.formSub, { color: colors.mutedForeground }]}>Start splitting bills with friends.</Text>
 
           <View style={styles.socialSection}>
-            <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#fff" }]} onPress={() => { void handleOAuth("oauth_google"); }} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#fff", opacity: clerkLoaded ? 1 : 0.5 }]}
+              onPress={() => { void handleOAuth("oauth_google"); }}
+              disabled={!clerkLoaded}
+              activeOpacity={0.8}
+            >
               <Text style={styles.googleG}>G</Text>
               <Text style={[styles.socialBtnText, { color: "#1F2937" }]}>Continue with Google</Text>
             </TouchableOpacity>
             {Platform.OS === "ios" && (
-              <TouchableOpacity style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000" }]} onPress={() => { void handleOAuth("oauth_apple"); }} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={[styles.socialBtn, { borderColor: colors.border, backgroundColor: "#000", opacity: clerkLoaded ? 1 : 0.5 }]}
+                onPress={() => { void handleOAuth("oauth_apple"); }}
+                disabled={!clerkLoaded}
+                activeOpacity={0.8}
+              >
                 <Ionicons name="logo-apple" size={18} color="#fff" />
                 <Text style={[styles.socialBtnText, { color: "#fff" }]}>Continue with Apple</Text>
               </TouchableOpacity>
@@ -273,7 +287,7 @@ export default function RegisterScreen() {
             </View>
             {!!confirmPasswordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{confirmPasswordError}</Text>}
 
-            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleRegister} disabled={isPending}>
+            <PressableScale style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: canSubmit ? 1 : 0.6 }]} onPress={handleRegister} disabled={!canSubmit}>
               {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Create Account</Text>}
             </PressableScale>
 
