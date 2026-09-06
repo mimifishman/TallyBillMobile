@@ -1,0 +1,776 @@
+{
+  "dbHost": "ep-small-sea-apqw2rxt.c-7.us-east-1.aws.neon.tech",
+  "deleted": [
+    {
+      "id": 5,
+      "email": "mimifish.man@gmail.com",
+      "clerkId": "user_3Dd5XPePXde2hMMZFUI7t46DWnE",
+      "rows": {
+        "user": [
+          {
+            "id": 5,
+            "email": "mimifish.man@gmail.com",
+            "passwordHash": null,
+            "displayName": "Leah Test",
+            "firstName": "Leah",
+            "lastName": "Test",
+            "clerkId": "user_3Dd5XPePXde2hMMZFUI7t46DWnE",
+            "resetToken": null,
+            "resetTokenExpiry": null,
+            "createdAt": "2026-05-12T15:19:06.385Z"
+          }
+        ],
+        "ownedBills": [
+          {
+            "id": 28,
+            "ownerUserId": 5,
+            "title": "Test",
+            "date": "2026-05-12",
+            "currency": "USD",
+            "taxPercent": "0.0000",
+            "tipPercent": "0.0000",
+            "joinCode": "46JVNG",
+            "createdAt": "2026-05-12T15:19:37.885Z",
+            "guestOwnerId": null,
+            "isGuestBill": false,
+            "expiresAt": null,
+            "receiptImagePath": null
+          }
+        ],
+        "ownedBillLines": [],
+        "ownedBillLineMembers": [],
+        "ownedBillUsers": [
+          {
+            "id": 14,
+            "billId": 28,
+            "userId": 5,
+            "role": "owner",
+            "joinedAt": "2026-05-12T15:19:37.885Z"
+          }
+        ],
+        "ownedBillMembers": [
+          {
+            "id": 38,
+            "billId": 28,
+            "name": "Leah",
+            "color": "#E84393",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-05-12T15:19:37.885Z"
+          }
+        ],
+        "ownMembershipsElsewhere": [
+          {
+            "id": 14,
+            "billId": 28,
+            "userId": 5,
+            "role": "owner",
+            "joinedAt": "2026-05-12T15:19:37.885Z"
+          }
+        ],
+        "ownMemberRowsElsewhere": [],
+        "ownLineAssignmentsElsewhere": [],
+        "ownedCircles": [],
+        "ownedCircleMembers": [],
+        "ownCircleMembershipsElsewhere": []
+      }
+    },
+    {
+      "id": 6,
+      "email": "harroch.laurence@gmail.com",
+      "clerkId": "user_3EiCIvZfP4M8jGublxZaxkpYmP9",
+      "rows": {
+        "user": [
+          {
+            "id": 6,
+            "email": "harroch.laurence@gmail.com",
+            "passwordHash": null,
+            "displayName": "Laurence H",
+            "firstName": "Laurence",
+            "lastName": "H",
+            "clerkId": "user_3EiCIvZfP4M8jGublxZaxkpYmP9",
+            "resetToken": null,
+            "resetTokenExpiry": null,
+            "createdAt": "2026-06-05T09:32:08.514Z"
+          }
+        ],
+        "ownedBills": [],
+        "ownedBillLines": [],
+        "ownedBillLineMembers": [],
+        "ownedBillUsers": [],
+        "ownedBillMembers": [],
+        "ownMembershipsElsewhere": [],
+        "ownMemberRowsElsewhere": [],
+        "ownLineAssignmentsElsewhere": [],
+        "ownedCircles": [],
+        "ownedCircleMembers": [],
+        "ownCircleMembershipsElsewhere": []
+      }
+    },
+    {
+      "id": 8,
+      "email": "jekipp@gmail.com",
+      "clerkId": "user_3FaF9swk1ez39wYLNAjRFkI9MiX",
+      "rows": {
+        "user": [
+          {
+            "id": 8,
+            "email": "jekipp@gmail.com",
+            "passwordHash": null,
+            "displayName": "Jason Kipp",
+            "firstName": "Jason",
+            "lastName": "Kipp",
+            "clerkId": "user_3FaF9swk1ez39wYLNAjRFkI9MiX",
+            "resetToken": null,
+            "resetTokenExpiry": null,
+            "createdAt": "2026-06-24T12:45:26.409Z"
+          }
+        ],
+        "ownedBills": [
+          {
+            "id": 103,
+            "ownerUserId": 8,
+            "title": "Cafe",
+            "date": "2026-06-24",
+            "currency": "ILS",
+            "taxPercent": "0.0000",
+            "tipPercent": "12.0000",
+            "joinCode": "H6QT9D",
+            "createdAt": "2026-06-24T12:46:06.119Z",
+            "guestOwnerId": null,
+            "isGuestBill": false,
+            "expiresAt": null,
+            "receiptImagePath": "/objects/uploads/103/10a6fd7b-f1d8-4b29-81f4-fb5ee99b7d0b"
+          },
+          {
+            "id": 104,
+            "ownerUserId": 8,
+            "title": "Cafe",
+            "date": "2026-06-24",
+            "currency": "ILS",
+            "taxPercent": "0.0000",
+            "tipPercent": "12.0000",
+            "joinCode": "9T6FME",
+            "createdAt": "2026-06-24T12:47:34.449Z",
+            "guestOwnerId": null,
+            "isGuestBill": false,
+            "expiresAt": null,
+            "receiptImagePath": "/objects/uploads/104/c2c5113d-c696-43d7-9651-b63d59039231"
+          }
+        ],
+        "ownedBillLines": [
+          {
+            "id": 181,
+            "billId": 104,
+            "description": "Avocado toast",
+            "originalDescription": "טוסט אבוקדו",
+            "quantity": "1.00",
+            "unitPrice": "49.00",
+            "total": "49.00",
+            "position": null,
+            "createdAt": "2026-06-24T12:48:43.101Z"
+          },
+          {
+            "id": 183,
+            "billId": 104,
+            "description": "Mascarpone French toast",
+            "originalDescription": "פרנץ טוסט מסקרפונה",
+            "quantity": "1.00",
+            "unitPrice": "65.00",
+            "total": "65.00",
+            "position": null,
+            "createdAt": "2026-06-24T12:48:43.101Z"
+          },
+          {
+            "id": 182,
+            "billId": 104,
+            "description": "Large iced coffee",
+            "originalDescription": "קפה קר גדול",
+            "quantity": "1.00",
+            "unitPrice": "18.00",
+            "total": "18.00",
+            "position": null,
+            "createdAt": "2026-06-24T12:48:43.101Z"
+          },
+          {
+            "id": 184,
+            "billId": 104,
+            "description": "Large iced coffee",
+            "originalDescription": "קפה קר גדול",
+            "quantity": "1.00",
+            "unitPrice": "18.00",
+            "total": "18.00",
+            "position": 182.5,
+            "createdAt": "2026-06-24T12:49:09.424Z"
+          }
+        ],
+        "ownedBillLineMembers": [
+          {
+            "id": 112,
+            "billLineId": 181,
+            "billMemberId": 134
+          },
+          {
+            "id": 111,
+            "billLineId": 181,
+            "billMemberId": 133
+          },
+          {
+            "id": 113,
+            "billLineId": 182,
+            "billMemberId": 134
+          },
+          {
+            "id": 115,
+            "billLineId": 184,
+            "billMemberId": 133
+          },
+          {
+            "id": 116,
+            "billLineId": 183,
+            "billMemberId": 133
+          }
+        ],
+        "ownedBillUsers": [
+          {
+            "id": 88,
+            "billId": 103,
+            "userId": 8,
+            "role": "owner",
+            "joinedAt": "2026-06-24T12:46:06.119Z"
+          },
+          {
+            "id": 89,
+            "billId": 104,
+            "userId": 8,
+            "role": "owner",
+            "joinedAt": "2026-06-24T12:47:34.449Z"
+          }
+        ],
+        "ownedBillMembers": [
+          {
+            "id": 132,
+            "billId": 103,
+            "name": "Jason",
+            "color": "#27AE60",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:46:06.119Z"
+          },
+          {
+            "id": 133,
+            "billId": 104,
+            "name": "Jason",
+            "color": "#FF6B35",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:47:34.449Z"
+          },
+          {
+            "id": 134,
+            "billId": 104,
+            "name": "Mimi",
+            "color": "#06B6D4",
+            "tipPercentOverride": "10.0000",
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:48:48.761Z"
+          },
+          {
+            "id": 135,
+            "billId": 103,
+            "name": "Dina",
+            "color": "#F97316",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:51:16.639Z"
+          },
+          {
+            "id": 136,
+            "billId": 103,
+            "name": "Mimi",
+            "color": "#06B6D4",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:51:16.640Z"
+          }
+        ],
+        "ownMembershipsElsewhere": [
+          {
+            "id": 88,
+            "billId": 103,
+            "userId": 8,
+            "role": "owner",
+            "joinedAt": "2026-06-24T12:46:06.119Z"
+          },
+          {
+            "id": 89,
+            "billId": 104,
+            "userId": 8,
+            "role": "owner",
+            "joinedAt": "2026-06-24T12:47:34.449Z"
+          }
+        ],
+        "ownMemberRowsElsewhere": [],
+        "ownLineAssignmentsElsewhere": [],
+        "ownedCircles": [
+          {
+            "id": 6,
+            "ownerUserId": 8,
+            "name": "Freinds",
+            "createdAt": "2026-06-24T12:50:45.281Z"
+          }
+        ],
+        "ownedCircleMembers": [
+          {
+            "id": 11,
+            "circleId": 6,
+            "name": "Mimi",
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:50:56.540Z"
+          },
+          {
+            "id": 12,
+            "circleId": 6,
+            "name": "Dina",
+            "linkedUserId": null,
+            "createdAt": "2026-06-24T12:51:05.218Z"
+          }
+        ],
+        "ownCircleMembershipsElsewhere": []
+      }
+    },
+    {
+      "id": 13,
+      "email": "philiptsang018@gmail.com",
+      "clerkId": "user_3G6UykG0CiWLrcwEZhi2Fue7TK3",
+      "rows": {
+        "user": [
+          {
+            "id": 13,
+            "email": "philiptsang018@gmail.com",
+            "passwordHash": null,
+            "displayName": "Philip Tsang",
+            "firstName": "Philip",
+            "lastName": "Tsang",
+            "clerkId": "user_3G6UykG0CiWLrcwEZhi2Fue7TK3",
+            "resetToken": null,
+            "resetTokenExpiry": null,
+            "createdAt": "2026-07-05T22:49:30.028Z"
+          }
+        ],
+        "ownedBills": [
+          {
+            "id": 108,
+            "ownerUserId": 13,
+            "title": "Sushi",
+            "date": "2026-07-05",
+            "currency": "USD",
+            "taxPercent": "0.0000",
+            "tipPercent": "0.0000",
+            "joinCode": "DC6E5E",
+            "createdAt": "2026-07-05T22:49:39.114Z",
+            "guestOwnerId": null,
+            "isGuestBill": false,
+            "expiresAt": null,
+            "receiptImagePath": "/objects/uploads/108/ce2d72bf-2a99-4bb7-9571-2ee9da1ffad6"
+          }
+        ],
+        "ownedBillLines": [
+          {
+            "id": 208,
+            "billId": 108,
+            "description": "Black Truffle Shrimp Dumplings",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "10.95",
+            "total": "10.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 209,
+            "billId": 108,
+            "description": "Shrimp Dumpling 虾饺",
+            "originalDescription": null,
+            "quantity": "2.00",
+            "unitPrice": "7.98",
+            "total": "15.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 210,
+            "billId": 108,
+            "description": "Shu Mai (Shrimp & Pork) 烧卖",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "6.95",
+            "total": "6.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 211,
+            "billId": 108,
+            "description": "BBQ Pork Buns 叉烧包",
+            "originalDescription": null,
+            "quantity": "2.00",
+            "unitPrice": "6.95",
+            "total": "13.90",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 212,
+            "billId": 108,
+            "description": "Steamed Spare Ribs w. Olive Sauce 橄榄排骨",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "6.95",
+            "total": "6.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 213,
+            "billId": 108,
+            "description": "Chicken Feet 凤爪",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "6.95",
+            "total": "6.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 214,
+            "billId": 108,
+            "description": "Pork & Shrimp Bean Curd Skin Roll 鲜竹卷",
+            "originalDescription": null,
+            "quantity": "2.00",
+            "unitPrice": "6.95",
+            "total": "13.90",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 215,
+            "billId": 108,
+            "description": "Sticky Rice w. Pork Wrapped in Lotus Leaf 珍珠鸡",
+            "originalDescription": null,
+            "quantity": "2.00",
+            "unitPrice": "6.95",
+            "total": "13.90",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 216,
+            "billId": 108,
+            "description": "Szechuan Wonton 红油抄手",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "10.25",
+            "total": "10.25",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 217,
+            "billId": 108,
+            "description": "Beef Tripe w. Peanut 川味牛肚",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "13.95",
+            "total": "13.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 218,
+            "billId": 108,
+            "description": "Sweet Egg Yolk Creamy Bun 流沙包",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "6.95",
+            "total": "6.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 219,
+            "billId": 108,
+            "description": "Osmanthus Cake 桂花糕",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "6.95",
+            "total": "6.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          },
+          {
+            "id": 220,
+            "billId": 108,
+            "description": "Braise Tofu w. Mushroom 红烧豆腐",
+            "originalDescription": null,
+            "quantity": "1.00",
+            "unitPrice": "19.95",
+            "total": "19.95",
+            "position": null,
+            "createdAt": "2026-07-05T22:49:55.814Z"
+          }
+        ],
+        "ownedBillLineMembers": [
+          {
+            "id": 174,
+            "billLineId": 208,
+            "billMemberId": 150
+          },
+          {
+            "id": 175,
+            "billLineId": 209,
+            "billMemberId": 150
+          },
+          {
+            "id": 176,
+            "billLineId": 215,
+            "billMemberId": 150
+          },
+          {
+            "id": 177,
+            "billLineId": 214,
+            "billMemberId": 150
+          },
+          {
+            "id": 178,
+            "billLineId": 216,
+            "billMemberId": 150
+          },
+          {
+            "id": 179,
+            "billLineId": 213,
+            "billMemberId": 150
+          },
+          {
+            "id": 181,
+            "billLineId": 208,
+            "billMemberId": 149
+          },
+          {
+            "id": 182,
+            "billLineId": 209,
+            "billMemberId": 149
+          },
+          {
+            "id": 183,
+            "billLineId": 210,
+            "billMemberId": 149
+          },
+          {
+            "id": 184,
+            "billLineId": 211,
+            "billMemberId": 149
+          },
+          {
+            "id": 185,
+            "billLineId": 212,
+            "billMemberId": 149
+          },
+          {
+            "id": 186,
+            "billLineId": 217,
+            "billMemberId": 149
+          },
+          {
+            "id": 187,
+            "billLineId": 218,
+            "billMemberId": 149
+          },
+          {
+            "id": 188,
+            "billLineId": 219,
+            "billMemberId": 149
+          },
+          {
+            "id": 189,
+            "billLineId": 220,
+            "billMemberId": 149
+          }
+        ],
+        "ownedBillUsers": [
+          {
+            "id": 94,
+            "billId": 108,
+            "userId": 13,
+            "role": "owner",
+            "joinedAt": "2026-07-05T22:49:39.114Z"
+          }
+        ],
+        "ownedBillMembers": [
+          {
+            "id": 149,
+            "billId": 108,
+            "name": "Philip",
+            "color": "#27AE60",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-07-05T22:49:39.114Z"
+          },
+          {
+            "id": 150,
+            "billId": 108,
+            "name": "Tiff",
+            "color": "#A855F7",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-07-05T22:50:28.447Z"
+          }
+        ],
+        "ownMembershipsElsewhere": [
+          {
+            "id": 94,
+            "billId": 108,
+            "userId": 13,
+            "role": "owner",
+            "joinedAt": "2026-07-05T22:49:39.114Z"
+          }
+        ],
+        "ownMemberRowsElsewhere": [],
+        "ownLineAssignmentsElsewhere": [],
+        "ownedCircles": [],
+        "ownedCircleMembers": [],
+        "ownCircleMembershipsElsewhere": []
+      }
+    },
+    {
+      "id": 15,
+      "email": "spledgoldstein@hotmail.com",
+      "clerkId": "user_3GgtzI9bgtE8ul39AcQ0vigD6E3",
+      "rows": {
+        "user": [
+          {
+            "id": 15,
+            "email": "spledgoldstein@hotmail.com",
+            "passwordHash": null,
+            "displayName": "Ed",
+            "firstName": "Ed",
+            "lastName": null,
+            "clerkId": "user_3GgtzI9bgtE8ul39AcQ0vigD6E3",
+            "resetToken": null,
+            "resetTokenExpiry": null,
+            "createdAt": "2026-07-18T20:08:25.222Z"
+          }
+        ],
+        "ownedBills": [
+          {
+            "id": 110,
+            "ownerUserId": 15,
+            "title": "Pizza",
+            "date": "2026-07-18",
+            "currency": "ILS",
+            "taxPercent": "0.0000",
+            "tipPercent": "12.0000",
+            "joinCode": "BQMMPU",
+            "createdAt": "2026-07-18T20:09:05.105Z",
+            "guestOwnerId": null,
+            "isGuestBill": false,
+            "expiresAt": null,
+            "receiptImagePath": "/objects/uploads/110/57a788c3-2dd7-4eec-a8a5-a5566de098fe"
+          }
+        ],
+        "ownedBillLines": [
+          {
+            "id": 226,
+            "billId": 110,
+            "description": "S Margarita",
+            "originalDescription": "S מרגריטה",
+            "quantity": "1.00",
+            "unitPrice": "40.00",
+            "total": "40.00",
+            "position": null,
+            "createdAt": "2026-07-18T20:10:01.344Z"
+          },
+          {
+            "id": 227,
+            "billId": 110,
+            "description": "S Traupo",
+            "originalDescription": "S טראופו",
+            "quantity": "1.00",
+            "unitPrice": "60.00",
+            "total": "60.00",
+            "position": null,
+            "createdAt": "2026-07-18T20:10:01.344Z"
+          },
+          {
+            "id": 228,
+            "billId": 110,
+            "description": "Coke Zero",
+            "originalDescription": "קולה זירו",
+            "quantity": "1.00",
+            "unitPrice": "14.00",
+            "total": "14.00",
+            "position": null,
+            "createdAt": "2026-07-18T20:10:01.344Z"
+          },
+          {
+            "id": 229,
+            "billId": 110,
+            "description": "Sprite Zero",
+            "originalDescription": "ספרייט זירו",
+            "quantity": "1.00",
+            "unitPrice": "14.00",
+            "total": "14.00",
+            "position": null,
+            "createdAt": "2026-07-18T20:10:01.344Z"
+          },
+          {
+            "id": 230,
+            "billId": 110,
+            "description": "1/2 Shafra",
+            "originalDescription": "1/2 שפרה",
+            "quantity": "1.00",
+            "unitPrice": "37.00",
+            "total": "37.00",
+            "position": null,
+            "createdAt": "2026-07-18T20:10:01.344Z"
+          }
+        ],
+        "ownedBillLineMembers": [],
+        "ownedBillUsers": [
+          {
+            "id": 95,
+            "billId": 110,
+            "userId": 15,
+            "role": "owner",
+            "joinedAt": "2026-07-18T20:09:05.105Z"
+          }
+        ],
+        "ownedBillMembers": [
+          {
+            "id": 153,
+            "billId": 110,
+            "name": "Ed",
+            "color": "#27AE60",
+            "tipPercentOverride": null,
+            "linkedUserId": null,
+            "createdAt": "2026-07-18T20:09:05.105Z"
+          }
+        ],
+        "ownMembershipsElsewhere": [
+          {
+            "id": 95,
+            "billId": 110,
+            "userId": 15,
+            "role": "owner",
+            "joinedAt": "2026-07-18T20:09:05.105Z"
+          }
+        ],
+        "ownMemberRowsElsewhere": [],
+        "ownLineAssignmentsElsewhere": [],
+        "ownedCircles": [],
+        "ownedCircleMembers": [],
+        "ownCircleMembershipsElsewhere": []
+      }
+    }
+  ]
+}

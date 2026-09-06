@@ -30,6 +30,7 @@ import {
 import { eq, inArray, count } from "drizzle-orm";
 import { createClerkClient } from "@clerk/express";
 import { Storage } from "@google-cloud/storage";
+import { writeFileSync } from "node:fs";
 
 const DO_DELETE = process.argv.includes("--delete");
 const INCLUDE_NULL = process.argv.includes("--include-null-clerk-id");
@@ -74,7 +75,7 @@ async function fetchAllClerkIds(): Promise<Set<string>> {
 /** Row counts that would disappear with this user, for the report. */
 async function summarise(userId: number) {
   const ownedBills = await db
-    .select({ id: billsTable.id })
+    .select({ id: billsTable.id, receiptImagePath: billsTable.receiptImagePath })
     .from(billsTable)
     .where(eq(billsTable.ownerUserId, userId));
   const ownedCircles = await db
@@ -92,14 +93,25 @@ async function summarise(userId: number) {
 
   return {
     ownedBills: ownedBills.length,
+    receiptImages: ownedBills.filter(
+      (b) => typeof b.receiptImagePath === "string" && b.receiptImagePath.length > 0,
+    ).length,
     ownedCircles: ownedCircles.length,
     joinedBills: joined?.n ?? 0,
     linkedMembers: linked?.n ?? 0,
   };
 }
 
-/** Same phases, same order, as the DELETE /api/me handler. */
-async function deleteUser(userId: number): Promise<string[]> {
+/**
+ * Same phases, same order, as the DELETE /api/me handler.
+ *
+ * Every row is read back inside the same transaction before anything is
+ * removed, so the returned snapshot is an exact record of what was destroyed.
+ * There is no other undo — write it to disk before trusting this.
+ */
+async function deleteUser(
+  userId: number,
+): Promise<{ snapshot: Record<string, unknown>; receiptPaths: string[] }> {
   return db.transaction(async (tx) => {
     const ownedBills = await tx
       .select({ id: billsTable.id, receiptImagePath: billsTable.receiptImagePath })
@@ -112,6 +124,74 @@ async function deleteUser(userId: number): Promise<string[]> {
       .from(billMembersTable)
       .where(eq(billMembersTable.linkedUserId, userId));
     const linkedMemberIds = linkedMembers.map((m) => m.id);
+
+    const ownedLineRows =
+      ownedBillIds.length > 0
+        ? await tx.select().from(billLinesTable).where(inArray(billLinesTable.billId, ownedBillIds))
+        : [];
+    const ownedLineRowIds = ownedLineRows.map((l) => l.id);
+
+    const ownedCircleRows = await tx
+      .select()
+      .from(circlesTable)
+      .where(eq(circlesTable.ownerUserId, userId));
+    const ownedCircleRowIds = ownedCircleRows.map((c) => c.id);
+
+    const snapshot = {
+      user: await tx.select().from(usersTable).where(eq(usersTable.id, userId)),
+      ownedBills:
+        ownedBillIds.length > 0
+          ? await tx.select().from(billsTable).where(inArray(billsTable.id, ownedBillIds))
+          : [],
+      ownedBillLines: ownedLineRows,
+      ownedBillLineMembers:
+        ownedLineRowIds.length > 0
+          ? await tx
+              .select()
+              .from(billLineMembersTable)
+              .where(inArray(billLineMembersTable.billLineId, ownedLineRowIds))
+          : [],
+      ownedBillUsers:
+        ownedBillIds.length > 0
+          ? await tx.select().from(billUsersTable).where(inArray(billUsersTable.billId, ownedBillIds))
+          : [],
+      ownedBillMembers:
+        ownedBillIds.length > 0
+          ? await tx
+              .select()
+              .from(billMembersTable)
+              .where(inArray(billMembersTable.billId, ownedBillIds))
+          : [],
+      // Rows on OTHER people's bills — these go too, unlike the name-only rows
+      // that survive with linked_user_id nulled.
+      ownMembershipsElsewhere: await tx
+        .select()
+        .from(billUsersTable)
+        .where(eq(billUsersTable.userId, userId)),
+      ownMemberRowsElsewhere: await tx
+        .select()
+        .from(billMembersTable)
+        .where(eq(billMembersTable.linkedUserId, userId)),
+      ownLineAssignmentsElsewhere:
+        linkedMemberIds.length > 0
+          ? await tx
+              .select()
+              .from(billLineMembersTable)
+              .where(inArray(billLineMembersTable.billMemberId, linkedMemberIds))
+          : [],
+      ownedCircles: ownedCircleRows,
+      ownedCircleMembers:
+        ownedCircleRowIds.length > 0
+          ? await tx
+              .select()
+              .from(circleMembersTable)
+              .where(inArray(circleMembersTable.circleId, ownedCircleRowIds))
+          : [],
+      ownCircleMembershipsElsewhere: await tx
+        .select()
+        .from(circleMembersTable)
+        .where(eq(circleMembersTable.linkedUserId, userId)),
+    };
 
     if (ownedBillIds.length > 0) {
       const ownedLines = await tx
@@ -165,9 +245,12 @@ async function deleteUser(userId: number): Promise<string[]> {
 
     await tx.delete(usersTable).where(eq(usersTable.id, userId));
 
-    return ownedBills
-      .map((b) => b.receiptImagePath)
-      .filter((p): p is string => typeof p === "string" && p.length > 0);
+    return {
+      snapshot,
+      receiptPaths: ownedBills
+        .map((b) => b.receiptImagePath)
+        .filter((p): p is string => typeof p === "string" && p.length > 0),
+    };
   });
 }
 
@@ -220,6 +303,7 @@ async function main() {
   console.log(`Database host : ${dbHost}`);
   console.log(`Clerk instance: ${instance}`);
   console.log(`Mode          : ${DO_DELETE ? "DELETE (destructive)" : "dry run (no changes)"}`);
+  console.log(`Object dir    : ${process.env.PRIVATE_OBJECT_DIR ?? "(not set)"}`);
   console.log("");
 
   const clerkIds = await fetchAllClerkIds();
@@ -247,7 +331,8 @@ async function main() {
       console.log(
         `  id=${u.id}  ${u.email}  clerk=${u.clerkId ?? "(none)"}  ` +
           `created=${u.createdAt.toISOString().slice(0, 10)}  ` +
-          `ownedBills=${s.ownedBills} ownedCircles=${s.ownedCircles} ` +
+          `ownedBills=${s.ownedBills} receiptImages=${s.receiptImages} ` +
+          `ownedCircles=${s.ownedCircles} ` +
           `joinedBills=${s.joinedBills} linkedMembers=${s.linkedMembers}`,
       );
     }
@@ -274,13 +359,24 @@ async function main() {
   }
 
   const orphanedImages: string[] = [];
+  const backupPath = `./prune-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  const backup: unknown[] = [];
   let done = 0;
 
+  // Rewritten after every user, so an interrupted run still leaves on disk a
+  // full record of everything it managed to destroy.
+  const saveBackup = () =>
+    writeFileSync(backupPath, JSON.stringify({ dbHost, deleted: backup }, null, 2));
+  saveBackup();
+  console.log(`Backup file: ${backupPath}`);
+
   for (const u of targets) {
-    const paths = await deleteUser(u.id);
+    const { snapshot, receiptPaths } = await deleteUser(u.id);
+    backup.push({ id: u.id, email: u.email, clerkId: u.clerkId, rows: snapshot });
+    saveBackup();
     done += 1;
-    console.log(`deleted id=${u.id} ${u.email} (${paths.length} receipt image(s))`);
-    for (const objectPath of paths) {
+    console.log(`deleted id=${u.id} ${u.email} (${receiptPaths.length} receipt image(s))`);
+    for (const objectPath of receiptPaths) {
       try {
         await deleteReceiptObject(objectPath);
       } catch (err) {
@@ -290,7 +386,7 @@ async function main() {
     }
   }
 
-  console.log(`\nDeleted ${done} user(s).`);
+  console.log(`\nDeleted ${done} user(s). Backup written to ${backupPath}`);
   if (orphanedImages.length > 0) {
     console.error(`${orphanedImages.length} receipt image(s) left in object storage:`);
     for (const p of orphanedImages) console.error(`  ${p}`);
