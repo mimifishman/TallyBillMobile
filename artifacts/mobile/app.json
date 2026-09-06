@@ -72,6 +72,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "cd58be3e-53c4-45d2-84a6-0aceb15c4336"
+      }
+    },
+    "owner": "mimifishman"
   }
 }
