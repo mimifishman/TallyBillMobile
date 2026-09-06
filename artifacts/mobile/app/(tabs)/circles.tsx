@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
+import { LoadErrorView } from "@/components/LoadErrorView";
 import { useColors } from "@/hooks/useColors";
 import { useTabContentBottomPadding } from "@/hooks/useTabContentBottomPadding";
 import {
@@ -34,7 +35,7 @@ export default function CirclesScreen() {
   const [showNewCircle, setShowNewCircle] = useState(false);
   const [newCircleName, setNewCircleName] = useState("");
 
-  const { data: circles, isLoading } = useGetCircles({
+  const { data: circles, isLoading, isError, refetch, isRefetching } = useGetCircles({
     query: { queryKey: getGetCirclesQueryKey() },
   });
 
@@ -81,6 +82,16 @@ export default function CirclesScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.primaryText} />
         </View>
+      ) : isError && !circles ? (
+        <ScrollView contentContainerStyle={styles.emptyContainer}>
+          <LoadErrorView
+            title="Couldn't load your circles"
+            message="Check your connection and try again. Your circles are safe."
+            onRetry={() => { void refetch(); }}
+            isRetrying={isRefetching}
+            style={styles.errorWrap}
+          />
+        </ScrollView>
       ) : !circles || circles.length === 0 ? (
         <ScrollView contentContainerStyle={styles.emptyContainer}>
           <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -210,6 +221,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   newBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
+  errorWrap: { width: "100%", padding: 0 },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
