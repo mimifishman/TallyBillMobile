@@ -713,19 +713,20 @@ export default function BillDetailScreen() {
     return String(Math.round((value / subtotal) * 100000) / 1000);
   };
 
-  const toggleTaxMode = () => {
-    if (editTaxMode === "percent") {
+  const chooseTaxMode = (mode: "percent" | "amount") => {
+    if (mode === editTaxMode) return;
+    if (mode === "amount") {
       const pct = parseFloat(editTaxPercent);
-      const asAmount = Number.isFinite(pct) && pct > 0
-        ? String(Math.round(subtotal * (pct / 100) * 100) / 100)
-        : "";
-      setEditTaxAmount(asAmount);
-      setEditTaxMode("amount");
+      setEditTaxAmount(
+        Number.isFinite(pct) && pct > 0
+          ? String(Math.round(subtotal * (pct / 100) * 100) / 100)
+          : "",
+      );
     } else {
       // editTaxPercent was kept in step with the amount, so nothing to convert.
       setEditTaxAmount("");
-      setEditTaxMode("percent");
     }
+    setEditTaxMode(mode);
   };
 
   const splitLine = splitLineId !== null ? lines.find((l) => l.id === splitLineId) : null;
@@ -1015,23 +1016,41 @@ export default function BillDetailScreen() {
                 <View style={styles.taxTipField}>
                   <View style={styles.taxLabelRow}>
                     <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>
-                      {editTaxMode === "percent" ? "TAX %" : "TAX AMOUNT"}
+                      {subtotal > 0 ? "TAX" : "TAX %"}
                     </Text>
                     {subtotal > 0 && (
-                      <TouchableOpacity
-                        onPress={toggleTaxMode}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          editTaxMode === "percent"
-                            ? "Enter the tax as an amount instead of a percent"
-                            : "Enter the tax as a percent instead of an amount"
-                        }
-                      >
-                        <Text style={[styles.taxModeToggle, { color: colors.primaryText }]}>
-                          {editTaxMode === "percent" ? currencySymbol : "%"}
-                        </Text>
-                      </TouchableOpacity>
+                      <View style={[styles.taxModeSwitch, { borderColor: colors.border }]}>
+                        {(["percent", "amount"] as const).map((mode) => {
+                          const selected = editTaxMode === mode;
+                          return (
+                            <TouchableOpacity
+                              key={mode}
+                              onPress={() => chooseTaxMode(mode)}
+                              hitSlop={{ top: 10, bottom: 10, left: 2, right: 2 }}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected }}
+                              accessibilityLabel={
+                                mode === "percent"
+                                  ? "Enter the tax as a percent"
+                                  : "Enter the tax as an amount"
+                              }
+                              style={[
+                                styles.taxModeOption,
+                                selected && { backgroundColor: colors.primary },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.taxModeOptionText,
+                                  { color: selected ? colors.primaryForeground : colors.mutedForeground },
+                                ]}
+                              >
+                                {mode === "percent" ? "%" : currencySymbol}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     )}
                   </View>
                   {editTaxMode === "percent" ? (
@@ -1385,7 +1404,9 @@ const styles = StyleSheet.create({
   taxTipRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-start" },
   taxTipField: { flex: 1, gap: 6 },
   taxLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  taxModeToggle: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  taxModeSwitch: { flexDirection: "row", borderWidth: 1, borderRadius: RADIUS.sm, overflow: "hidden" },
+  taxModeOption: { paddingHorizontal: 14, paddingVertical: 5, alignItems: "center", justifyContent: "center" },
+  taxModeOptionText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
   taxModeHint: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", textAlign: "center" },
   addItemAmountRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
   addItemQtyWrap: { width: 80 },
