@@ -1766,7 +1766,7 @@ export const createBillUser = async (
 };
 
 export const getCreateBillUserMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1807,13 +1807,13 @@ export type CreateBillUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof createBillUser>>
 >;
 export type CreateBillUserMutationBody = BodyType<CreateBillMemberRequest>;
-export type CreateBillUserMutationError = ErrorType<unknown>;
+export type CreateBillUserMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Add a participant
  */
 export const useCreateBillUser = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1854,7 +1854,7 @@ export const updateBillUser = async (
 };
 
 export const getUpdateBillUserMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1895,13 +1895,13 @@ export type UpdateBillUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateBillUser>>
 >;
 export type UpdateBillUserMutationBody = BodyType<UpdateBillMemberRequest>;
-export type UpdateBillUserMutationError = ErrorType<unknown>;
+export type UpdateBillUserMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Update a participant (e.g. tipPercentOverride)
  */
 export const useUpdateBillUser = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2690,7 +2690,7 @@ export const addCircleMember = async (
 };
 
 export const getAddCircleMemberMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2731,13 +2731,13 @@ export type AddCircleMemberMutationResult = NonNullable<
   Awaited<ReturnType<typeof addCircleMember>>
 >;
 export type AddCircleMemberMutationBody = BodyType<CreateCircleMemberRequest>;
-export type AddCircleMemberMutationError = ErrorType<void>;
+export type AddCircleMemberMutationError = ErrorType<void | ErrorResponse>;
 
 /**
  * @summary Add a member to a circle
  */
 export const useAddCircleMember = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2778,7 +2778,7 @@ export const renameCircleMember = async (
 };
 
 export const getRenameCircleMemberMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2820,13 +2820,13 @@ export type RenameCircleMemberMutationResult = NonNullable<
 >;
 export type RenameCircleMemberMutationBody =
   BodyType<UpdateCircleMemberRequest>;
-export type RenameCircleMemberMutationError = ErrorType<void>;
+export type RenameCircleMemberMutationError = ErrorType<void | ErrorResponse>;
 
 /**
  * @summary Rename a circle member
  */
 export const useRenameCircleMember = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

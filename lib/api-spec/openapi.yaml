@@ -564,6 +564,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillMember"
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/{billId}/users/{userId}:
     put:
@@ -594,6 +600,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillMember"
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteBillUser
       tags: [bill-members]
@@ -813,6 +825,12 @@ paths:
                 $ref: "#/components/schemas/CircleMember"
         "409":
           description: Duplicate name
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /circles/{id}/members/{memberId}:
     patch:
@@ -847,6 +865,12 @@ paths:
                 $ref: "#/components/schemas/CircleMember"
         "404":
           description: Not found
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: removeCircleMember
       tags: [circles]
@@ -1432,6 +1456,12 @@ components:
         linkedUserId:
           type: integer
           nullable: true
+        linkedUserDisplayName:
+          type: string
+          nullable: true
+        linkedUserEmail:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1496,5 +1526,8 @@ components:
       properties:
         name:
           type: string
+        linkedEmail:
+          type: string
+          nullable: true
       required:
         - name

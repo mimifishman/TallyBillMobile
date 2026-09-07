@@ -754,6 +754,8 @@ export const GetCirclesResponseItem = zod.object({
       circleId: zod.number(),
       name: zod.string(),
       linkedUserId: zod.number().nullish(),
+      linkedUserDisplayName: zod.string().nullish(),
+      linkedUserEmail: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -789,6 +791,8 @@ export const UpdateCircleResponse = zod.object({
       circleId: zod.number(),
       name: zod.string(),
       linkedUserId: zod.number().nullish(),
+      linkedUserDisplayName: zod.string().nullish(),
+      linkedUserEmail: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -832,6 +836,7 @@ export const RenameCircleMemberResponse = zod.object({
   name: zod.string(),
   linkedUserId: zod.number().nullish(),
   linkedUserDisplayName: zod.string().nullish(),
+  linkedUserEmail: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
