@@ -28,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAuth as useClerkAuth } from "@clerk/expo";
 import { BillCard } from "@/components/BillCard";
 import { BillCardSkeleton } from "@/components/Skeleton";
+import { LoadErrorView } from "@/components/LoadErrorView";
 import { EmptyBillsIllustration } from "@/components/EmptyBillsIllustration";
 import {
   useGetBills,
@@ -172,7 +173,13 @@ export default function BillsScreen() {
     transform: [{ translateY: toastY.value }],
   }));
 
-  const { data: authBills, isLoading: authLoading, refetch, isRefetching } = useGetBills({
+  const {
+    data: authBills,
+    isLoading: authLoading,
+    isError: authError,
+    refetch,
+    isRefetching,
+  } = useGetBills({
     query: { queryKey: getGetBillsQueryKey(), enabled: !!user },
   });
 
@@ -425,7 +432,10 @@ export default function BillsScreen() {
   const bills = isGuest_ ? guestBills : (authBills ?? []);
   const isLoading = isGuest_ ? guestLoading : authLoading;
   const isRefreshing = isGuest_ ? guestRefreshing : isRefetching;
-  const isEmpty = !isLoading && bills.length === 0;
+  // A failed request must never fall through to the empty state — telling a
+  // user with no connection that they have no bills reads as data loss.
+  const isFailed = !isGuest_ && authError && bills.length === 0;
+  const isEmpty = !isLoading && !isFailed && bills.length === 0;
   
   const displayName = user ? (user.firstName || user.displayName) : guestName || "Guest";
 
@@ -447,7 +457,7 @@ export default function BillsScreen() {
 
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 20 }]}>
         <Text style={[styles.greeting, { color: colors.foreground }]}>{getGreeting()}, {displayName} 👋</Text>
-        {!isLoading && !isEmpty && (
+        {!isLoading && !isEmpty && !isFailed && (
           <Text style={[styles.subline, { color: colors.mutedForeground }]}>
             {bills.length} open {bills.length === 1 ? 'bill' : 'bills'}
           </Text>
@@ -521,6 +531,13 @@ export default function BillsScreen() {
               <BillCardSkeleton />
               <BillCardSkeleton />
             </View>
+          ) : isFailed ? (
+            <LoadErrorView
+              title="Couldn't load your bills"
+              message="Check your connection and try again. Your bills are safe."
+              onRetry={() => { void refetch(); }}
+              isRetrying={isRefetching}
+            />
           ) : (
             <Animated.View entering={FadeInDown.duration(400)} style={styles.empty}>
               <EmptyBillsIllustration size={220} />

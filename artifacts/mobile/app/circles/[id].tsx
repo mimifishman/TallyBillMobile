@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
+import { LoadErrorView } from "@/components/LoadErrorView";
 import { useColors } from "@/hooks/useColors";
 import {
   useGetCircles,
@@ -53,7 +54,7 @@ export default function CircleDetailScreen() {
   const [showEmailField, setShowEmailField] = useState(false);
   const [newMemberEmailError, setNewMemberEmailError] = useState<string | null>(null);
 
-  const { data: circles, isLoading } = useGetCircles({
+  const { data: circles, isLoading, isError, refetch, isRefetching } = useGetCircles({
     query: { queryKey: getGetCirclesQueryKey() },
   });
 
@@ -246,6 +247,27 @@ export default function CircleDetailScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.primaryText} />
         </View>
+      </View>
+    );
+  }
+
+  // A failed request is not the same as a missing circle. Saying "not found"
+  // when the network dropped reads as data loss.
+  if (isError && !circles) {
+    return (
+      <View style={[styles.flex, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+        </View>
+        <LoadErrorView
+          title="Couldn't load this circle"
+          message="Check your connection and try again. Your circle is safe."
+          onRetry={() => { void refetch(); }}
+          isRetrying={isRefetching}
+          style={styles.errorWrap}
+        />
       </View>
     );
   }
@@ -713,6 +735,7 @@ export default function CircleDetailScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  errorWrap: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
