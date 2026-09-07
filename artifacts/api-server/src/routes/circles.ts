@@ -154,7 +154,11 @@ router.post("/:id/members", requireAuth, async (req: AuthRequest, res) => {
       .from(usersTable)
       .where(eq(usersTable.email, email.trim().toLowerCase()))
       .limit(1);
-    if (linkedUser) linkedUserId = linkedUser.id;
+    if (!linkedUser) {
+      res.status(422).json({ error: "No TallyBill account found with that email address" });
+      return;
+    }
+    linkedUserId = linkedUser.id;
   }
   const [member] = await db
     .insert(circleMembersTable)
