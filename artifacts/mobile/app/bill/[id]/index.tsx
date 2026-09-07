@@ -97,6 +97,11 @@ export default function BillDetailScreen() {
   const [editCurrency, setEditCurrency] = useState("");
   const [editTaxPercent, setEditTaxPercent] = useState("");
   const [editTipPercent, setEditTipPercent] = useState("");
+  // Plenty of receipts print a tax amount and no rate. The bill stores a rate,
+  // so this lets the amount be typed instead and converts it; editTaxPercent
+  // stays the single value that is saved either way.
+  const [editTaxMode, setEditTaxMode] = useState<"percent" | "amount">("percent");
+  const [editTaxAmount, setEditTaxAmount] = useState("");
 
   const [editMember, setEditMember] = useState<{
     id: number;
@@ -429,6 +434,8 @@ export default function BillDetailScreen() {
     const tipVal = parseFloat(String(data.bill.tipPercent ?? 0));
     setEditTaxPercent(taxVal === 0 ? "" : String(taxVal));
     setEditTipPercent(tipVal === 0 ? "" : String(tipVal));
+    setEditTaxMode("percent");
+    setEditTaxAmount("");
     setShowEditHeader(true);
   };
 
@@ -692,6 +699,35 @@ export default function BillDetailScreen() {
   const tipAmount = Math.round(subtotal * (tipPercent / 100) * 100) / 100;
   const grandTotal = subtotal + taxAmount + tipAmount;
 
+  // A rate converted from an amount is rarely round, so keep the summary
+  // labels readable: 4.5005% reads as 4.5%. Only the label is rounded — the
+  // money below it is still worked out from the stored rate.
+  const fmtPct = (n: number) => String(Math.round(n * 100) / 100);
+
+  // rate = amount / subtotal. Three decimals is enough that the amount shown
+  // back to the user still rounds to the cents they typed, on any bill size
+  // this app realistically sees, without making the rate itself noise.
+  const taxPercentFromAmount = (amount: string) => {
+    const value = parseFloat(amount);
+    if (!Number.isFinite(value) || value < 0 || subtotal <= 0) return "";
+    return String(Math.round((value / subtotal) * 100000) / 1000);
+  };
+
+  const toggleTaxMode = () => {
+    if (editTaxMode === "percent") {
+      const pct = parseFloat(editTaxPercent);
+      const asAmount = Number.isFinite(pct) && pct > 0
+        ? String(Math.round(subtotal * (pct / 100) * 100) / 100)
+        : "";
+      setEditTaxAmount(asAmount);
+      setEditTaxMode("amount");
+    } else {
+      // editTaxPercent was kept in step with the amount, so nothing to convert.
+      setEditTaxAmount("");
+      setEditTaxMode("percent");
+    }
+  };
+
   const splitLine = splitLineId !== null ? lines.find((l) => l.id === splitLineId) : null;
   const splitLineMaxQty = splitLine ? Math.floor(parseFloat(String(splitLine.quantity))) - 1 : 0;
 
@@ -850,11 +886,11 @@ export default function BillDetailScreen() {
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(subtotal)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax ({taxPercent}%)</Text>
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tax ({fmtPct(taxPercent)}%)</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(taxAmount)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip ({tipPercent}%)</Text>
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Tip ({fmtPct(tipPercent)}%)</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(tipAmount)}</Text>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
@@ -977,15 +1013,56 @@ export default function BillDetailScreen() {
               </View>
               <View style={styles.taxTipRow}>
                 <View style={styles.taxTipField}>
-                  <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TAX %</Text>
-                  <TextInput
-                    style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
-                    placeholder="e.g. 8.5"
-                    placeholderTextColor={colors.mutedForeground}
-                    value={editTaxPercent}
-                    onChangeText={setEditTaxPercent}
-                    keyboardType="decimal-pad"
-                  />
+                  <View style={styles.taxLabelRow}>
+                    <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>
+                      {editTaxMode === "percent" ? "TAX %" : "TAX AMOUNT"}
+                    </Text>
+                    {subtotal > 0 && (
+                      <TouchableOpacity
+                        onPress={toggleTaxMode}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          editTaxMode === "percent"
+                            ? "Enter the tax as an amount instead of a percent"
+                            : "Enter the tax as a percent instead of an amount"
+                        }
+                      >
+                        <Text style={[styles.taxModeToggle, { color: colors.primaryText }]}>
+                          {editTaxMode === "percent" ? currencySymbol : "%"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {editTaxMode === "percent" ? (
+                    <TextInput
+                      style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
+                      placeholder="e.g. 8.5"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={editTaxPercent}
+                      onChangeText={setEditTaxPercent}
+                      keyboardType="decimal-pad"
+                    />
+                  ) : (
+                    <>
+                      <TextInput
+                        style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
+                        placeholder={`e.g. ${currencySymbol}1.50`}
+                        placeholderTextColor={colors.mutedForeground}
+                        value={editTaxAmount}
+                        onChangeText={(text) => {
+                          setEditTaxAmount(text);
+                          setEditTaxPercent(taxPercentFromAmount(text));
+                        }}
+                        keyboardType="decimal-pad"
+                      />
+                      <Text style={[styles.taxModeHint, { color: colors.mutedForeground }]}>
+                        {editTaxPercent
+                          ? `${fmtPct(parseFloat(editTaxPercent))}% of ${fmt(subtotal)}`
+                          : `Subtotal ${fmt(subtotal)}`}
+                      </Text>
+                    </>
+                  )}
                 </View>
                 <View style={styles.taxTipField}>
                   <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TIP %</Text>
@@ -1305,8 +1382,11 @@ const styles = StyleSheet.create({
   addPersonLinkBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
   addPersonLinkText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
   linkEmailError: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  taxTipRow: { flexDirection: "row", gap: SPACING.md },
-  taxTipField: { flex: 1 },
+  taxTipRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-start" },
+  taxTipField: { flex: 1, gap: 6 },
+  taxLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  taxModeToggle: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  taxModeHint: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", textAlign: "center" },
   addItemAmountRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
   addItemQtyWrap: { width: 80 },
   addItemTotalWrap: { flex: 1 },
