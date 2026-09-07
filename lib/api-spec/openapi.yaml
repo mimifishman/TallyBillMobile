@@ -564,6 +564,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillMember"
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: name and color are required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Someone with that name is already on the bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/{billId}/users/{userId}:
     put:
@@ -594,6 +612,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillMember"
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Bill member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteBillUser
       tags: [bill-members]
@@ -813,6 +843,28 @@ paths:
                 $ref: "#/components/schemas/CircleMember"
         "409":
           description: Duplicate name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Invalid circle id, or name missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Circle not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /circles/{id}/members/{memberId}:
     patch:
@@ -847,6 +899,28 @@ paths:
                 $ref: "#/components/schemas/CircleMember"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: No TallyBill account with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Invalid id, or name missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Someone with that name is already in the circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: removeCircleMember
       tags: [circles]
@@ -1432,6 +1506,12 @@ components:
         linkedUserId:
           type: integer
           nullable: true
+        linkedUserDisplayName:
+          type: string
+          nullable: true
+        linkedUserEmail:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1496,5 +1576,8 @@ components:
       properties:
         name:
           type: string
+        linkedEmail:
+          type: string
+          nullable: true
       required:
         - name
