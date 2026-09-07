@@ -1,5 +1,6 @@
 import { useAuth as useClerkAuth, useUser } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
   useCallback,
@@ -34,6 +35,14 @@ interface AuthContextType {
   user: UserInfo | null;
   token: string | null;
   isLoading: boolean;
+  /**
+   * True once the API client has been told how to authenticate — either a
+   * bearer-token getter is installed, or we know for certain nobody is signed
+   * in. Requests fired before this is true go out with no `Authorization`
+   * header and come back looking permission-less, so gate any query whose
+   * response carries permissions (`isOwner`, `isMember`) on it.
+   */
+  isAuthReady: boolean;
   isGuest: boolean;
   guestOwnerId: string | null;
   /** null = never asked; "" = skipped; "John" = real name */
@@ -50,6 +59,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   isLoading: true,
+  isAuthReady: false,
   isGuest: false,
   guestOwnerId: null,
   guestName: null,
@@ -68,10 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [guestOwnerId, setGuestOwnerId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [storageLoaded, setStorageLoaded] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [displayNameOverride, setDisplayNameOverride] = useState<string | null>(null);
   const [dbFirstName, setDbFirstName] = useState<string | null>(null);
   const [dbLastName, setDbLastName] = useState<string | null>(null);
   const hasClaimed = useRef(false);
+  const queryClient = useQueryClient();
+  const lastIdentity = useRef<string | null>(null);
 
   const user: UserInfo | null =
     isSignedIn && clerkUser
@@ -151,7 +164,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthTokenGetter(() => null);
       hasClaimed.current = false;
     }
-  }, [isLoaded, isSignedIn, getToken, guestOwnerId, storageLoaded]);
+
+    // The API client is now configured for whoever is (or is not) signed in.
+    // Anything gated on this can safely fire its first request.
+    setIsAuthReady(true);
+
+    // A response fetched under one identity must never linger under another.
+    // Signing in or out changes what the server reports for `isOwner` /
+    // `isMember`, so drop the cache rather than let a stale, permission-less
+    // copy sit there.
+    const identity = isSignedIn ? clerkUser?.id ?? "signed-in" : "anonymous";
+    if (lastIdentity.current !== null && lastIdentity.current !== identity) {
+      void queryClient.invalidateQueries();
+    }
+    lastIdentity.current = identity;
+  }, [
+    isLoaded,
+    isSignedIn,
+    getToken,
+    guestOwnerId,
+    storageLoaded,
+    clerkUser?.id,
+    queryClient,
+  ]);
 
   const login = useCallback(async (_token: string, _user: UserInfo) => {
   }, []);
@@ -187,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         token: null,
         isLoading: !isLoaded || !storageLoaded,
+        isAuthReady,
         isGuest,
         guestOwnerId,
         guestName,

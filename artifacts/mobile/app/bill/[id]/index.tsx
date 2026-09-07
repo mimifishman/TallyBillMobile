@@ -56,7 +56,7 @@ import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { DateField } from "@/components/DateField";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
 import { useAuth } from "@/context/AuthContext";
-import { removeGuestBill, listGuestBills, getCachedGuestOwnerId } from "@/utils/guestBillStore";
+import { removeGuestBill, listGuestBills } from "@/utils/guestBillStore";
 import { getBillCode } from "@/lib/billCodeStore";
 import { useScan } from "@/context/ScanContext";
 
@@ -66,7 +66,7 @@ export default function BillDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const billId = parseInt(id!);
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, guestOwnerId, isAuthReady } = useAuth();
   const { getToken, isSignedIn } = useClerkAuth();
   const [guestHasBill, setGuestHasBill] = useState(false);
 
@@ -127,10 +127,16 @@ export default function BillDetailScreen() {
     setTimeout(fn, 250);
   };
 
+  // Gated on `isAuthReady`, not on `user`: a signed-out guest must still load
+  // the bill. Without the gate this fires before AuthContext installs the
+  // bearer token, so on a cold start straight onto a bill the request goes out
+  // unauthenticated, the server answers isOwner:false / no isMember, and React
+  // Query caches that — which is what makes the overflow menu vanish.
   const { data, isLoading } = useGetBill(billId, {
     query: {
       queryKey: getGetBillQueryKey(billId),
       refetchOnWindowFocus: true,
+      enabled: isAuthReady,
     },
   });
 
@@ -199,7 +205,6 @@ export default function BillDetailScreen() {
     // Bail if the XHR was replaced (e.g. effect re-ran) before we could send.
     if (sseXhrRef.current !== xhr) return;
 
-    const guestOwnerId = getCachedGuestOwnerId();
     if (guestOwnerId) xhr.setRequestHeader("X-Guest-Owner-Id", guestOwnerId);
 
     let lastLength = 0;
@@ -243,7 +248,7 @@ export default function BillDetailScreen() {
   // connectSSE stays stable and doesn't cause the SSE effect to re-run on
   // every render (which would create a rapid reconnection loop).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [billId, baseUrl, isSignedIn]);
+  }, [billId, baseUrl, isSignedIn, guestOwnerId]);
 
   useEffect(() => {
     sseMountedRef.current = true;
@@ -652,7 +657,7 @@ export default function BillDetailScreen() {
     });
   };
 
-  if (isLoading || !data) {
+  if (!isAuthReady || isLoading || !data) {
     return (
       <View style={[styles.flex, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
@@ -676,13 +681,12 @@ export default function BillDetailScreen() {
 
   const { bill: rawBill, lines, users, isOwner, isMember, ownerName } = data as typeof data & { isMember?: boolean; ownerName?: string };
   const bill = rawBill as typeof rawBill & { isGuestBill?: boolean; guestOwnerId?: string | null; receiptImagePath?: string | null };
-  const cachedGuestOwnerId = getCachedGuestOwnerId();
   const isGuestOwner =
     !user &&
     !!bill.isGuestBill &&
     !!bill.guestOwnerId &&
-    !!cachedGuestOwnerId &&
-    bill.guestOwnerId === cachedGuestOwnerId;
+    !!guestOwnerId &&
+    bill.guestOwnerId === guestOwnerId;
   const canDelete = isOwner || isGuestOwner;
   const canEditHeader = isOwner || !!isMember || isGuestOwner || (!user && !!bill.isGuestBill && guestHasBill);
   const canRemoveFromList = !isOwner && !isGuestOwner && (!!isMember || guestHasBill);

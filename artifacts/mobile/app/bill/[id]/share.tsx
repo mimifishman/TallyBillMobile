@@ -15,6 +15,7 @@ import { useColors } from "@/hooks/useColors";
 import { useGetBill, getGetBillQueryKey } from "@workspace/api-client-react";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { rememberBillCode } from "@/lib/billCodeStore";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ShareScreen() {
   const colors = useColors();
@@ -24,7 +25,13 @@ export default function ShareScreen() {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const { data } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
+  const { isAuthReady } = useAuth();
+  // Shares the bill cache key with the detail screen, so it must not be
+  // allowed to fill that cache with an unauthenticated (permission-less)
+  // response when this screen is the cold-start entry point.
+  const { data } = useGetBill(billId, {
+    query: { queryKey: getGetBillQueryKey(billId), enabled: isAuthReady },
+  });
   const bill = data?.bill;
 
   // Remember the join code so per-bill requests automatically attach the
