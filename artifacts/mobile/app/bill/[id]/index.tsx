@@ -50,6 +50,7 @@ import {
   ApiError,
 } from "@workspace/api-client-react";
 import { pickColor } from "@/utils/pickColor";
+import { apiErrorMessage } from "@/utils/apiErrors";
 import { getCurrencySymbol, formatMoney } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { DateField } from "@/components/DateField";
@@ -326,10 +327,10 @@ export default function BillDetailScreen() {
         }
         invalidate();
       },
-      onError: () => {
+      onError: (err) => {
         splitPendingUsersRef.current = null;
         invalidate();
-        Alert.alert("Couldn't add item", "Something went wrong. Please try again.");
+        Alert.alert("Couldn't add item", apiErrorMessage(err, "Something went wrong. Please try again."));
       },
     },
   });
@@ -374,8 +375,8 @@ export default function BillDetailScreen() {
         queryClient.invalidateQueries({ queryKey: getGetBillTotalsQueryKey(billId) });
         setShowEditHeader(false);
       },
-      onError: () => {
-        Alert.alert("Couldn't save", "We couldn't update the bill. Please try again.");
+      onError: (err) => {
+        Alert.alert("Couldn't save", apiErrorMessage(err, "We couldn't update the bill. Please try again."));
       },
     },
   });
@@ -386,8 +387,8 @@ export default function BillDetailScreen() {
         queryClient.invalidateQueries({ queryKey: getGetBillsQueryKey() });
         router.replace("/(tabs)/bills");
       },
-      onError: () => {
-        Alert.alert("Couldn't delete", "We couldn't delete this bill. Please try again.");
+      onError: (err) => {
+        Alert.alert("Couldn't delete", apiErrorMessage(err, "We couldn't delete this bill. Please try again."));
       },
     },
   });
@@ -485,10 +486,7 @@ export default function BillDetailScreen() {
         setNewPersonLinkEmailError(null);
         setShowAddPerson(false);
       } catch (err) {
-        const msg =
-          err instanceof ApiError && err.data && typeof (err.data as { error?: string }).error === "string"
-            ? (err.data as { error: string }).error
-            : "Something went wrong. Please try again.";
+        const msg = apiErrorMessage(err, "Something went wrong. Please try again.");
         if (err instanceof ApiError && err.status === 422) {
           setNewPersonLinkEmailError(msg);
         } else {
