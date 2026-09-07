@@ -36,6 +36,19 @@ export default function NameScreen() {
     }
   }, [user?.firstName, user?.lastName]);
 
+  // Anyone who already has a name does not need to be asked for one. The SSO
+  // handlers send every user here after sign-in rather than trying to work out
+  // who is new: what startSSOFlow reports about a brand-new OAuth account is
+  // not dependable (a Google account created on 2026-09-07 came back without
+  // signUp.status === "complete" and so skipped this screen entirely). The
+  // question is answerable for certain here, because useUser has loaded the
+  // real user resource by the time isLoaded is true. Google and Apple names
+  // therefore pass straight through; only a user with no name is stopped.
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (user?.firstName?.trim()) router.replace("/");
+  }, [isLoaded, user?.firstName]);
+
   const handleSave = async () => {
     if (!firstName.trim()) {
       Alert.alert("Required", "Please enter your first name");
@@ -107,7 +120,7 @@ export default function NameScreen() {
           </View>
           <Text style={[styles.title, { color: colors.foreground }]}>What's your name?</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            This helps us personalise your experience
+            This helps us personalize your experience
           </Text>
         </View>
 

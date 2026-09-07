@@ -58,6 +58,9 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [codeError, setCodeError] = useState("");
+  // Set before setActive/finalize, so the signed-in guard below cannot
+  // redirect home while we are on our way to the name screen.
+  const [routingToName, setRoutingToName] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
 
   const isPending = fetchStatus === "fetching";
@@ -126,6 +129,7 @@ export default function RegisterScreen() {
     try {
       await signUp.verifications.verifyEmailCode({ code: verificationCode });
       if (signUp.status === "complete") {
+        setRoutingToName(true);
         await signUp.finalize({ navigate: ({ session }) => { if (session?.currentTask) return; router.replace("/(auth)/name"); } });
       } else {
         setCodeError("Incorrect code. Please try again.");
@@ -148,10 +152,14 @@ export default function RegisterScreen() {
           authSessionResult,
         } = await startSSOFlow({ strategy, redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }) });
         if (createdSessionId && setActive) {
-          const isNewUser = ssoSignUp != null && ssoSignUp.status === "complete";
+          // Route everyone to the name screen and let it decide: it sends
+          // anyone who already has a name straight home. Branching on
+          // ssoSignUp.status here does not work — a Google account created on
+          // 2026-09-07 reached this point without status === "complete" and
+          // skipped the name step.
+          setRoutingToName(true);
           await setActive({ session: createdSessionId });
-          if (isNewUser) router.replace("/(auth)/name");
-          else router.replace("/");
+          router.replace("/(auth)/name");
           return;
         }
         // The browser was closed/cancelled before finishing — stay silent.
@@ -185,7 +193,7 @@ export default function RegisterScreen() {
 
   const isPostSignupVerification = showVerification && signUp.status === "missing_requirements" && signUp.unverifiedFields.includes("email_address") && signUp.missingFields.length === 0;
 
-  if (clerkLoaded && isSignedIn && !isPostSignupVerification) return <Redirect href="/" />;
+  if (clerkLoaded && isSignedIn && !isPostSignupVerification && !routingToName) return <Redirect href="/" />;
 
   const abandonSignUp = () => { setShowVerification(false); setVerificationCode(""); setCodeError(""); };
 
