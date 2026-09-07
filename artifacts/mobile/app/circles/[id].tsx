@@ -51,6 +51,7 @@ export default function CircleDetailScreen() {
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [showEmailField, setShowEmailField] = useState(false);
+  const [newMemberEmailError, setNewMemberEmailError] = useState<string | null>(null);
 
   const { data: circles, isLoading } = useGetCircles({
     query: { queryKey: getGetCirclesQueryKey() },
@@ -95,9 +96,15 @@ export default function CircleDetailScreen() {
         setNewMemberName("");
         setNewMemberEmail("");
         setShowEmailField(false);
+        setNewMemberEmailError(null);
       },
-      onError: () => {
-        Alert.alert("Error", "Couldn't add the person. Please try again.");
+      onError: (err: unknown) => {
+        const apiErr = err as { status?: number };
+        if (apiErr?.status === 422) {
+          setNewMemberEmailError("No TallyBill account found with that email address.");
+        } else {
+          Alert.alert("Error", "Couldn't add the person. Please try again.");
+        }
       },
     },
   });
@@ -166,6 +173,7 @@ export default function CircleDetailScreen() {
       Alert.alert("Name already in circle", `"${trimmed}" is already a member of this circle.`);
       return;
     }
+    setNewMemberEmailError(null);
     addMemberMutation.mutate({
       id: circleId,
       data: {
@@ -592,6 +600,7 @@ export default function CircleDetailScreen() {
               setNewMemberName("");
               setNewMemberEmail("");
               setShowEmailField(false);
+              setNewMemberEmailError(null);
             }}
           >
             <TouchableOpacity
@@ -614,18 +623,43 @@ export default function CircleDetailScreen() {
                 }}
               />
               {showEmailField ? (
-                <TextInput
-                  style={[styles.modalInput, { borderColor: colors.border, color: colors.foreground }]}
-                  placeholder="TallyBill email (optional)"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={newMemberEmail}
-                  onChangeText={setNewMemberEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                  onSubmitEditing={handleAddMember}
-                />
+                <>
+                  <TextInput
+                    style={[
+                      styles.modalInput,
+                      {
+                        borderColor: newMemberEmailError ? (colors.destructive ?? "#EF4444") : colors.border,
+                        color: colors.foreground,
+                      },
+                    ]}
+                    placeholder="TallyBill email (optional)"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={newMemberEmail}
+                    onChangeText={(v) => {
+                      setNewMemberEmail(v);
+                      setNewMemberEmailError(null);
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleAddMember}
+                  />
+                  {newMemberEmailError ? (
+                    <Text style={[styles.emailErrorText, { color: colors.destructive ?? "#EF4444" }]}>
+                      {newMemberEmailError}
+                    </Text>
+                  ) : null}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowEmailField(false);
+                      setNewMemberEmail("");
+                      setNewMemberEmailError(null);
+                    }}
+                  >
+                    <Text style={[styles.emailErrorText, { color: colors.mutedForeground }]}>Cancel link</Text>
+                  </TouchableOpacity>
+                </>
               ) : (
                 <TouchableOpacity
                   onPress={() => setShowEmailField(true)}
@@ -644,6 +678,7 @@ export default function CircleDetailScreen() {
                     setNewMemberName("");
                     setNewMemberEmail("");
                     setShowEmailField(false);
+                    setNewMemberEmailError(null);
                   }}
                   style={[styles.modalCancelBtn, { borderColor: colors.border }]}
                 >
