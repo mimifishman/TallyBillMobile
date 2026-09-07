@@ -49,6 +49,9 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState("");
   const [codeError, setCodeError] = useState("");
   const [secondFactor, setSecondFactor] = useState<"totp" | "phone_code" | "email_code" | null>(null);
+  // Set before setActive, so the signed-in guard below cannot redirect home
+  // while we are on our way to the name screen.
+  const [routingToName, setRoutingToName] = useState(false);
 
   const isPending = fetchStatus === "fetching";
   // Same reason as the social buttons: signIn is unusable until Clerk loads.
@@ -161,15 +164,15 @@ export default function LoginScreen() {
         });
         if (createdSessionId && setActive) {
           // Signing up and signing in share this button, so a first-time user
-          // arrives here too. Send them through the name screen exactly as the
-          // register screen does — it pre-fills whatever Google or Apple gave
-          // us and lets them correct it. Apple only returns a name on the very
-          // first authorization, and only with the user's consent, so without
-          // this they end up displayed as "User" or as the local part of their
-          // email address.
-          const isNewUser = ssoSignUp != null && ssoSignUp.status === "complete";
+          // arrives here too, and without a name they end up displayed as
+          // "User" or as the local part of their email address. Route everyone
+          // to the name screen and let it decide: it sends anyone who already
+          // has a name straight home. Branching on ssoSignUp.status here does
+          // not work — a Google account created on 2026-09-07 reached this
+          // point without status === "complete" and skipped the name step.
+          setRoutingToName(true);
           await setActive({ session: createdSessionId });
-          router.replace(isNewUser ? "/(auth)/name" : "/");
+          router.replace("/(auth)/name");
           return;
         }
         // The browser was closed/cancelled before finishing — stay silent.
@@ -195,7 +198,7 @@ export default function LoginScreen() {
     router.replace("/?prompt=1");
   };
 
-  if (clerkLoaded && isSignedIn) return <Redirect href="/" />;
+  if (clerkLoaded && isSignedIn && !routingToName) return <Redirect href="/" />;
 
   const isVerifying = signIn.status === "needs_client_trust" || signIn.status === "needs_second_factor";
 
