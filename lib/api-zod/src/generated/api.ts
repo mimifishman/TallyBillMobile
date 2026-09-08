@@ -15,17 +15,6 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary Register a new user
- */
-export const registerBodyPasswordMin = 6;
-
-export const RegisterBody = zod.object({
-  email: zod.string().email(),
-  password: zod.string().min(registerBodyPasswordMin),
-  displayName: zod.string(),
-});
-
-/**
  * @summary Change the authenticated user's password
  */
 export const changePasswordBodyNewPasswordMin = 6;
@@ -37,24 +26,6 @@ export const ChangePasswordBody = zod.object({
 
 export const ChangePasswordResponse = zod.object({
   message: zod.string(),
-});
-
-/**
- * @summary Login
- */
-export const LoginBody = zod.object({
-  email: zod.string().email(),
-  password: zod.string(),
-});
-
-export const LoginResponse = zod.object({
-  token: zod.string(),
-  user: zod.object({
-    id: zod.number(),
-    email: zod.string(),
-    displayName: zod.string(),
-    createdAt: zod.coerce.date(),
-  }),
 });
 
 /**

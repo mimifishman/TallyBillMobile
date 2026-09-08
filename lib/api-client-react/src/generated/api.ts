@@ -17,7 +17,6 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  AuthResponse,
   Bill,
   BillDetail,
   BillLine,
@@ -43,13 +42,11 @@ import type {
   GetReceiptImageParams,
   HealthStatus,
   JoinBillRequest,
-  LoginRequest,
   OcrReceiptBody,
   OcrResult,
   OcrTranslateRequest,
   OcrTranslateResponse,
   PatchBillRequest,
-  RegisterRequest,
   ResetPasswordRequest,
   SuccessResponse,
   ToggleBillLineUser200,
@@ -148,21 +145,17 @@ export function useHealthCheck<
 }
 
 /**
- * @summary Register a new user
+ * Gone. Sign-in moved to Clerk and this handler now answers 410 to every request, whatever the body. The 201/AuthResponse success it used to declare was removed because no request can reach it.
+ * @summary Register a new user (gone — Clerk handles this)
  */
 export const getRegisterUrl = () => {
   return `/api/auth/register`;
 };
 
-export const register = async (
-  registerRequest: RegisterRequest,
-  options?: RequestInit,
-): Promise<AuthResponse> => {
-  return customFetch<AuthResponse>(getRegisterUrl(), {
+export const register = async (options?: RequestInit): Promise<unknown> => {
+  return customFetch<unknown>(getRegisterUrl(), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(registerRequest),
   });
 };
 
@@ -173,14 +166,14 @@ export const getRegisterMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof register>>,
     TError,
-    { data: BodyType<RegisterRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof register>>,
   TError,
-  { data: BodyType<RegisterRequest> },
+  void,
   TContext
 > => {
   const mutationKey = ["register"];
@@ -194,11 +187,9 @@ export const getRegisterMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof register>>,
-    { data: BodyType<RegisterRequest> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return register(data, requestOptions);
+    void
+  > = () => {
+    return register(requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -207,11 +198,11 @@ export const getRegisterMutationOptions = <
 export type RegisterMutationResult = NonNullable<
   Awaited<ReturnType<typeof register>>
 >;
-export type RegisterMutationBody = BodyType<RegisterRequest>;
+
 export type RegisterMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Register a new user
+ * @summary Register a new user (gone — Clerk handles this)
  */
 export const useRegister = <
   TError = ErrorType<ErrorResponse>,
@@ -220,14 +211,14 @@ export const useRegister = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof register>>,
     TError,
-    { data: BodyType<RegisterRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof register>>,
   TError,
-  { data: BodyType<RegisterRequest> },
+  void,
   TContext
 > => {
   return useMutation(getRegisterMutationOptions(options));
@@ -320,21 +311,17 @@ export const useChangePassword = <
 };
 
 /**
- * @summary Login
+ * Gone. Sign-in moved to Clerk and this handler now answers 410 to every request, whatever the body. The 200/AuthResponse success it used to declare was removed because no request can reach it.
+ * @summary Login (gone — Clerk handles this)
  */
 export const getLoginUrl = () => {
   return `/api/auth/login`;
 };
 
-export const login = async (
-  loginRequest: LoginRequest,
-  options?: RequestInit,
-): Promise<AuthResponse> => {
-  return customFetch<AuthResponse>(getLoginUrl(), {
+export const login = async (options?: RequestInit): Promise<unknown> => {
+  return customFetch<unknown>(getLoginUrl(), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(loginRequest),
   });
 };
 
@@ -345,14 +332,14 @@ export const getLoginMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof login>>,
     TError,
-    { data: BodyType<LoginRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof login>>,
   TError,
-  { data: BodyType<LoginRequest> },
+  void,
   TContext
 > => {
   const mutationKey = ["login"];
@@ -366,11 +353,9 @@ export const getLoginMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof login>>,
-    { data: BodyType<LoginRequest> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return login(data, requestOptions);
+    void
+  > = () => {
+    return login(requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -379,11 +364,11 @@ export const getLoginMutationOptions = <
 export type LoginMutationResult = NonNullable<
   Awaited<ReturnType<typeof login>>
 >;
-export type LoginMutationBody = BodyType<LoginRequest>;
+
 export type LoginMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Login
+ * @summary Login (gone — Clerk handles this)
  */
 export const useLogin = <
   TError = ErrorType<ErrorResponse>,
@@ -392,14 +377,14 @@ export const useLogin = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof login>>,
     TError,
-    { data: BodyType<LoginRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof login>>,
   TError,
-  { data: BodyType<LoginRequest> },
+  void,
   TContext
 > => {
   return useMutation(getLoginMutationOptions(options));

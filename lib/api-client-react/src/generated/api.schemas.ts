@@ -79,30 +79,6 @@ export interface UploadUrlResponse {
   objectPath: string;
 }
 
-export interface RegisterRequest {
-  email: string;
-  /** @minLength 6 */
-  password: string;
-  displayName: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface User {
-  id: number;
-  email: string;
-  displayName: string;
-  createdAt: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
 export interface ChangePasswordRequest {
   currentPassword: string;
   /** @minLength 6 */

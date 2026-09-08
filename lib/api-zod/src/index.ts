@@ -1,6 +1,5 @@
 export * from "./generated/api";
 export type {
-  AuthResponse,
   Bill,
   BillDetail,
   BillLine,
@@ -13,16 +12,13 @@ export type {
   ErrorResponse,
   HealthStatus,
   JoinBillRequest,
-  LoginRequest,
   OcrLineItem,
   OcrResult,
   OcrTranslateRequest,
   OcrTranslateResponse,
   PersonTotal,
-  RegisterRequest,
   ToggleBillLineUser200,
   UpdateBillMemberRequest,
   UpdateBillRequest,
   UnsplitLine,
-  User,
 } from "./generated/types";

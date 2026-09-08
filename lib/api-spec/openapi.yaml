@@ -45,34 +45,14 @@ paths:
     post:
       operationId: register
       tags: [auth]
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterRequest"
+      summary: Register a new user (gone — Clerk handles this)
+      description: >-
+        Gone. Sign-in moved to Clerk and this handler now answers 410 to every
+        request, whatever the body. The 201/AuthResponse success it used to
+        declare was removed because no request can reach it.
       responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Email already in use
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "410":
-          description: Gone — registration is handled by Clerk. The server answers every request to this route with 410.
+          description: Gone. Registration is handled by Clerk.
           content:
             application/json:
               schema:
@@ -127,28 +107,14 @@ paths:
     post:
       operationId: login
       tags: [auth]
-      summary: Login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
+      summary: Login (gone — Clerk handles this)
+      description: >-
+        Gone. Sign-in moved to Clerk and this handler now answers 410 to every
+        request, whatever the body. The 200/AuthResponse success it used to
+        declare was removed because no request can reach it.
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "401":
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "410":
-          description: Gone — login is handled by Clerk. The server answers every request to this route with 410.
+          description: Gone. Login is handled by Clerk.
           content:
             application/json:
               schema:
@@ -1599,63 +1565,6 @@ components:
       required:
         - uploadURL
         - objectPath
-
-    RegisterRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 6
-        displayName:
-          type: string
-      required:
-        - email
-        - password
-        - displayName
-
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-      required:
-        - email
-        - password
-
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-        email:
-          type: string
-        displayName:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - email
-        - displayName
-        - createdAt
-
-    AuthResponse:
-      type: object
-      properties:
-        token:
-          type: string
-        user:
-          $ref: "#/components/schemas/User"
-      required:
-        - token
-        - user
 
     ChangePasswordRequest:
       type: object
