@@ -9,7 +9,6 @@ import {
   FlatList,
   Image,
   Platform,
-  KeyboardAvoidingView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
+import { useKeyboardHeight } from "@/hooks/useKeyboardHeight";
 import {
   useBulkCreateBillLines,
   useGetBill,
@@ -252,6 +252,7 @@ export default function ScanScreen() {
   const [tipMode, setTipMode] = useState<MoneyMode>("percent");
   const [tipInput, setTipInput] = useState("");
   const taxTipSeeded = useRef(false);
+  const keyboardHeight = useKeyboardHeight();
 
   const hasTranslations = scan.items.some((i) => i.translatedDescription != null);
 
@@ -586,10 +587,12 @@ export default function ScanScreen() {
       ) : (
         // The tax and tip fields at the end of the list are the only inputs
         // here (item editing happens in ReviewItemSheet, which handles its own
-        // keyboard). iOS gets "padding"; Android is left to its own resize,
-        // because "height" could leave the screen permanently compressed after
-        // the keyboard hid.
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        // keyboard). The running total below is lifted by the keyboard's own
+        // height rather than by a KeyboardAvoidingView, which measures against
+        // the window and so mis-sized this screen — it sits under a header and
+        // is presented as a sheet. Lifting the total also shortens the list by
+        // the same amount, which is what lets the fields scroll into view.
+        <View style={styles.flex}>
         <FlatList
           data={scan.items}
           keyExtractor={(_, i) => String(i)}
@@ -614,6 +617,7 @@ export default function ScanScreen() {
             </View>
           }
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           ListFooterComponent={
             <View style={styles.reviewFooter}>
               <TouchableOpacity
@@ -721,7 +725,8 @@ export default function ScanScreen() {
             {
               backgroundColor: colors.card,
               borderTopColor: colors.border,
-              paddingBottom: insets.bottom + SPACING.md,
+              marginBottom: keyboardHeight,
+              paddingBottom: keyboardHeight > 0 ? SPACING.md : insets.bottom + SPACING.md,
             },
           ]}
         >
@@ -739,7 +744,7 @@ export default function ScanScreen() {
             {formatMoney(grandTotal, billData?.bill.currency)}
           </Text>
         </View>
-        </KeyboardAvoidingView>
+        </View>
       )}
 
       <LanguagePicker
