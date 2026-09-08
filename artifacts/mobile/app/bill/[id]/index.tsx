@@ -725,6 +725,57 @@ export default function BillDetailScreen() {
     else { setTipInput(next); setTipMode(mode); }
   };
 
+  const taxTipRows = [
+    { key: "tax" as const, name: "Tax", percent: taxPercent, amount: taxAmount },
+    { key: "tip" as const, name: "Tip", percent: tipPercent, amount: tipAmount },
+  ];
+
+  const renderTaxTipRow = (row: (typeof taxTipRows)[number]) => {
+    const isSet = row.percent > 0;
+    const body = (
+      <>
+        <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
+          {isSet ? `${row.name} (${fmtPct(row.percent)}%)` : row.name}
+        </Text>
+        <View style={styles.summaryValueGroup}>
+          {/* Nothing set yet is the moment the user most needs to act, so it
+              asks rather than reporting a settled-looking 0%. */}
+          {!isSet && canEditHeader ? (
+            <Text style={[styles.summaryValue, { color: colors.primaryText }]}>
+              Add {row.name.toLowerCase()}
+            </Text>
+          ) : (
+            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(row.amount)}</Text>
+          )}
+          {canEditHeader && (
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          )}
+        </View>
+      </>
+    );
+    // Read-only viewers get plain rows: the chevron is a promise of something
+    // to tap, so it goes when tapping does.
+    if (!canEditHeader) {
+      return <View key={row.key} style={styles.summaryRow}>{body}</View>;
+    }
+    return (
+      <TouchableOpacity
+        key={row.key}
+        onPress={openTaxTip}
+        activeOpacity={0.7}
+        style={[styles.summaryRow, styles.editableRow]}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isSet
+            ? `${row.name} ${fmtPct(row.percent)} percent, ${fmt(row.amount)}. Tap to change the tax and tip.`
+            : `Add ${row.name.toLowerCase()}.`
+        }
+      >
+        {body}
+      </TouchableOpacity>
+    );
+  };
+
   const handleSaveTaxTip = () => {
     patchBillMutation.mutate({
       billId,
@@ -889,40 +940,16 @@ export default function BillDetailScreen() {
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Subtotal</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(subtotal)}</Text>
           </View>
-          {([
-            { key: "tax", label: `Tax (${fmtPct(taxPercent)}%)`, amount: taxAmount },
-            { key: "tip", label: `Tip (${fmtPct(tipPercent)}%)`, amount: tipAmount },
-          ] as const).map((row) => {
-            const body = (
-              <>
-                <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{row.label}</Text>
-                <View style={styles.summaryValueGroup}>
-                  <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(row.amount)}</Text>
-                  {canEditHeader && (
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                  )}
-                </View>
-              </>
-            );
-            // Without permission to edit the bill these are plain rows — the
-            // chevron is the only thing that says they can be tapped, so it
-            // has to disappear along with the ability to tap them.
-            if (!canEditHeader) {
-              return <View key={row.key} style={styles.summaryRow}>{body}</View>;
-            }
-            return (
-              <TouchableOpacity
-                key={row.key}
-                onPress={openTaxTip}
-                activeOpacity={0.7}
-                style={styles.summaryRow}
-                accessibilityRole="button"
-                accessibilityLabel={`${row.label}. Tap to change the tax and tip.`}
-              >
-                {body}
-              </TouchableOpacity>
-            );
-          })}
+          {/* Tinted together so they read as controls rather than as two more
+              figures in a column of figures — a chevron alone is too quiet
+              inside a card where every other row is static. */}
+          {canEditHeader ? (
+            <View style={[styles.editableRows, { backgroundColor: colors.muted }]}>
+              {taxTipRows.map(renderTaxTipRow)}
+            </View>
+          ) : (
+            taxTipRows.map(renderTaxTipRow)
+          )}
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, styles.summaryTotalLabel, { color: colors.foreground }]}>Total</Text>
@@ -1394,6 +1421,8 @@ const styles = StyleSheet.create({
   addPersonLinkText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },
   linkEmailError: { fontSize: 12, fontFamily: "Inter_400Regular" },
   summaryValueGroup: { flexDirection: "row", alignItems: "center", gap: SPACING.xs },
+  editableRows: { borderRadius: RADIUS.md, paddingHorizontal: SPACING.sm, marginHorizontal: -SPACING.sm },
+  editableRow: { paddingVertical: SPACING.sm, minHeight: 44 },
   taxTipSubtotal: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   taxTipTotal: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   addItemAmountRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
