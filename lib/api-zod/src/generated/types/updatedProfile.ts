@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface RegisterRequest {
-  email: string;
-  /** @minLength 6 */
-  password: string;
-  displayName: string;
+export interface UpdatedProfile {
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string | null;
 }

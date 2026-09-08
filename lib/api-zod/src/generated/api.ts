@@ -15,17 +15,6 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary Register a new user
- */
-export const registerBodyPasswordMin = 6;
-
-export const RegisterBody = zod.object({
-  email: zod.string().email(),
-  password: zod.string().min(registerBodyPasswordMin),
-  displayName: zod.string(),
-});
-
-/**
  * @summary Change the authenticated user's password
  */
 export const changePasswordBodyNewPasswordMin = 6;
@@ -40,21 +29,75 @@ export const ChangePasswordResponse = zod.object({
 });
 
 /**
- * @summary Login
+ * Always answers 200 for an address that is not registered, so the response cannot be used to discover which emails have accounts.
+ * @summary Email a password reset code
  */
-export const LoginBody = zod.object({
+export const ForgotPasswordBody = zod.object({
   email: zod.string().email(),
-  password: zod.string(),
 });
 
-export const LoginResponse = zod.object({
-  token: zod.string(),
-  user: zod.object({
-    id: zod.number(),
-    email: zod.string(),
-    displayName: zod.string(),
-    createdAt: zod.coerce.date(),
-  }),
+export const ForgotPasswordResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Set a new password using the emailed reset code
+ */
+export const resetPasswordBodyNewPasswordMin = 8;
+
+export const ResetPasswordBody = zod.object({
+  email: zod.string().email(),
+  code: zod
+    .string()
+    .describe("The six-digit code emailed by \/auth\/forgot-password"),
+  newPassword: zod.string().min(resetPasswordBodyNewPasswordMin),
+});
+
+export const ResetPasswordResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Get the signed-in user's profile
+ */
+export const GetCurrentUserResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  firstName: zod.string().nullable(),
+  lastName: zod.string().nullable(),
+  displayName: zod.string(),
+});
+
+/**
+ * Sending only one of firstName or lastName leaves the other unchanged. displayName is recomputed from both names by the server.
+ * @summary Update the signed-in user's name
+ */
+export const UpdateCurrentUserBody = zod
+  .object({
+    firstName: zod.string().optional(),
+    lastName: zod.string().optional(),
+  })
+  .describe(
+    "Supply at least one field. An empty or blank string clears that name.",
+  );
+
+export const UpdateCurrentUserResponse = zod.object({
+  firstName: zod.string().nullable(),
+  lastName: zod.string().nullable(),
+  displayName: zod.string().nullable(),
+});
+
+/**
+ * @summary Move bills made while signed out onto the signed-in account
+ */
+export const ClaimGuestBillsBody = zod.object({
+  guestOwnerId: zod
+    .string()
+    .describe("The guest id the bills were created under"),
+});
+
+export const ClaimGuestBillsResponse = zod.object({
+  claimed: zod.number().describe("How many bills moved onto the account"),
 });
 
 /**
@@ -100,15 +143,76 @@ export const GetBillsResponseItem = zod.object({
 export const GetBillsResponse = zod.array(GetBillsResponseItem);
 
 /**
+ * Auth is optional. Signed in, the bill is owned by the caller and they are added as its first participant. Signed out, pass guestOwnerId and the bill is created as a guest bill belonging to that device.
  * @summary Create a new bill
  */
 export const CreateBillBody = zod.object({
   title: zod.string(),
   date: zod.string(),
   currency: zod.string().nullish(),
+  taxPercent: zod.number().optional().describe("Defaults to 0 when omitted"),
+  tipPercent: zod.number().optional().describe("Defaults to 0 when omitted"),
+  guestOwnerId: zod
+    .string()
+    .optional()
+    .describe(
+      "The device's guest id. Send it only when signed out: it is what makes the new bill a guest bill owned by this device. Ignored when the request carries a bearer token.",
+    ),
+});
+
+/**
+ * No auth: a signed-out client keeps its own bill ids on the device and passes them back. Returns an empty array when ids is missing or holds no numbers. isOwner is true only for bills whose guestOwnerId matches the one supplied.
+ * @summary Look up bills made while signed out, by id
+ */
+export const GetGuestBillsQueryParams = zod.object({
+  ids: zod.coerce
+    .string()
+    .optional()
+    .describe('Comma-separated bill ids, e.g. \"12,15,18\"'),
+  guestOwnerId: zod.coerce
+    .string()
+    .optional()
+    .describe("The device's guest id, used to work out isOwner"),
+});
+
+export const GetGuestBillsResponseItem = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number().nullish(),
+  title: zod.string(),
+  date: zod.string(),
+  currency: zod.string().nullish(),
   taxPercent: zod.number(),
   tipPercent: zod.number(),
+  joinCode: zod.string(),
+  createdAt: zod.coerce.date(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
+  settled: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when every line item on the bill has been assigned to at least one person",
+    ),
+  isOwner: zod
+    .boolean()
+    .optional()
+    .describe("True when the authenticated user is the owner of this bill"),
+  users: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        color: zod.string(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Lightweight participant summary for list rendering (id, name, color)",
+    ),
 });
+export const GetGuestBillsResponse = zod.array(GetGuestBillsResponseItem);
 
 /**
  * @summary Join a bill by code
@@ -226,6 +330,18 @@ export const GetBillByCodeResponse = zod.object({
       name: zod.string(),
       color: zod.string(),
       tipPercentOverride: zod.number().nullish(),
+      linkedUserId: zod
+        .number()
+        .nullish()
+        .describe(
+          "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+        ),
+      linkedUserEmail: zod
+        .string()
+        .nullish()
+        .describe(
+          "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -308,6 +424,18 @@ export const GetBillResponse = zod.object({
       name: zod.string(),
       color: zod.string(),
       tipPercentOverride: zod.number().nullish(),
+      linkedUserId: zod
+        .number()
+        .nullish()
+        .describe(
+          "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+        ),
+      linkedUserEmail: zod
+        .string()
+        .nullish()
+        .describe(
+          "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -373,7 +501,8 @@ export const UpdateBillResponse = zod.object({
 });
 
 /**
- * @summary Edit bill header (owner only)
+ * Auth is optional. A guest bill is editable by anyone who can reach it. On every other bill the caller must be its owner or a member, proved by a bearer token or the bill's join code, or the answer is 403.
+ * @summary Edit bill header
  */
 export const PatchBillParams = zod.object({
   billId: zod.coerce.number(),
@@ -433,6 +562,14 @@ export const PatchBillResponse = zod.object({
  * @summary Delete a bill
  */
 export const DeleteBillParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+/**
+ * Removes only the caller's access row. The bill, its lines and its participant names are untouched. An owner cannot leave their own bill.
+ * @summary Give up your own access to a bill someone else owns
+ */
+export const LeaveBillParams = zod.object({
   billId: zod.coerce.number(),
 });
 
@@ -585,6 +722,18 @@ export const GetBillUsersResponseItem = zod.object({
   name: zod.string(),
   color: zod.string(),
   tipPercentOverride: zod.number().nullish(),
+  linkedUserId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+    ),
+  linkedUserEmail: zod
+    .string()
+    .nullish()
+    .describe(
+      "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const GetBillUsersResponse = zod.array(GetBillUsersResponseItem);
@@ -599,7 +748,16 @@ export const CreateBillUserParams = zod.object({
 export const CreateBillUserBody = zod.object({
   name: zod.string(),
   color: zod.string(),
-  linkedUserId: zod.number().nullish(),
+  linkedUserId: zod
+    .number()
+    .nullish()
+    .describe("Link by account id, when the caller already knows it"),
+  linkedEmail: zod
+    .string()
+    .optional()
+    .describe(
+      "Link by email instead. The address must belong to an existing TallyBill account, or the answer is 422.",
+    ),
 });
 
 /**
@@ -614,6 +772,12 @@ export const UpdateBillUserBody = zod.object({
   name: zod.string().optional(),
   color: zod.string().optional(),
   tipPercentOverride: zod.number().nullish(),
+  linkedEmail: zod
+    .string()
+    .nullish()
+    .describe(
+      "Link this participant to the account with this address. null or an empty string unlinks them, keeping their name and their share. An address with no TallyBill account behind it answers 422.",
+    ),
 });
 
 export const UpdateBillUserResponse = zod.object({
@@ -622,6 +786,18 @@ export const UpdateBillUserResponse = zod.object({
   name: zod.string(),
   color: zod.string(),
   tipPercentOverride: zod.number().nullish(),
+  linkedUserId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+    ),
+  linkedUserEmail: zod
+    .string()
+    .nullish()
+    .describe(
+      "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -690,6 +866,45 @@ export const GetBillTotalsResponse = zod.object({
       }),
     )
     .describe("Line items that have not been assigned to anyone"),
+});
+
+/**
+ * The client PUTs the image straight to uploadURL, then saves the returned objectPath onto the bill via PATCH /bills/{billId}.
+
+Auth is optional. This route sits behind requireBillAccess alone, so a signed-out client scanning a guest bill reaches it with no token. A caller who is neither owner nor member authorizes with the bill's join code, sent as the X-Join-Code header or a joinCode query param.
+ * @summary Get a short-lived URL for uploading this bill's receipt photo
+ */
+export const RequestReceiptUploadUrlParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const RequestReceiptUploadUrlResponse = zod.object({
+  uploadURL: zod.string().describe("Short-lived URL to PUT the image to"),
+  objectPath: zod
+    .string()
+    .describe("Path to save as the bill's receiptImagePath"),
+});
+
+/**
+ * The server answers 302 with a signed, one-hour Location URL rather than the bytes themselves. Because every HTTP client follows that redirect, the response described here as 200 is what a caller actually receives: the image. Only the object currently saved as the bill's receiptImagePath is served; anything else is 404.
+
+The 200 is written out rather than the raw 302 on purpose. A 3xx with no declared body makes the generator fold a bare `void` into this operation's error union, which tells callers nothing and hides the real ErrorResponse behind it.
+
+Auth is optional, and the app has none to give: it renders this URL in an <Image> tag, which cannot attach an Authorization header. Access comes from requireBillAccess, which admits the request when the bill is a guest bill, when joinCode matches, or when a signed-in caller owns or belongs to the bill.
+ * @summary Fetch this bill's receipt photo
+ */
+export const GetReceiptImageParams = zod.object({
+  billId: zod.coerce.number(),
+  objectId: zod.coerce.string(),
+});
+
+export const GetReceiptImageQueryParams = zod.object({
+  joinCode: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "The bill's join code. This is how a caller who is not the owner authorizes the request, and is what the app sends, because an <Image> tag cannot set the X-Join-Code header. Omit it only when the bill is a guest bill or the caller owns or belongs to it.",
+    ),
 });
 
 /**

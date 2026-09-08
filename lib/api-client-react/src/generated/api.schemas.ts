@@ -13,28 +13,70 @@ export interface ErrorResponse {
   error: string;
 }
 
-export interface RegisterRequest {
-  email: string;
-  /** @minLength 6 */
-  password: string;
-  displayName: string;
+export type ForgotPasswordErrorCode =
+  (typeof ForgotPasswordErrorCode)[keyof typeof ForgotPasswordErrorCode];
+
+export const ForgotPasswordErrorCode = {
+  OAUTH_ACCOUNT: "OAUTH_ACCOUNT",
+} as const;
+
+/**
+ * An ErrorResponse that may carry a machine-readable code. The only code currently sent is OAUTH_ACCOUNT, meaning the account signs in through Google or Apple and so has no password to reset.
+ */
+export interface ForgotPasswordError {
+  error: string;
+  code?: ForgotPasswordErrorCode;
 }
 
-export interface LoginRequest {
+export interface ForgotPasswordRequest {
   email: string;
-  password: string;
 }
 
-export interface User {
+export interface ResetPasswordRequest {
+  email: string;
+  /** The six-digit code emailed by /auth/forgot-password */
+  code: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
+export interface CurrentUser {
   id: number;
   email: string;
+  firstName: string | null;
+  lastName: string | null;
   displayName: string;
-  createdAt: string;
 }
 
-export interface AuthResponse {
-  token: string;
-  user: User;
+/**
+ * Supply at least one field. An empty or blank string clears that name.
+ */
+export interface UpdateCurrentUserRequest {
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface UpdatedProfile {
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string | null;
+}
+
+export interface ClaimGuestBillsRequest {
+  /** The guest id the bills were created under */
+  guestOwnerId: string;
+}
+
+export interface ClaimGuestBillsResponse {
+  /** How many bills moved onto the account */
+  claimed: number;
+}
+
+export interface UploadUrlResponse {
+  /** Short-lived URL to PUT the image to */
+  uploadURL: string;
+  /** Path to save as the bill's receiptImagePath */
+  objectPath: string;
 }
 
 export interface ChangePasswordRequest {
@@ -93,6 +135,10 @@ export interface BillMember {
   name: string;
   color: string;
   tipPercentOverride?: number | null;
+  /** The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive. */
+  linkedUserId?: number | null;
+  /** Email of the linked account. Returned by getBill only; the other member endpoints leave it absent. */
+  linkedUserEmail?: string | null;
   createdAt: string;
 }
 
@@ -109,8 +155,12 @@ export interface CreateBillRequest {
   title: string;
   date: string;
   currency?: string | null;
-  taxPercent: number;
-  tipPercent: number;
+  /** Defaults to 0 when omitted */
+  taxPercent?: number;
+  /** Defaults to 0 when omitted */
+  tipPercent?: number;
+  /** The device's guest id. Send it only when signed out: it is what makes the new bill a guest bill owned by this device. Ignored when the request carries a bearer token. */
+  guestOwnerId?: string;
 }
 
 export interface UpdateBillRequest {
@@ -139,13 +189,18 @@ export interface JoinBillRequest {
 export interface CreateBillMemberRequest {
   name: string;
   color: string;
+  /** Link by account id, when the caller already knows it */
   linkedUserId?: number | null;
+  /** Link by email instead. The address must belong to an existing TallyBill account, or the answer is 422. */
+  linkedEmail?: string;
 }
 
 export interface UpdateBillMemberRequest {
   name?: string;
   color?: string;
   tipPercentOverride?: number | null;
+  /** Link this participant to the account with this address. null or an empty string unlinks them, keeping their name and their share. An address with no TallyBill account behind it answers 422. */
+  linkedEmail?: string | null;
 }
 
 export interface CreateBillLineRequest {
@@ -270,6 +325,17 @@ export interface UpdateCircleMemberRequest {
   linkedEmail?: string | null;
 }
 
+export type GetGuestBillsParams = {
+  /**
+   * Comma-separated bill ids, e.g. "12,15,18"
+   */
+  ids?: string;
+  /**
+   * The device's guest id, used to work out isOwner
+   */
+  guestOwnerId?: string;
+};
+
 export type BulkCreateBillLinesBody = {
   lines: CreateBillLineRequest[];
 };
@@ -280,6 +346,13 @@ export type ToggleBillLineUserBody = {
 
 export type ToggleBillLineUser200 = {
   assigned: boolean;
+};
+
+export type GetReceiptImageParams = {
+  /**
+   * The bill's join code. This is how a caller who is not the owner authorizes the request, and is what the app sends, because an <Image> tag cannot set the X-Join-Code header. Omit it only when the bill is a guest bill or the caller owns or belongs to it.
+   */
+  joinCode?: string;
 };
 
 export type OcrReceiptBody = {

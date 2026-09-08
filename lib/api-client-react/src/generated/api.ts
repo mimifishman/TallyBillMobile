@@ -17,7 +17,6 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  AuthResponse,
   Bill,
   BillDetail,
   BillLine,
@@ -27,22 +26,28 @@ import type {
   ChangePasswordRequest,
   Circle,
   CircleMember,
+  ClaimGuestBillsRequest,
+  ClaimGuestBillsResponse,
   CreateBillLineRequest,
   CreateBillMemberRequest,
   CreateBillRequest,
   CreateCircleMemberRequest,
   CreateCircleRequest,
   CurrencyResponse,
+  CurrentUser,
   ErrorResponse,
+  ForgotPasswordError,
+  ForgotPasswordRequest,
+  GetGuestBillsParams,
+  GetReceiptImageParams,
   HealthStatus,
   JoinBillRequest,
-  LoginRequest,
   OcrReceiptBody,
   OcrResult,
   OcrTranslateRequest,
   OcrTranslateResponse,
   PatchBillRequest,
-  RegisterRequest,
+  ResetPasswordRequest,
   SuccessResponse,
   ToggleBillLineUser200,
   ToggleBillLineUserBody,
@@ -50,6 +55,9 @@ import type {
   UpdateBillRequest,
   UpdateCircleMemberRequest,
   UpdateCircleRequest,
+  UpdateCurrentUserRequest,
+  UpdatedProfile,
+  UploadUrlResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -137,21 +145,17 @@ export function useHealthCheck<
 }
 
 /**
- * @summary Register a new user
+ * Gone. Sign-in moved to Clerk and this handler now answers 410 to every request, whatever the body. The 201/AuthResponse success it used to declare was removed because no request can reach it.
+ * @summary Register a new user (gone — Clerk handles this)
  */
 export const getRegisterUrl = () => {
   return `/api/auth/register`;
 };
 
-export const register = async (
-  registerRequest: RegisterRequest,
-  options?: RequestInit,
-): Promise<AuthResponse> => {
-  return customFetch<AuthResponse>(getRegisterUrl(), {
+export const register = async (options?: RequestInit): Promise<unknown> => {
+  return customFetch<unknown>(getRegisterUrl(), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(registerRequest),
   });
 };
 
@@ -162,14 +166,14 @@ export const getRegisterMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof register>>,
     TError,
-    { data: BodyType<RegisterRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof register>>,
   TError,
-  { data: BodyType<RegisterRequest> },
+  void,
   TContext
 > => {
   const mutationKey = ["register"];
@@ -183,11 +187,9 @@ export const getRegisterMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof register>>,
-    { data: BodyType<RegisterRequest> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return register(data, requestOptions);
+    void
+  > = () => {
+    return register(requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -196,11 +198,11 @@ export const getRegisterMutationOptions = <
 export type RegisterMutationResult = NonNullable<
   Awaited<ReturnType<typeof register>>
 >;
-export type RegisterMutationBody = BodyType<RegisterRequest>;
+
 export type RegisterMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Register a new user
+ * @summary Register a new user (gone — Clerk handles this)
  */
 export const useRegister = <
   TError = ErrorType<ErrorResponse>,
@@ -209,14 +211,14 @@ export const useRegister = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof register>>,
     TError,
-    { data: BodyType<RegisterRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof register>>,
   TError,
-  { data: BodyType<RegisterRequest> },
+  void,
   TContext
 > => {
   return useMutation(getRegisterMutationOptions(options));
@@ -309,21 +311,17 @@ export const useChangePassword = <
 };
 
 /**
- * @summary Login
+ * Gone. Sign-in moved to Clerk and this handler now answers 410 to every request, whatever the body. The 200/AuthResponse success it used to declare was removed because no request can reach it.
+ * @summary Login (gone — Clerk handles this)
  */
 export const getLoginUrl = () => {
   return `/api/auth/login`;
 };
 
-export const login = async (
-  loginRequest: LoginRequest,
-  options?: RequestInit,
-): Promise<AuthResponse> => {
-  return customFetch<AuthResponse>(getLoginUrl(), {
+export const login = async (options?: RequestInit): Promise<unknown> => {
+  return customFetch<unknown>(getLoginUrl(), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(loginRequest),
   });
 };
 
@@ -334,14 +332,14 @@ export const getLoginMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof login>>,
     TError,
-    { data: BodyType<LoginRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof login>>,
   TError,
-  { data: BodyType<LoginRequest> },
+  void,
   TContext
 > => {
   const mutationKey = ["login"];
@@ -355,11 +353,9 @@ export const getLoginMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof login>>,
-    { data: BodyType<LoginRequest> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return login(data, requestOptions);
+    void
+  > = () => {
+    return login(requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -368,11 +364,11 @@ export const getLoginMutationOptions = <
 export type LoginMutationResult = NonNullable<
   Awaited<ReturnType<typeof login>>
 >;
-export type LoginMutationBody = BodyType<LoginRequest>;
+
 export type LoginMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Login
+ * @summary Login (gone — Clerk handles this)
  */
 export const useLogin = <
   TError = ErrorType<ErrorResponse>,
@@ -381,17 +377,354 @@ export const useLogin = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof login>>,
     TError,
-    { data: BodyType<LoginRequest> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof login>>,
   TError,
-  { data: BodyType<LoginRequest> },
+  void,
   TContext
 > => {
   return useMutation(getLoginMutationOptions(options));
+};
+
+/**
+ * Always answers 200 for an address that is not registered, so the response cannot be used to discover which emails have accounts.
+ * @summary Email a password reset code
+ */
+export const getForgotPasswordUrl = () => {
+  return `/api/auth/forgot-password`;
+};
+
+export const forgotPassword = async (
+  forgotPasswordRequest: ForgotPasswordRequest,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getForgotPasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(forgotPasswordRequest),
+  });
+};
+
+export const getForgotPasswordMutationOptions = <
+  TError = ErrorType<ForgotPasswordError | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof forgotPassword>>,
+    TError,
+    { data: BodyType<ForgotPasswordRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof forgotPassword>>,
+  TError,
+  { data: BodyType<ForgotPasswordRequest> },
+  TContext
+> => {
+  const mutationKey = ["forgotPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof forgotPassword>>,
+    { data: BodyType<ForgotPasswordRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return forgotPassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ForgotPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof forgotPassword>>
+>;
+export type ForgotPasswordMutationBody = BodyType<ForgotPasswordRequest>;
+export type ForgotPasswordMutationError = ErrorType<
+  ForgotPasswordError | ErrorResponse
+>;
+
+/**
+ * @summary Email a password reset code
+ */
+export const useForgotPassword = <
+  TError = ErrorType<ForgotPasswordError | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof forgotPassword>>,
+    TError,
+    { data: BodyType<ForgotPasswordRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof forgotPassword>>,
+  TError,
+  { data: BodyType<ForgotPasswordRequest> },
+  TContext
+> => {
+  return useMutation(getForgotPasswordMutationOptions(options));
+};
+
+/**
+ * @summary Set a new password using the emailed reset code
+ */
+export const getResetPasswordUrl = () => {
+  return `/api/auth/reset-password`;
+};
+
+export const resetPassword = async (
+  resetPasswordRequest: ResetPasswordRequest,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getResetPasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(resetPasswordRequest),
+  });
+};
+
+export const getResetPasswordMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetPassword>>,
+    TError,
+    { data: BodyType<ResetPasswordRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetPassword>>,
+  TError,
+  { data: BodyType<ResetPasswordRequest> },
+  TContext
+> => {
+  const mutationKey = ["resetPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetPassword>>,
+    { data: BodyType<ResetPasswordRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return resetPassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetPassword>>
+>;
+export type ResetPasswordMutationBody = BodyType<ResetPasswordRequest>;
+export type ResetPasswordMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Set a new password using the emailed reset code
+ */
+export const useResetPassword = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetPassword>>,
+    TError,
+    { data: BodyType<ResetPasswordRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetPassword>>,
+  TError,
+  { data: BodyType<ResetPasswordRequest> },
+  TContext
+> => {
+  return useMutation(getResetPasswordMutationOptions(options));
+};
+
+/**
+ * @summary Get the signed-in user's profile
+ */
+export const getGetCurrentUserUrl = () => {
+  return `/api/me`;
+};
+
+export const getCurrentUser = async (
+  options?: RequestInit,
+): Promise<CurrentUser> => {
+  return customFetch<CurrentUser>(getGetCurrentUserUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCurrentUserQueryKey = () => {
+  return [`/api/me`] as const;
+};
+
+export const getGetCurrentUserQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCurrentUser>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentUser>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCurrentUserQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({
+    signal,
+  }) => getCurrentUser({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentUser>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCurrentUserQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCurrentUser>>
+>;
+export type GetCurrentUserQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get the signed-in user's profile
+ */
+
+export function useGetCurrentUser<
+  TData = Awaited<ReturnType<typeof getCurrentUser>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentUser>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCurrentUserQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Sending only one of firstName or lastName leaves the other unchanged. displayName is recomputed from both names by the server.
+ * @summary Update the signed-in user's name
+ */
+export const getUpdateCurrentUserUrl = () => {
+  return `/api/me`;
+};
+
+export const updateCurrentUser = async (
+  updateCurrentUserRequest: UpdateCurrentUserRequest,
+  options?: RequestInit,
+): Promise<UpdatedProfile> => {
+  return customFetch<UpdatedProfile>(getUpdateCurrentUserUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCurrentUserRequest),
+  });
+};
+
+export const getUpdateCurrentUserMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCurrentUser>>,
+    TError,
+    { data: BodyType<UpdateCurrentUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCurrentUser>>,
+  TError,
+  { data: BodyType<UpdateCurrentUserRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateCurrentUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCurrentUser>>,
+    { data: BodyType<UpdateCurrentUserRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateCurrentUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCurrentUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCurrentUser>>
+>;
+export type UpdateCurrentUserMutationBody = BodyType<UpdateCurrentUserRequest>;
+export type UpdateCurrentUserMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update the signed-in user's name
+ */
+export const useUpdateCurrentUser = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCurrentUser>>,
+    TError,
+    { data: BodyType<UpdateCurrentUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCurrentUser>>,
+  TError,
+  { data: BodyType<UpdateCurrentUserRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateCurrentUserMutationOptions(options));
 };
 
 /**
@@ -475,6 +808,92 @@ export const useDeleteAccount = <
 };
 
 /**
+ * @summary Move bills made while signed out onto the signed-in account
+ */
+export const getClaimGuestBillsUrl = () => {
+  return `/api/me/claim-guest-bills`;
+};
+
+export const claimGuestBills = async (
+  claimGuestBillsRequest: ClaimGuestBillsRequest,
+  options?: RequestInit,
+): Promise<ClaimGuestBillsResponse> => {
+  return customFetch<ClaimGuestBillsResponse>(getClaimGuestBillsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(claimGuestBillsRequest),
+  });
+};
+
+export const getClaimGuestBillsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimGuestBills>>,
+    TError,
+    { data: BodyType<ClaimGuestBillsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof claimGuestBills>>,
+  TError,
+  { data: BodyType<ClaimGuestBillsRequest> },
+  TContext
+> => {
+  const mutationKey = ["claimGuestBills"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof claimGuestBills>>,
+    { data: BodyType<ClaimGuestBillsRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return claimGuestBills(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClaimGuestBillsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof claimGuestBills>>
+>;
+export type ClaimGuestBillsMutationBody = BodyType<ClaimGuestBillsRequest>;
+export type ClaimGuestBillsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Move bills made while signed out onto the signed-in account
+ */
+export const useClaimGuestBills = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimGuestBills>>,
+    TError,
+    { data: BodyType<ClaimGuestBillsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof claimGuestBills>>,
+  TError,
+  { data: BodyType<ClaimGuestBillsRequest> },
+  TContext
+> => {
+  return useMutation(getClaimGuestBillsMutationOptions(options));
+};
+
+/**
  * @summary Get user's bills
  */
 export const getGetBillsUrl = () => {
@@ -540,6 +959,7 @@ export function useGetBills<
 }
 
 /**
+ * Auth is optional. Signed in, the bill is owned by the caller and they are added as its first participant. Signed out, pass guestOwnerId and the bill is created as a guest bill belonging to that device.
  * @summary Create a new bill
  */
 export const getCreateBillUrl = () => {
@@ -559,7 +979,7 @@ export const createBill = async (
 };
 
 export const getCreateBillMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -600,13 +1020,13 @@ export type CreateBillMutationResult = NonNullable<
   Awaited<ReturnType<typeof createBill>>
 >;
 export type CreateBillMutationBody = BodyType<CreateBillRequest>;
-export type CreateBillMutationError = ErrorType<unknown>;
+export type CreateBillMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Create a new bill
  */
 export const useCreateBill = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -624,6 +1044,101 @@ export const useCreateBill = <
 > => {
   return useMutation(getCreateBillMutationOptions(options));
 };
+
+/**
+ * No auth: a signed-out client keeps its own bill ids on the device and passes them back. Returns an empty array when ids is missing or holds no numbers. isOwner is true only for bills whose guestOwnerId matches the one supplied.
+ * @summary Look up bills made while signed out, by id
+ */
+export const getGetGuestBillsUrl = (params?: GetGuestBillsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/bills/guest?${stringifiedParams}`
+    : `/api/bills/guest`;
+};
+
+export const getGuestBills = async (
+  params?: GetGuestBillsParams,
+  options?: RequestInit,
+): Promise<Bill[]> => {
+  return customFetch<Bill[]>(getGetGuestBillsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGuestBillsQueryKey = (params?: GetGuestBillsParams) => {
+  return [`/api/bills/guest`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetGuestBillsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGuestBills>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetGuestBillsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuestBills>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGuestBillsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuestBills>>> = ({
+    signal,
+  }) => getGuestBills(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGuestBills>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGuestBillsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGuestBills>>
+>;
+export type GetGuestBillsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Look up bills made while signed out, by id
+ */
+
+export function useGetGuestBills<
+  TData = Awaited<ReturnType<typeof getGuestBills>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetGuestBillsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuestBills>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGuestBillsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Join a bill by code
@@ -963,7 +1478,8 @@ export const useUpdateBill = <
 };
 
 /**
- * @summary Edit bill header (owner only)
+ * Auth is optional. A guest bill is editable by anyone who can reach it. On every other bill the caller must be its owner or a member, proved by a bearer token or the bill's join code, or the answer is 403.
+ * @summary Edit bill header
  */
 export const getPatchBillUrl = (billId: number) => {
   return `/api/bills/${billId}`;
@@ -1027,7 +1543,7 @@ export type PatchBillMutationBody = BodyType<PatchBillRequest>;
 export type PatchBillMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Edit bill header (owner only)
+ * @summary Edit bill header
  */
 export const usePatchBill = <
   TError = ErrorType<ErrorResponse>,
@@ -1067,7 +1583,7 @@ export const deleteBill = async (
 };
 
 export const getDeleteBillMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1108,13 +1624,13 @@ export type DeleteBillMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteBill>>
 >;
 
-export type DeleteBillMutationError = ErrorType<unknown>;
+export type DeleteBillMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Delete a bill
  */
 export const useDeleteBill = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1131,6 +1647,91 @@ export const useDeleteBill = <
   TContext
 > => {
   return useMutation(getDeleteBillMutationOptions(options));
+};
+
+/**
+ * Removes only the caller's access row. The bill, its lines and its participant names are untouched. An owner cannot leave their own bill.
+ * @summary Give up your own access to a bill someone else owns
+ */
+export const getLeaveBillUrl = (billId: number) => {
+  return `/api/bills/${billId}/leave`;
+};
+
+export const leaveBill = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getLeaveBillUrl(billId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getLeaveBillMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof leaveBill>>,
+    TError,
+    { billId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof leaveBill>>,
+  TError,
+  { billId: number },
+  TContext
+> => {
+  const mutationKey = ["leaveBill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof leaveBill>>,
+    { billId: number }
+  > = (props) => {
+    const { billId } = props ?? {};
+
+    return leaveBill(billId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LeaveBillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof leaveBill>>
+>;
+
+export type LeaveBillMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Give up your own access to a bill someone else owns
+ */
+export const useLeaveBill = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof leaveBill>>,
+    TError,
+    { billId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof leaveBill>>,
+  TError,
+  { billId: number },
+  TContext
+> => {
+  return useMutation(getLeaveBillMutationOptions(options));
 };
 
 /**
@@ -1241,7 +1842,7 @@ export const createBillLine = async (
 };
 
 export const getCreateBillLineMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1282,13 +1883,13 @@ export type CreateBillLineMutationResult = NonNullable<
   Awaited<ReturnType<typeof createBillLine>>
 >;
 export type CreateBillLineMutationBody = BodyType<CreateBillLineRequest>;
-export type CreateBillLineMutationError = ErrorType<unknown>;
+export type CreateBillLineMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Add a line item
  */
 export const useCreateBillLine = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1328,7 +1929,7 @@ export const bulkCreateBillLines = async (
 };
 
 export const getBulkCreateBillLinesMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1369,13 +1970,13 @@ export type BulkCreateBillLinesMutationResult = NonNullable<
   Awaited<ReturnType<typeof bulkCreateBillLines>>
 >;
 export type BulkCreateBillLinesMutationBody = BodyType<BulkCreateBillLinesBody>;
-export type BulkCreateBillLinesMutationError = ErrorType<unknown>;
+export type BulkCreateBillLinesMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Bulk create line items (from OCR)
  */
 export const useBulkCreateBillLines = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1416,7 +2017,7 @@ export const updateBillLine = async (
 };
 
 export const getUpdateBillLineMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1457,13 +2058,13 @@ export type UpdateBillLineMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateBillLine>>
 >;
 export type UpdateBillLineMutationBody = BodyType<CreateBillLineRequest>;
-export type UpdateBillLineMutationError = ErrorType<unknown>;
+export type UpdateBillLineMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Update a line item
  */
 export const useUpdateBillLine = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1592,7 +2193,7 @@ export const toggleBillLineUser = async (
 };
 
 export const getToggleBillLineUserMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1633,13 +2234,13 @@ export type ToggleBillLineUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof toggleBillLineUser>>
 >;
 export type ToggleBillLineUserMutationBody = BodyType<ToggleBillLineUserBody>;
-export type ToggleBillLineUserMutationError = ErrorType<unknown>;
+export type ToggleBillLineUserMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Assign or unassign a bill user to a line item
  */
 export const useToggleBillLineUser = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2028,7 +2629,7 @@ export const getGetBillTotalsQueryKey = (billId: number) => {
 
 export const getGetBillTotalsQueryOptions = <
   TData = Awaited<ReturnType<typeof getBillTotals>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
 >(
   billId: number,
   options?: {
@@ -2063,7 +2664,7 @@ export const getGetBillTotalsQueryOptions = <
 export type GetBillTotalsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getBillTotals>>
 >;
-export type GetBillTotalsQueryError = ErrorType<unknown>;
+export type GetBillTotalsQueryError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Get per-person totals
@@ -2071,7 +2672,7 @@ export type GetBillTotalsQueryError = ErrorType<unknown>;
 
 export function useGetBillTotals<
   TData = Awaited<ReturnType<typeof getBillTotals>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
 >(
   billId: number,
   options?: {
@@ -2084,6 +2685,222 @@ export function useGetBillTotals<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetBillTotalsQueryOptions(billId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * The client PUTs the image straight to uploadURL, then saves the returned objectPath onto the bill via PATCH /bills/{billId}.
+
+Auth is optional. This route sits behind requireBillAccess alone, so a signed-out client scanning a guest bill reaches it with no token. A caller who is neither owner nor member authorizes with the bill's join code, sent as the X-Join-Code header or a joinCode query param.
+ * @summary Get a short-lived URL for uploading this bill's receipt photo
+ */
+export const getRequestReceiptUploadUrlUrl = (billId: number) => {
+  return `/api/bills/${billId}/storage/uploads/request-url`;
+};
+
+export const requestReceiptUploadUrl = async (
+  billId: number,
+  options?: RequestInit,
+): Promise<UploadUrlResponse> => {
+  return customFetch<UploadUrlResponse>(getRequestReceiptUploadUrlUrl(billId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRequestReceiptUploadUrlMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestReceiptUploadUrl>>,
+    TError,
+    { billId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestReceiptUploadUrl>>,
+  TError,
+  { billId: number },
+  TContext
+> => {
+  const mutationKey = ["requestReceiptUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestReceiptUploadUrl>>,
+    { billId: number }
+  > = (props) => {
+    const { billId } = props ?? {};
+
+    return requestReceiptUploadUrl(billId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestReceiptUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestReceiptUploadUrl>>
+>;
+
+export type RequestReceiptUploadUrlMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a short-lived URL for uploading this bill's receipt photo
+ */
+export const useRequestReceiptUploadUrl = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestReceiptUploadUrl>>,
+    TError,
+    { billId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestReceiptUploadUrl>>,
+  TError,
+  { billId: number },
+  TContext
+> => {
+  return useMutation(getRequestReceiptUploadUrlMutationOptions(options));
+};
+
+/**
+ * The server answers 302 with a signed, one-hour Location URL rather than the bytes themselves. Because every HTTP client follows that redirect, the response described here as 200 is what a caller actually receives: the image. Only the object currently saved as the bill's receiptImagePath is served; anything else is 404.
+
+The 200 is written out rather than the raw 302 on purpose. A 3xx with no declared body makes the generator fold a bare `void` into this operation's error union, which tells callers nothing and hides the real ErrorResponse behind it.
+
+Auth is optional, and the app has none to give: it renders this URL in an <Image> tag, which cannot attach an Authorization header. Access comes from requireBillAccess, which admits the request when the bill is a guest bill, when joinCode matches, or when a signed-in caller owns or belongs to the bill.
+ * @summary Fetch this bill's receipt photo
+ */
+export const getGetReceiptImageUrl = (
+  billId: number,
+  objectId: string,
+  params?: GetReceiptImageParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/bills/${billId}/storage/objects/uploads/${objectId}?${stringifiedParams}`
+    : `/api/bills/${billId}/storage/objects/uploads/${objectId}`;
+};
+
+export const getReceiptImage = async (
+  billId: number,
+  objectId: string,
+  params?: GetReceiptImageParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetReceiptImageUrl(billId, objectId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReceiptImageQueryKey = (
+  billId: number,
+  objectId: string,
+  params?: GetReceiptImageParams,
+) => {
+  return [
+    `/api/bills/${billId}/storage/objects/uploads/${objectId}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetReceiptImageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReceiptImage>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  billId: number,
+  objectId: string,
+  params?: GetReceiptImageParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReceiptImage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetReceiptImageQueryKey(billId, objectId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getReceiptImage>>> = ({
+    signal,
+  }) =>
+    getReceiptImage(billId, objectId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(billId && objectId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReceiptImage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReceiptImageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReceiptImage>>
+>;
+export type GetReceiptImageQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch this bill's receipt photo
+ */
+
+export function useGetReceiptImage<
+  TData = Awaited<ReturnType<typeof getReceiptImage>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  billId: number,
+  objectId: string,
+  params?: GetReceiptImageParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReceiptImage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReceiptImageQueryOptions(
+    billId,
+    objectId,
+    params,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2432,7 +3249,7 @@ export const createCircle = async (
 };
 
 export const getCreateCircleMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2473,13 +3290,13 @@ export type CreateCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof createCircle>>
 >;
 export type CreateCircleMutationBody = BodyType<CreateCircleRequest>;
-export type CreateCircleMutationError = ErrorType<unknown>;
+export type CreateCircleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Create a new circle
  */
 export const useCreateCircle = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2519,7 +3336,7 @@ export const updateCircle = async (
 };
 
 export const getUpdateCircleMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2560,13 +3377,13 @@ export type UpdateCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateCircle>>
 >;
 export type UpdateCircleMutationBody = BodyType<UpdateCircleRequest>;
-export type UpdateCircleMutationError = ErrorType<void>;
+export type UpdateCircleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Rename a circle
  */
 export const useUpdateCircle = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2603,7 +3420,7 @@ export const deleteCircle = async (
 };
 
 export const getDeleteCircleMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2644,13 +3461,13 @@ export type DeleteCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteCircle>>
 >;
 
-export type DeleteCircleMutationError = ErrorType<void>;
+export type DeleteCircleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Delete a circle
  */
 export const useDeleteCircle = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2864,7 +3681,7 @@ export const removeCircleMember = async (
 };
 
 export const getRemoveCircleMemberMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2905,13 +3722,13 @@ export type RemoveCircleMemberMutationResult = NonNullable<
   Awaited<ReturnType<typeof removeCircleMember>>
 >;
 
-export type RemoveCircleMemberMutationError = ErrorType<void>;
+export type RemoveCircleMemberMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Remove a member from a circle
  */
 export const useRemoveCircleMember = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

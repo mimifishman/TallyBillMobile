@@ -880,7 +880,7 @@ export default function BillDetailScreen() {
                     color={u.color}
                     size="lg"
                     showName
-                    onPress={isOwner || isGuestOwner ? () => handleBadgePress(u as { id: number; name: string; color: string; linkedUserId?: number | null; linkedUserEmail?: string | null }, true) : undefined}
+                    onPress={isOwner || isGuestOwner ? () => handleBadgePress(u, true) : undefined}
                   />
                 </Animated.View>
               ))}

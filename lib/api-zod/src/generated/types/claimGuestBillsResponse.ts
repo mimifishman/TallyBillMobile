@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface User {
-  id: number;
-  email: string;
-  displayName: string;
-  createdAt: Date;
+export interface ClaimGuestBillsResponse {
+  /** How many bills moved onto the account */
+  claimed: number;
 }

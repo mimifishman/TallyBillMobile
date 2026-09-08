@@ -5,9 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { User } from "./user";
 
-export interface AuthResponse {
-  token: string;
-  user: User;
+export interface ClaimGuestBillsRequest {
+  /** The guest id the bills were created under */
+  guestOwnerId: string;
 }
