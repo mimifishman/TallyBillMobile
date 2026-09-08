@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { extractErrorCode, extractErrorMessage, isOAuthCancelled, logOAuthError, oauthFailureMessage, oauthIncompleteMessage } from "@/utils/clerkErrors";
+import { extractErrorCode, extractErrorMessage, isOAuthCancelled, logClerkError, oauthFailureMessage, oauthIncompleteMessage } from "@/utils/clerkErrors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
@@ -110,10 +110,23 @@ export default function RegisterScreen() {
     if (password !== confirmPassword) { setConfirmPasswordError("Passwords do not match"); return; }
     try {
       const { error } = await signUp.password({ emailAddress: email.trim().toLowerCase(), password });
-      if (error) { routeSignUpError(error); return; }
+      if (error) { logClerkError("Email sign-up rejected", error); routeSignUpError(error); return; }
+      // Clerk will not send the code while anything is still outstanding, and
+      // the instance decides what "outstanding" means. If the dashboard asks
+      // for a field this screen never collects — a username, a phone — status
+      // stays "missing_requirements" with that field named here, sendEmailCode
+      // fails, and the user sees only "Could not create account". OAuth is
+      // unaffected because the provider supplies those fields, which is why
+      // this fails for email sign-up alone.
+      if (signUp.missingFields.length > 0) {
+        logClerkError("Email sign-up blocked by instance requirements", {
+          message: `status=${signUp.status} missingFields=[${signUp.missingFields.join(", ")}] unverifiedFields=[${signUp.unverifiedFields.join(", ")}]`,
+        });
+      }
       await signUp.verifications.sendEmailCode();
       setShowVerification(true);
     } catch (err: unknown) {
+      logClerkError("Email sign-up error", err);
       if (isDuplicateEmail(err)) {
         showDuplicateAlert();
       } else {
@@ -165,12 +178,12 @@ export default function RegisterScreen() {
         // The browser was closed/cancelled before finishing — stay silent.
         if (!authSessionResult || authSessionResult.type !== "success") return;
         // The browser flow succeeded but no session was created — surface it.
-        logOAuthError("OAuth sign-up incomplete", {
+        logClerkError("OAuth sign-up incomplete", {
           message: `signIn.status=${ssoSignIn?.status ?? "unknown"} signUp.status=${ssoSignUp?.status ?? "unknown"}`,
         });
         setEmailError(oauthIncompleteMessage(provider, "up", ssoSignIn?.status, ssoSignUp?.status));
       } catch (err: unknown) {
-        logOAuthError("OAuth sign-up error", err);
+        logClerkError("OAuth sign-up error", err);
         if (isOAuthCancelled(err)) return;
         if (isDuplicateEmail(err)) showDuplicateAlert();
         else setEmailError(oauthFailureMessage(provider, "up", err));

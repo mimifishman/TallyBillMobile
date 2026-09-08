@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { isOAuthCancelled, logOAuthError, oauthFailureMessage, oauthIncompleteMessage } from "@/utils/clerkErrors";
+import { isOAuthCancelled, logClerkError, oauthFailureMessage, oauthIncompleteMessage } from "@/utils/clerkErrors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { PressableScale } from "@/components/PressableScale";
@@ -180,12 +180,12 @@ export default function LoginScreen() {
         // The browser flow succeeded but no session was created (e.g. an
         // extra verification step or unfinished account setup). Tell the
         // user instead of leaving them stranded in silence.
-        logOAuthError("OAuth sign-in incomplete", {
+        logClerkError("OAuth sign-in incomplete", {
           message: `signIn.status=${ssoSignIn?.status ?? "unknown"} signUp.status=${ssoSignUp?.status ?? "unknown"}`,
         });
         setPasswordError(oauthIncompleteMessage(provider, "in", ssoSignIn?.status, ssoSignUp?.status));
       } catch (err: unknown) {
-        logOAuthError("OAuth sign-in error", err);
+        logClerkError("OAuth sign-in error", err);
         if (isOAuthCancelled(err)) return;
         setPasswordError(oauthFailureMessage(provider, "in", err));
       }
