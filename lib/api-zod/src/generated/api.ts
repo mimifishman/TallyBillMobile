@@ -172,14 +172,21 @@ export const GetBillsResponseItem = zod.object({
 export const GetBillsResponse = zod.array(GetBillsResponseItem);
 
 /**
+ * Auth is optional. Signed in, the bill is owned by the caller and they are added as its first participant. Signed out, pass guestOwnerId and the bill is created as a guest bill belonging to that device.
  * @summary Create a new bill
  */
 export const CreateBillBody = zod.object({
   title: zod.string(),
   date: zod.string(),
   currency: zod.string().nullish(),
-  taxPercent: zod.number(),
-  tipPercent: zod.number(),
+  taxPercent: zod.number().optional().describe("Defaults to 0 when omitted"),
+  tipPercent: zod.number().optional().describe("Defaults to 0 when omitted"),
+  guestOwnerId: zod
+    .string()
+    .optional()
+    .describe(
+      "The device's guest id. Send it only when signed out: it is what makes the new bill a guest bill owned by this device. Ignored when the request carries a bearer token.",
+    ),
 });
 
 /**
@@ -499,7 +506,8 @@ export const UpdateBillResponse = zod.object({
 });
 
 /**
- * @summary Edit bill header (owner only)
+ * Auth is optional. A guest bill is editable by anyone who can reach it. On every other bill the caller must be its owner or a member, proved by a bearer token or the bill's join code, or the answer is 403.
+ * @summary Edit bill header
  */
 export const PatchBillParams = zod.object({
   billId: zod.coerce.number(),
@@ -829,7 +837,7 @@ export const GetBillTotalsResponse = zod.object({
 /**
  * The client PUTs the image straight to uploadURL, then saves the returned objectPath onto the bill via PATCH /bills/{billId}.
 
-No bearerAuth: this route sits behind requireBillAccess alone, so a signed-out client scanning a guest bill reaches it with no token. A caller who is neither owner nor member authorizes with the bill's join code, sent as the X-Join-Code header or a joinCode query param.
+Auth is optional. This route sits behind requireBillAccess alone, so a signed-out client scanning a guest bill reaches it with no token. A caller who is neither owner nor member authorizes with the bill's join code, sent as the X-Join-Code header or a joinCode query param.
  * @summary Get a short-lived URL for uploading this bill's receipt photo
  */
 export const RequestReceiptUploadUrlParams = zod.object({
@@ -848,7 +856,7 @@ export const RequestReceiptUploadUrlResponse = zod.object({
 
 The 200 is written out rather than the raw 302 on purpose. A 3xx with no declared body makes the generator fold a bare `void` into this operation's error union, which tells callers nothing and hides the real ErrorResponse behind it.
 
-No bearerAuth: the app renders this URL in an <Image> tag, which cannot attach an Authorization header. Access comes from requireBillAccess, which admits the request when the bill is a guest bill, when joinCode matches, or when a signed-in caller owns or belongs to the bill.
+Auth is optional, and the app has none to give: it renders this URL in an <Image> tag, which cannot attach an Authorization header. Access comes from requireBillAccess, which admits the request when the bill is a guest bill, when joinCode matches, or when a signed-in caller owns or belongs to the bill.
  * @summary Fetch this bill's receipt photo
  */
 export const GetReceiptImageParams = zod.object({

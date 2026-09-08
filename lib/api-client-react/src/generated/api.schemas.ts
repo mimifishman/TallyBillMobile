@@ -175,8 +175,12 @@ export interface CreateBillRequest {
   title: string;
   date: string;
   currency?: string | null;
-  taxPercent: number;
-  tipPercent: number;
+  /** Defaults to 0 when omitted */
+  taxPercent?: number;
+  /** Defaults to 0 when omitted */
+  tipPercent?: number;
+  /** The device's guest id. Send it only when signed out: it is what makes the new bill a guest bill owned by this device. Ignored when the request carries a bearer token. */
+  guestOwnerId?: string;
 }
 
 export interface UpdateBillRequest {

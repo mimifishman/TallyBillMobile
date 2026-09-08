@@ -379,7 +379,12 @@ paths:
       operationId: createBill
       tags: [bills]
       summary: Create a new bill
+      description: >-
+        Auth is optional. Signed in, the bill is owned by the caller and they
+        are added as its first participant. Signed out, pass guestOwnerId and
+        the bill is created as a guest bill belonging to that device.
       security:
+        - {}
         - bearerAuth: []
       requestBody:
         required: true
@@ -542,8 +547,13 @@ paths:
     patch:
       operationId: patchBill
       tags: [bills]
-      summary: Edit bill header (owner only)
+      summary: Edit bill header
+      description: >-
+        Auth is optional. A guest bill is editable by anyone who can reach it.
+        On every other bill the caller must be its owner or a member, proved
+        by a bearer token or the bill's join code, or the answer is 403.
       security:
+        - {}
         - bearerAuth: []
       parameters:
         - name: billId
@@ -1001,10 +1011,13 @@ paths:
         returned objectPath onto the bill via PATCH /bills/{billId}.
 
 
-        No bearerAuth: this route sits behind requireBillAccess alone, so a
+        Auth is optional. This route sits behind requireBillAccess alone, so a
         signed-out client scanning a guest bill reaches it with no token. A
         caller who is neither owner nor member authorizes with the bill's
         join code, sent as the X-Join-Code header or a joinCode query param.
+      security:
+        - {}
+        - bearerAuth: []
       parameters:
         - name: billId
           in: path
@@ -1056,10 +1069,14 @@ paths:
         ErrorResponse behind it.
 
 
-        No bearerAuth: the app renders this URL in an <Image> tag, which cannot
-        attach an Authorization header. Access comes from requireBillAccess,
-        which admits the request when the bill is a guest bill, when joinCode
-        matches, or when a signed-in caller owns or belongs to the bill.
+        Auth is optional, and the app has none to give: it renders this URL in
+        an <Image> tag, which cannot attach an Authorization header. Access
+        comes from requireBillAccess, which admits the request when the bill is
+        a guest bill, when joinCode matches, or when a signed-in caller owns or
+        belongs to the bill.
+      security:
+        - {}
+        - bearerAuth: []
       parameters:
         - name: billId
           in: path
@@ -1756,13 +1773,19 @@ components:
           nullable: true
         taxPercent:
           type: number
+          description: Defaults to 0 when omitted
         tipPercent:
           type: number
+          description: Defaults to 0 when omitted
+        guestOwnerId:
+          type: string
+          description: >-
+            The device's guest id. Send it only when signed out: it is what
+            makes the new bill a guest bill owned by this device. Ignored
+            when the request carries a bearer token.
       required:
         - title
         - date
-        - taxPercent
-        - tipPercent
 
     UpdateBillRequest:
       type: object

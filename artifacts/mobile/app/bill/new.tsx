@@ -97,7 +97,7 @@ export default function NewBillScreen() {
         taxPercent: parseFloat(taxPercent) || 0,
         tipPercent: parseFloat(tipPercent) || 0,
         ...(!user && guestOwnerId ? { guestOwnerId } : {}),
-      } as Parameters<typeof createMutation.mutate>[0]["data"],
+      },
     });
   };
 
