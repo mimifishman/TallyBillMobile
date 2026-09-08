@@ -38,8 +38,6 @@ export default function NewBillScreen() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(today);
   const [currency, setCurrency] = useState("");
-  const [taxPercent, setTaxPercent] = useState("");
-  const [tipPercent, setTipPercent] = useState("");
 
   const { data: currencyData } = useDetectCurrency();
   useEffect(() => {
@@ -94,8 +92,11 @@ export default function NewBillScreen() {
         title: title.trim(),
         date,
         currency: currency || null,
-        taxPercent: parseFloat(taxPercent) || 0,
-        tipPercent: parseFloat(tipPercent) || 0,
+        // Required by CreateBillRequest, and a bill genuinely starts with
+        // neither. They are asked for later, where the subtotal they apply to
+        // can be seen: on the scan review screen, or from the bill's summary.
+        taxPercent: 0,
+        tipPercent: 0,
         ...(!user && guestOwnerId ? { guestOwnerId } : {}),
       },
     });
@@ -138,49 +139,6 @@ export default function NewBillScreen() {
               <Text style={[styles.label, { color: colors.mutedForeground }]}>CURRENCY</Text>
               <CurrencyPicker value={currency} onChange={setCurrency} />
             </View>
-          </View>
-        </View>
-
-        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionCardTitle, { color: colors.mutedForeground }]}>SPLIT SETTINGS</Text>
-
-          <View style={styles.row}>
-            <View style={[styles.formGroup, styles.flex]}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>TAX %</Text>
-              <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
-                <Feather name="percent" size={14} color={colors.mutedForeground} />
-                <TextInput
-                  style={[styles.inputInner, { color: colors.foreground }]}
-                  placeholder="e.g. 8.5"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={taxPercent}
-                  onChangeText={setTaxPercent}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-
-            <View style={[styles.formGroup, styles.flex]}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>TIP %</Text>
-              <View style={[styles.inputWithIcon, { borderColor: colors.border }]}>
-                <Feather name="heart" size={14} color={colors.mutedForeground} />
-                <TextInput
-                  style={[styles.inputInner, { color: colors.foreground }]}
-                  placeholder="e.g. 18"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={tipPercent}
-                  onChangeText={setTipPercent}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.helperRow, { backgroundColor: colors.primarySoft }]}>
-            <Feather name="info" size={13} color={colors.primaryText} />
-            <Text style={[styles.helperText, { color: colors.primaryDark }]}>
-              Shared proportionally across all items
-            </Text>
           </View>
         </View>
 
@@ -237,25 +195,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
   },
-  inputWithIcon: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: SPACING.sm,
-  },
-  inputInner: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
   row: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
-  helperRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    borderRadius: RADIUS.sm,
-    padding: 10,
-  },
-  helperText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", lineHeight: 18 },
   createBtn: {
     borderRadius: RADIUS.full,
     paddingVertical: 17,
