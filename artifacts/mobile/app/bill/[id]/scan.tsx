@@ -9,8 +9,10 @@ import {
   FlatList,
   Image,
   Platform,
+  KeyboardAvoidingView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -20,9 +22,11 @@ import { useColors } from "@/hooks/useColors";
 import {
   useBulkCreateBillLines,
   useGetBill,
+  usePatchBill,
   getGetBillQueryKey,
 } from "@workspace/api-client-react";
-import { formatMoney } from "@/utils/currency";
+import { formatMoney, getCurrencySymbol } from "@/utils/currency";
+import { apiErrorMessage } from "@/utils/apiErrors";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useScan } from "@/context/ScanContext";
 import { LanguagePicker } from "@/components/LanguagePicker";
@@ -35,6 +39,109 @@ const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
 // and submitted on confirm. Blank "Add item" rows are ignored everywhere.
 function isCountedItem(item: { selected: boolean; description: string; translatedDescription?: string }) {
   return item.selected && (item.translatedDescription ?? item.description).trim().length > 0;
+}
+
+type MoneyMode = "percent" | "amount";
+
+/**
+ * The rate to store for a tax or tip the user gave us.
+ *
+ * A bill holds a rate, not a sum, so an amount has to be divided by the
+ * subtotal. That is only possible here because the scanned items are already
+ * on screen — which is the reason this belongs on the review step and not on
+ * a bill that may still be empty. Three decimals keeps the money shown back
+ * rounding to the cents that were typed.
+ */
+function toPercent(mode: MoneyMode, raw: string, subtotal: number): number {
+  const value = parseFloat(raw);
+  if (!Number.isFinite(value) || value < 0) return 0;
+  if (mode === "percent") return value;
+  if (subtotal <= 0) return 0;
+  return Math.round((value / subtotal) * 100000) / 1000;
+}
+
+function amountFromPercent(percent: number, subtotal: number): number {
+  return Math.round(subtotal * (percent / 100) * 100) / 100;
+}
+
+/**
+ * One "tax" or "tip" row: a percent/amount choice, a number, and what that
+ * comes to. Both options are always visible — a receipt prints tax as a sum
+ * far more often than as a rate, and neither is the obvious default.
+ */
+function TaxTipField({
+  label,
+  mode,
+  onModeChange,
+  value,
+  onValueChange,
+  computed,
+  currency,
+  colors,
+}: {
+  label: string;
+  mode: MoneyMode;
+  onModeChange: (mode: MoneyMode) => void;
+  value: string;
+  onValueChange: (value: string) => void;
+  computed: number;
+  currency: string | null | undefined;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const symbol = getCurrencySymbol(currency);
+  return (
+    <View style={styles.taxTipField}>
+      <View style={styles.taxTipHeader}>
+        <Text style={[styles.taxTipLabel, { color: colors.mutedForeground }]}>{label}</Text>
+        <View style={[styles.modeSwitch, { borderColor: colors.border }]}>
+          {(["percent", "amount"] as const).map((option) => {
+            const selected = mode === option;
+            return (
+              <TouchableOpacity
+                key={option}
+                onPress={() => onModeChange(option)}
+                hitSlop={{ top: 10, bottom: 10, left: 2, right: 2 }}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={
+                  option === "percent"
+                    ? `Enter the ${label.toLowerCase()} as a percent`
+                    : `Enter the ${label.toLowerCase()} as an amount`
+                }
+                style={[styles.modeOption, selected && { backgroundColor: colors.primary }]}
+              >
+                <Text
+                  style={[
+                    styles.modeOptionText,
+                    { color: selected ? colors.primaryForeground : colors.mutedForeground },
+                  ]}
+                >
+                  {option === "percent" ? "%" : "Amount"}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+      <View style={styles.taxTipInputRow}>
+        <TextInput
+          style={[
+            styles.taxTipInput,
+            { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.background },
+          ]}
+          placeholder={mode === "percent" ? "0" : `${symbol}0.00`}
+          placeholderTextColor={colors.mutedForeground}
+          value={value}
+          onChangeText={onValueChange}
+          keyboardType="decimal-pad"
+          accessibilityLabel={label}
+        />
+        <Text style={[styles.taxTipComputed, { color: colors.foreground }]}>
+          {formatMoney(computed, currency)}
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 const SCAN_MESSAGES = [
@@ -140,6 +247,11 @@ export default function ScanScreen() {
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<string | null>(null);
   const [showOriginals, setShowOriginals] = useState(true);
+  const [taxMode, setTaxMode] = useState<MoneyMode>("percent");
+  const [taxInput, setTaxInput] = useState("");
+  const [tipMode, setTipMode] = useState<MoneyMode>("percent");
+  const [tipInput, setTipInput] = useState("");
+  const taxTipSeeded = useRef(false);
 
   const hasTranslations = scan.items.some((i) => i.translatedDescription != null);
 
@@ -162,18 +274,80 @@ export default function ScanScreen() {
     });
   }, []);
 
+  // Show what the bill already carries, so a second scan does not silently
+  // offer to overwrite a rate the user set earlier. Seeded once: after that
+  // the fields belong to whoever is typing in them.
+  useEffect(() => {
+    if (taxTipSeeded.current || !billData) return;
+    taxTipSeeded.current = true;
+    const tax = parseFloat(String(billData.bill.taxPercent ?? 0)) || 0;
+    const tip = parseFloat(String(billData.bill.tipPercent ?? 0)) || 0;
+    if (tax > 0) setTaxInput(String(tax));
+    if (tip > 0) setTipInput(String(tip));
+  }, [billData]);
+
+  const taxPercent = toPercent(taxMode, taxInput, selectedTotal);
+  const tipPercent = toPercent(tipMode, tipInput, selectedTotal);
+  const taxAmount = amountFromPercent(taxPercent, selectedTotal);
+  const tipAmount = amountFromPercent(tipPercent, selectedTotal);
+  const grandTotal = selectedTotal + taxAmount + tipAmount;
+
+  // Switching unit converts what is already there, rather than clearing it —
+  // "8.5%" becomes the sum it works out to, and back again.
+  const changeTaxMode = (mode: MoneyMode) => {
+    if (mode === taxMode) return;
+    const asAmount = amountFromPercent(taxPercent, selectedTotal);
+    if (mode === "amount") setTaxInput(taxPercent > 0 ? String(asAmount) : "");
+    else setTaxInput(taxPercent > 0 ? String(taxPercent) : "");
+    setTaxMode(mode);
+  };
+
+  const changeTipMode = (mode: MoneyMode) => {
+    if (mode === tipMode) return;
+    const asAmount = amountFromPercent(tipPercent, selectedTotal);
+    if (mode === "amount") setTipInput(tipPercent > 0 ? String(asAmount) : "");
+    else setTipInput(tipPercent > 0 ? String(tipPercent) : "");
+    setTipMode(mode);
+  };
+
   const isScanning = scan.status === "scanning";
   const isReady = scan.status === "ready";
   const step: "pick" | "review" = isReady ? "review" : "pick";
 
+  const leaveScan = () => {
+    scan.reset();
+    router.back();
+  };
+
+  // Runs after the items land, so the rate is never stored against a bill
+  // whose items failed to save. A failure here is worth saying out loud —
+  // the items did go in, so silently dropping the tax would leave a bill
+  // that looks finished and is short.
+  const patchBillMutation = usePatchBill({
+    mutation: {
+      onError: (err) => {
+        Alert.alert(
+          "Items added, but not the tax and tip",
+          apiErrorMessage(err, "You can set them from the bill instead."),
+        );
+      },
+      onSettled: leaveScan,
+    },
+  });
+
   const bulkCreateMutation = useBulkCreateBillLines({
     mutation: {
       onSuccess: () => {
-        scan.reset();
-        router.back();
+        const billTax = parseFloat(String(billData?.bill.taxPercent ?? 0)) || 0;
+        const billTip = parseFloat(String(billData?.bill.tipPercent ?? 0)) || 0;
+        if (taxPercent !== billTax || tipPercent !== billTip) {
+          patchBillMutation.mutate({ billId, data: { taxPercent, tipPercent } });
+          return;
+        }
+        leaveScan();
       },
-      onError: () => {
-        Alert.alert("Error", "Failed to save items. Please try again.");
+      onError: (err) => {
+        Alert.alert("Error", apiErrorMessage(err, "Failed to save items. Please try again."));
       },
     },
   });
@@ -337,10 +511,10 @@ export default function ScanScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleConfirm}
-              disabled={bulkCreateMutation.isPending}
+              disabled={bulkCreateMutation.isPending || patchBillMutation.isPending}
               style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
             >
-              {bulkCreateMutation.isPending ? (
+              {bulkCreateMutation.isPending || patchBillMutation.isPending ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={styles.confirmBtnText}>Add {scan.items.filter(isCountedItem).length} Items</Text>
@@ -410,11 +584,12 @@ export default function ScanScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        // No KeyboardAvoidingView here: the list has no text inputs (editing
-        // happens in ReviewItemSheet, which handles the keyboard itself), and
-        // Android's "height" behavior could leave the screen permanently
-        // compressed after the keyboard hid.
-        <View style={styles.flex}>
+        // The tax and tip fields at the end of the list are the only inputs
+        // here (item editing happens in ReviewItemSheet, which handles its own
+        // keyboard). iOS gets "padding"; Android is left to its own resize,
+        // because "height" could leave the screen permanently compressed after
+        // the keyboard hid.
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <FlatList
           data={scan.items}
           keyExtractor={(_, i) => String(i)}
@@ -438,15 +613,50 @@ export default function ScanScreen() {
               )}
             </View>
           }
+          keyboardShouldPersistTaps="handled"
           ListFooterComponent={
-            <TouchableOpacity
-              onPress={handleAddItem}
-              activeOpacity={0.7}
-              style={[styles.addItemRow, { borderColor: colors.border }]}
-            >
-              <Feather name="plus" size={16} color={colors.primaryText} />
-              <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
-            </TouchableOpacity>
+            <View style={styles.reviewFooter}>
+              <TouchableOpacity
+                onPress={handleAddItem}
+                activeOpacity={0.7}
+                style={[styles.addItemRow, { borderColor: colors.border }]}
+              >
+                <Feather name="plus" size={16} color={colors.primaryText} />
+                <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
+              </TouchableOpacity>
+
+              <View style={[styles.taxTipCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.taxTipSubtotalRow}>
+                  <Text style={[styles.taxTipLabel, { color: colors.mutedForeground }]}>SUBTOTAL</Text>
+                  <Text style={[styles.taxTipComputed, { color: colors.foreground }]}>
+                    {formatMoney(selectedTotal, billData?.bill.currency)}
+                  </Text>
+                </View>
+                <TaxTipField
+                  label="Tax"
+                  mode={taxMode}
+                  onModeChange={changeTaxMode}
+                  value={taxInput}
+                  onValueChange={setTaxInput}
+                  computed={taxAmount}
+                  currency={billData?.bill.currency}
+                  colors={colors}
+                />
+                <TaxTipField
+                  label="Tip"
+                  mode={tipMode}
+                  onModeChange={changeTipMode}
+                  value={tipInput}
+                  onValueChange={setTipInput}
+                  computed={tipAmount}
+                  currency={billData?.bill.currency}
+                  colors={colors}
+                />
+                <Text style={[styles.taxTipHint, { color: colors.mutedForeground }]}>
+                  Saved with the items. You can change them on the bill later.
+                </Text>
+              </View>
+            </View>
           }
           renderItem={({ item, index }) => {
             const displayName = item.translatedDescription ?? item.description;
@@ -526,10 +736,10 @@ export default function ScanScreen() {
               { color: selectedCount === 0 ? colors.mutedForeground : colors.foreground },
             ]}
           >
-            {formatMoney(selectedTotal, billData?.bill.currency)}
+            {formatMoney(grandTotal, billData?.bill.currency)}
           </Text>
         </View>
-        </View>
+        </KeyboardAvoidingView>
       )}
 
       <LanguagePicker
@@ -653,6 +863,27 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   addItemText: { fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
+  reviewFooter: { gap: SPACING.md },
+  taxTipCard: { borderWidth: 1, borderRadius: RADIUS.md, padding: SPACING.md, gap: SPACING.md },
+  taxTipSubtotalRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  taxTipField: { gap: SPACING.xs },
+  taxTipHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  taxTipLabel: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", letterSpacing: 1.0 },
+  taxTipInputRow: { flexDirection: "row", alignItems: "center", gap: SPACING.md },
+  taxTipInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: FONT_SIZE.body,
+    fontFamily: "Inter_400Regular",
+  },
+  taxTipComputed: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium", minWidth: 88, textAlign: "right" },
+  taxTipHint: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  modeSwitch: { flexDirection: "row", borderWidth: 1, borderRadius: RADIUS.sm, overflow: "hidden" },
+  modeOption: { paddingHorizontal: 12, paddingVertical: 5, alignItems: "center", justifyContent: "center" },
+  modeOptionText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
 
   summaryBar: {
     flexDirection: "row",
