@@ -71,6 +71,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gone — registration is handled by Clerk. The server answers every request to this route with 410.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /auth/password:
     put:
@@ -104,6 +110,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error, or Clerk could not verify the current password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Clerk rejected the password update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /auth/login:
     post:
@@ -125,6 +143,12 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Gone — login is handled by Clerk. The server answers every request to this route with 410.
           content:
             application/json:
               schema:
@@ -198,6 +222,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Bill"
+        "400":
+          description: title and date are required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/join:
     post:
@@ -221,6 +251,12 @@ paths:
                 $ref: "#/components/schemas/Bill"
         "404":
           description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: joinCode is required
           content:
             application/json:
               schema:
@@ -354,6 +390,18 @@ paths:
       responses:
         "204":
           description: No content
+        "403":
+          description: Not the bill owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/{billId}/lines:
     get:
@@ -398,6 +446,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillLine"
+        "400":
+          description: description is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/{billId}/lines/bulk:
     post:
@@ -432,6 +486,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BillLine"
+        "400":
+          description: lines array is required and must not be empty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/{billId}/lines/{lineId}:
     put:
@@ -462,6 +522,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillLine"
+        "404":
+          description: Line not found on this bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteBillLine
       tags: [bill-lines]
@@ -520,6 +586,18 @@ paths:
                     type: boolean
                 required:
                   - assigned
+        "400":
+          description: billUserId is missing, or does not belong to this bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Line not found on this bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /bills/{billId}/users:
     get:
@@ -661,6 +739,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillTotals"
+        "404":
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /ocr:
     post:
@@ -688,6 +772,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OcrResult"
+        "400":
+          description: imageBase64 is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: OCR failed
           content:
@@ -713,6 +803,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OcrTranslateResponse"
+        "400":
+          description: descriptions array and targetLanguage are required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Translation failed
           content:
@@ -768,6 +864,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Circle"
+        "400":
+          description: name is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /circles/{id}:
     patch:
@@ -795,8 +897,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Circle"
+        "400":
+          description: Invalid circle id, or name missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Not found
+          description: Circle not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteCircle
       tags: [circles]
@@ -812,8 +924,18 @@ paths:
       responses:
         "204":
           description: Deleted
+        "400":
+          description: Invalid circle id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Not found
+          description: Circle not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /circles/{id}/members:
     post:
@@ -941,8 +1063,18 @@ paths:
       responses:
         "204":
           description: Deleted
+        "400":
+          description: Invalid circle id or member id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Not found
+          description: Circle not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   securitySchemes:

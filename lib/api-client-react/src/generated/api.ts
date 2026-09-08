@@ -559,7 +559,7 @@ export const createBill = async (
 };
 
 export const getCreateBillMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -600,13 +600,13 @@ export type CreateBillMutationResult = NonNullable<
   Awaited<ReturnType<typeof createBill>>
 >;
 export type CreateBillMutationBody = BodyType<CreateBillRequest>;
-export type CreateBillMutationError = ErrorType<unknown>;
+export type CreateBillMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Create a new bill
  */
 export const useCreateBill = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1067,7 +1067,7 @@ export const deleteBill = async (
 };
 
 export const getDeleteBillMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1108,13 +1108,13 @@ export type DeleteBillMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteBill>>
 >;
 
-export type DeleteBillMutationError = ErrorType<unknown>;
+export type DeleteBillMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Delete a bill
  */
 export const useDeleteBill = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1241,7 +1241,7 @@ export const createBillLine = async (
 };
 
 export const getCreateBillLineMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1282,13 +1282,13 @@ export type CreateBillLineMutationResult = NonNullable<
   Awaited<ReturnType<typeof createBillLine>>
 >;
 export type CreateBillLineMutationBody = BodyType<CreateBillLineRequest>;
-export type CreateBillLineMutationError = ErrorType<unknown>;
+export type CreateBillLineMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Add a line item
  */
 export const useCreateBillLine = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1328,7 +1328,7 @@ export const bulkCreateBillLines = async (
 };
 
 export const getBulkCreateBillLinesMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1369,13 +1369,13 @@ export type BulkCreateBillLinesMutationResult = NonNullable<
   Awaited<ReturnType<typeof bulkCreateBillLines>>
 >;
 export type BulkCreateBillLinesMutationBody = BodyType<BulkCreateBillLinesBody>;
-export type BulkCreateBillLinesMutationError = ErrorType<unknown>;
+export type BulkCreateBillLinesMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Bulk create line items (from OCR)
  */
 export const useBulkCreateBillLines = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1416,7 +1416,7 @@ export const updateBillLine = async (
 };
 
 export const getUpdateBillLineMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1457,13 +1457,13 @@ export type UpdateBillLineMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateBillLine>>
 >;
 export type UpdateBillLineMutationBody = BodyType<CreateBillLineRequest>;
-export type UpdateBillLineMutationError = ErrorType<unknown>;
+export type UpdateBillLineMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Update a line item
  */
 export const useUpdateBillLine = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1592,7 +1592,7 @@ export const toggleBillLineUser = async (
 };
 
 export const getToggleBillLineUserMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1633,13 +1633,13 @@ export type ToggleBillLineUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof toggleBillLineUser>>
 >;
 export type ToggleBillLineUserMutationBody = BodyType<ToggleBillLineUserBody>;
-export type ToggleBillLineUserMutationError = ErrorType<unknown>;
+export type ToggleBillLineUserMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Assign or unassign a bill user to a line item
  */
 export const useToggleBillLineUser = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2028,7 +2028,7 @@ export const getGetBillTotalsQueryKey = (billId: number) => {
 
 export const getGetBillTotalsQueryOptions = <
   TData = Awaited<ReturnType<typeof getBillTotals>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
 >(
   billId: number,
   options?: {
@@ -2063,7 +2063,7 @@ export const getGetBillTotalsQueryOptions = <
 export type GetBillTotalsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getBillTotals>>
 >;
-export type GetBillTotalsQueryError = ErrorType<unknown>;
+export type GetBillTotalsQueryError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Get per-person totals
@@ -2071,7 +2071,7 @@ export type GetBillTotalsQueryError = ErrorType<unknown>;
 
 export function useGetBillTotals<
   TData = Awaited<ReturnType<typeof getBillTotals>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
 >(
   billId: number,
   options?: {
@@ -2432,7 +2432,7 @@ export const createCircle = async (
 };
 
 export const getCreateCircleMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2473,13 +2473,13 @@ export type CreateCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof createCircle>>
 >;
 export type CreateCircleMutationBody = BodyType<CreateCircleRequest>;
-export type CreateCircleMutationError = ErrorType<unknown>;
+export type CreateCircleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Create a new circle
  */
 export const useCreateCircle = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2519,7 +2519,7 @@ export const updateCircle = async (
 };
 
 export const getUpdateCircleMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2560,13 +2560,13 @@ export type UpdateCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateCircle>>
 >;
 export type UpdateCircleMutationBody = BodyType<UpdateCircleRequest>;
-export type UpdateCircleMutationError = ErrorType<void>;
+export type UpdateCircleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Rename a circle
  */
 export const useUpdateCircle = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2603,7 +2603,7 @@ export const deleteCircle = async (
 };
 
 export const getDeleteCircleMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2644,13 +2644,13 @@ export type DeleteCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteCircle>>
 >;
 
-export type DeleteCircleMutationError = ErrorType<void>;
+export type DeleteCircleMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Delete a circle
  */
 export const useDeleteCircle = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2864,7 +2864,7 @@ export const removeCircleMember = async (
 };
 
 export const getRemoveCircleMemberMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2905,13 +2905,13 @@ export type RemoveCircleMemberMutationResult = NonNullable<
   Awaited<ReturnType<typeof removeCircleMember>>
 >;
 
-export type RemoveCircleMemberMutationError = ErrorType<void>;
+export type RemoveCircleMemberMutationError = ErrorType<ErrorResponse>;
 
 /**
  * @summary Remove a member from a circle
  */
 export const useRemoveCircleMember = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
