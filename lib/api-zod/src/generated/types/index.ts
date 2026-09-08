@@ -31,6 +31,7 @@ export * from "./forgotPasswordError";
 export * from "./forgotPasswordErrorCode";
 export * from "./forgotPasswordRequest";
 export * from "./getGuestBillsParams";
+export * from "./getReceiptImageParams";
 export * from "./healthStatus";
 export * from "./joinBillRequest";
 export * from "./loginRequest";

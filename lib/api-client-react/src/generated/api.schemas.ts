@@ -359,6 +359,13 @@ export type ToggleBillLineUser200 = {
   assigned: boolean;
 };
 
+export type GetReceiptImageParams = {
+  /**
+   * The bill's join code. This is how a caller who is not the owner authorizes the request, and is what the app sends, because an <Image> tag cannot set the X-Join-Code header. Omit it only when the bill is a guest bill or the caller owns or belongs to it.
+   */
+  joinCode?: string;
+};
+
 export type OcrReceiptBody = {
   /** Base64-encoded image */
   imageBase64: string;

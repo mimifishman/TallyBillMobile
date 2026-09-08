@@ -40,6 +40,7 @@ import type {
   ForgotPasswordError,
   ForgotPasswordRequest,
   GetGuestBillsParams,
+  GetReceiptImageParams,
   HealthStatus,
   JoinBillRequest,
   LoginRequest,
@@ -2707,6 +2708,8 @@ export function useGetBillTotals<
 
 /**
  * The client PUTs the image straight to uploadURL, then saves the returned objectPath onto the bill via PATCH /bills/{billId}.
+
+No bearerAuth: this route sits behind requireBillAccess alone, so a signed-out client scanning a guest bill reaches it with no token. A caller who is neither owner nor member authorizes with the bill's join code, sent as the X-Join-Code header or a joinCode query param.
  * @summary Get a short-lived URL for uploading this bill's receipt photo
  */
 export const getRequestReceiptUploadUrlUrl = (billId: number) => {
@@ -2794,18 +2797,37 @@ export const useRequestReceiptUploadUrl = <
  * The server answers 302 with a signed, one-hour Location URL rather than the bytes themselves. Because every HTTP client follows that redirect, the response described here as 200 is what a caller actually receives: the image. Only the object currently saved as the bill's receiptImagePath is served; anything else is 404.
 
 The 200 is written out rather than the raw 302 on purpose. A 3xx with no declared body makes the generator fold a bare `void` into this operation's error union, which tells callers nothing and hides the real ErrorResponse behind it.
+
+No bearerAuth: the app renders this URL in an <Image> tag, which cannot attach an Authorization header. Access comes from requireBillAccess, which admits the request when the bill is a guest bill, when joinCode matches, or when a signed-in caller owns or belongs to the bill.
  * @summary Fetch this bill's receipt photo
  */
-export const getGetReceiptImageUrl = (billId: number, objectId: string) => {
-  return `/api/bills/${billId}/storage/objects/uploads/${objectId}`;
+export const getGetReceiptImageUrl = (
+  billId: number,
+  objectId: string,
+  params?: GetReceiptImageParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/bills/${billId}/storage/objects/uploads/${objectId}?${stringifiedParams}`
+    : `/api/bills/${billId}/storage/objects/uploads/${objectId}`;
 };
 
 export const getReceiptImage = async (
   billId: number,
   objectId: string,
+  params?: GetReceiptImageParams,
   options?: RequestInit,
 ): Promise<Blob> => {
-  return customFetch<Blob>(getGetReceiptImageUrl(billId, objectId), {
+  return customFetch<Blob>(getGetReceiptImageUrl(billId, objectId, params), {
     ...options,
     method: "GET",
   });
@@ -2814,8 +2836,12 @@ export const getReceiptImage = async (
 export const getGetReceiptImageQueryKey = (
   billId: number,
   objectId: string,
+  params?: GetReceiptImageParams,
 ) => {
-  return [`/api/bills/${billId}/storage/objects/uploads/${objectId}`] as const;
+  return [
+    `/api/bills/${billId}/storage/objects/uploads/${objectId}`,
+    ...(params ? [params] : []),
+  ] as const;
 };
 
 export const getGetReceiptImageQueryOptions = <
@@ -2824,6 +2850,7 @@ export const getGetReceiptImageQueryOptions = <
 >(
   billId: number,
   objectId: string,
+  params?: GetReceiptImageParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getReceiptImage>>,
@@ -2836,11 +2863,13 @@ export const getGetReceiptImageQueryOptions = <
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey =
-    queryOptions?.queryKey ?? getGetReceiptImageQueryKey(billId, objectId);
+    queryOptions?.queryKey ??
+    getGetReceiptImageQueryKey(billId, objectId, params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getReceiptImage>>> = ({
     signal,
-  }) => getReceiptImage(billId, objectId, { signal, ...requestOptions });
+  }) =>
+    getReceiptImage(billId, objectId, params, { signal, ...requestOptions });
 
   return {
     queryKey,
@@ -2869,6 +2898,7 @@ export function useGetReceiptImage<
 >(
   billId: number,
   objectId: string,
+  params?: GetReceiptImageParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getReceiptImage>>,
@@ -2881,6 +2911,7 @@ export function useGetReceiptImage<
   const queryOptions = getGetReceiptImageQueryOptions(
     billId,
     objectId,
+    params,
     options,
   );
 

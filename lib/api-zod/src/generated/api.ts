@@ -828,6 +828,8 @@ export const GetBillTotalsResponse = zod.object({
 
 /**
  * The client PUTs the image straight to uploadURL, then saves the returned objectPath onto the bill via PATCH /bills/{billId}.
+
+No bearerAuth: this route sits behind requireBillAccess alone, so a signed-out client scanning a guest bill reaches it with no token. A caller who is neither owner nor member authorizes with the bill's join code, sent as the X-Join-Code header or a joinCode query param.
  * @summary Get a short-lived URL for uploading this bill's receipt photo
  */
 export const RequestReceiptUploadUrlParams = zod.object({
@@ -845,11 +847,22 @@ export const RequestReceiptUploadUrlResponse = zod.object({
  * The server answers 302 with a signed, one-hour Location URL rather than the bytes themselves. Because every HTTP client follows that redirect, the response described here as 200 is what a caller actually receives: the image. Only the object currently saved as the bill's receiptImagePath is served; anything else is 404.
 
 The 200 is written out rather than the raw 302 on purpose. A 3xx with no declared body makes the generator fold a bare `void` into this operation's error union, which tells callers nothing and hides the real ErrorResponse behind it.
+
+No bearerAuth: the app renders this URL in an <Image> tag, which cannot attach an Authorization header. Access comes from requireBillAccess, which admits the request when the bill is a guest bill, when joinCode matches, or when a signed-in caller owns or belongs to the bill.
  * @summary Fetch this bill's receipt photo
  */
 export const GetReceiptImageParams = zod.object({
   billId: zod.coerce.number(),
   objectId: zod.coerce.string(),
+});
+
+export const GetReceiptImageQueryParams = zod.object({
+  joinCode: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "The bill's join code. This is how a caller who is not the owner authorizes the request, and is what the app sends, because an <Image> tag cannot set the X-Join-Code header. Omit it only when the bill is a guest bill or the caller owns or belongs to it.",
+    ),
 });
 
 /**

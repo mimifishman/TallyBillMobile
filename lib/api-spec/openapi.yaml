@@ -627,8 +627,16 @@ paths:
       responses:
         "204":
           description: Left the bill
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: The owner cannot leave their own bill — delete it instead
+          description: >-
+            Either the caller has no access to this bill, or they own it —
+            an owner deletes their bill rather than leaving it
           content:
             application/json:
               schema:
@@ -991,8 +999,12 @@ paths:
       description: >-
         The client PUTs the image straight to uploadURL, then saves the
         returned objectPath onto the bill via PATCH /bills/{billId}.
-      security:
-        - bearerAuth: []
+
+
+        No bearerAuth: this route sits behind requireBillAccess alone, so a
+        signed-out client scanning a guest bill reaches it with no token. A
+        caller who is neither owner nor member authorizes with the bill's
+        join code, sent as the X-Join-Code header or a joinCode query param.
       parameters:
         - name: billId
           in: path
@@ -1008,6 +1020,12 @@ paths:
                 $ref: "#/components/schemas/UploadUrlResponse"
         "403":
           description: No access to this bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Bill not found
           content:
             application/json:
               schema:
@@ -1036,8 +1054,12 @@ paths:
         no declared body makes the generator fold a bare `void` into this
         operation's error union, which tells callers nothing and hides the real
         ErrorResponse behind it.
-      security:
-        - bearerAuth: []
+
+
+        No bearerAuth: the app renders this URL in an <Image> tag, which cannot
+        attach an Authorization header. Access comes from requireBillAccess,
+        which admits the request when the bill is a guest bill, when joinCode
+        matches, or when a signed-in caller owns or belongs to the bill.
       parameters:
         - name: billId
           in: path
@@ -1047,6 +1069,16 @@ paths:
         - name: objectId
           in: path
           required: true
+          schema:
+            type: string
+        - name: joinCode
+          in: query
+          required: false
+          description: >-
+            The bill's join code. This is how a caller who is not the owner
+            authorizes the request, and is what the app sends, because an
+            <Image> tag cannot set the X-Join-Code header. Omit it only when
+            the bill is a guest bill or the caller owns or belongs to it.
           schema:
             type: string
       responses:
