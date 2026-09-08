@@ -9,5 +9,8 @@
 export interface CreateBillMemberRequest {
   name: string;
   color: string;
+  /** Link by account id, when the caller already knows it */
   linkedUserId?: number | null;
+  /** Link by email instead. The address must belong to an existing TallyBill account, or the answer is 422. */
+  linkedEmail?: string;
 }

@@ -92,11 +92,10 @@ export default function NewBillScreen() {
         title: title.trim(),
         date,
         currency: currency || null,
-        // Required by CreateBillRequest, and a bill genuinely starts with
-        // neither. They are asked for later, where the subtotal they apply to
-        // can be seen: on the scan review screen, or from the bill's summary.
-        taxPercent: 0,
-        tipPercent: 0,
+        // Tax and tip are left out: a bill starts with neither, and the
+        // server defaults both to 0. They are asked for later, where the
+        // subtotal they apply to can be seen — on the scan review screen,
+        // or from the bill's summary.
         ...(!user && guestOwnerId ? { guestOwnerId } : {}),
       },
     });

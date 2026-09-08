@@ -10,4 +10,6 @@ export interface UpdateBillMemberRequest {
   name?: string;
   color?: string;
   tipPercentOverride?: number | null;
+  /** Link this participant to the account with this address. null or an empty string unlinks them, keeping their name and their share. An address with no TallyBill account behind it answers 422. */
+  linkedEmail?: string | null;
 }

@@ -159,6 +159,10 @@ export interface BillMember {
   name: string;
   color: string;
   tipPercentOverride?: number | null;
+  /** The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive. */
+  linkedUserId?: number | null;
+  /** Email of the linked account. Returned by getBill only; the other member endpoints leave it absent. */
+  linkedUserEmail?: string | null;
   createdAt: string;
 }
 
@@ -209,13 +213,18 @@ export interface JoinBillRequest {
 export interface CreateBillMemberRequest {
   name: string;
   color: string;
+  /** Link by account id, when the caller already knows it */
   linkedUserId?: number | null;
+  /** Link by email instead. The address must belong to an existing TallyBill account, or the answer is 422. */
+  linkedEmail?: string;
 }
 
 export interface UpdateBillMemberRequest {
   name?: string;
   color?: string;
   tipPercentOverride?: number | null;
+  /** Link this participant to the account with this address. null or an empty string unlinks them, keeping their name and their share. An address with no TallyBill account behind it answers 422. */
+  linkedEmail?: string | null;
 }
 
 export interface CreateBillLineRequest {

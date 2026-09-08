@@ -12,5 +12,9 @@ export interface BillMember {
   name: string;
   color: string;
   tipPercentOverride?: number | null;
+  /** The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive. */
+  linkedUserId?: number | null;
+  /** Email of the linked account. Returned by getBill only; the other member endpoints leave it absent. */
+  linkedUserEmail?: string | null;
   createdAt: Date;
 }

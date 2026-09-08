@@ -359,6 +359,18 @@ export const GetBillByCodeResponse = zod.object({
       name: zod.string(),
       color: zod.string(),
       tipPercentOverride: zod.number().nullish(),
+      linkedUserId: zod
+        .number()
+        .nullish()
+        .describe(
+          "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+        ),
+      linkedUserEmail: zod
+        .string()
+        .nullish()
+        .describe(
+          "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -441,6 +453,18 @@ export const GetBillResponse = zod.object({
       name: zod.string(),
       color: zod.string(),
       tipPercentOverride: zod.number().nullish(),
+      linkedUserId: zod
+        .number()
+        .nullish()
+        .describe(
+          "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+        ),
+      linkedUserEmail: zod
+        .string()
+        .nullish()
+        .describe(
+          "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -727,6 +751,18 @@ export const GetBillUsersResponseItem = zod.object({
   name: zod.string(),
   color: zod.string(),
   tipPercentOverride: zod.number().nullish(),
+  linkedUserId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+    ),
+  linkedUserEmail: zod
+    .string()
+    .nullish()
+    .describe(
+      "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const GetBillUsersResponse = zod.array(GetBillUsersResponseItem);
@@ -741,7 +777,16 @@ export const CreateBillUserParams = zod.object({
 export const CreateBillUserBody = zod.object({
   name: zod.string(),
   color: zod.string(),
-  linkedUserId: zod.number().nullish(),
+  linkedUserId: zod
+    .number()
+    .nullish()
+    .describe("Link by account id, when the caller already knows it"),
+  linkedEmail: zod
+    .string()
+    .optional()
+    .describe(
+      "Link by email instead. The address must belong to an existing TallyBill account, or the answer is 422.",
+    ),
 });
 
 /**
@@ -756,6 +801,12 @@ export const UpdateBillUserBody = zod.object({
   name: zod.string().optional(),
   color: zod.string().optional(),
   tipPercentOverride: zod.number().nullish(),
+  linkedEmail: zod
+    .string()
+    .nullish()
+    .describe(
+      "Link this participant to the account with this address. null or an empty string unlinks them, keeping their name and their share. An address with no TallyBill account behind it answers 422.",
+    ),
 });
 
 export const UpdateBillUserResponse = zod.object({
@@ -764,6 +815,18 @@ export const UpdateBillUserResponse = zod.object({
   name: zod.string(),
   color: zod.string(),
   tipPercentOverride: zod.number().nullish(),
+  linkedUserId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The TallyBill account this participant is linked to, if any. Cleared to null when that account is deleted, so the name and the split survive.",
+    ),
+  linkedUserEmail: zod
+    .string()
+    .nullish()
+    .describe(
+      "Email of the linked account. Returned by getBill only; the other member endpoints leave it absent.",
+    ),
   createdAt: zod.coerce.date(),
 });
 

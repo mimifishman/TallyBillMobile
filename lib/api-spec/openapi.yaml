@@ -1844,6 +1844,19 @@ components:
         tipPercentOverride:
           type: number
           nullable: true
+        linkedUserId:
+          type: integer
+          nullable: true
+          description: >-
+            The TallyBill account this participant is linked to, if any.
+            Cleared to null when that account is deleted, so the name and
+            the split survive.
+        linkedUserEmail:
+          type: string
+          nullable: true
+          description: >-
+            Email of the linked account. Returned by getBill only; the other
+            member endpoints leave it absent.
         createdAt:
           type: string
           format: date-time
@@ -1864,6 +1877,12 @@ components:
         linkedUserId:
           type: integer
           nullable: true
+          description: Link by account id, when the caller already knows it
+        linkedEmail:
+          type: string
+          description: >-
+            Link by email instead. The address must belong to an existing
+            TallyBill account, or the answer is 422.
       required:
         - name
         - color
@@ -1878,6 +1897,13 @@ components:
         tipPercentOverride:
           type: number
           nullable: true
+        linkedEmail:
+          type: string
+          nullable: true
+          description: >-
+            Link this participant to the account with this address. null or
+            an empty string unlinks them, keeping their name and their share.
+            An address with no TallyBill account behind it answers 422.
 
     BillLine:
       type: object
