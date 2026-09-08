@@ -33,6 +33,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { Skeleton } from "@/components/Skeleton";
 import { Confetti } from "@/components/Confetti";
 import { FONT_SIZE, RADIUS, SHADOWS, SPACING } from "@/constants/styles";
+import { useAuth } from "@/context/AuthContext";
 import {
   useGetBillTotals,
   useGetBill,
@@ -67,7 +68,13 @@ export default function TotalsScreen() {
     }, [billId, queryClient])
   );
 
-  const { data: billData } = useGetBill(billId, { query: { queryKey: getGetBillQueryKey(billId) } });
+  const { isAuthReady } = useAuth();
+  // Shares the bill cache key with the detail screen, so it must not be
+  // allowed to fill that cache with an unauthenticated (permission-less)
+  // response when this screen is the cold-start entry point.
+  const { data: billData } = useGetBill(billId, {
+    query: { queryKey: getGetBillQueryKey(billId), enabled: isAuthReady },
+  });
   const { data: totals, isLoading } = useGetBillTotals(billId, { query: { queryKey: getGetBillTotalsQueryKey(billId) } });
 
   const updateUserMutation = useUpdateBillUser({
