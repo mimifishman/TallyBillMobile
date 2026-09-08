@@ -41,7 +41,7 @@ export function extractErrorCode(err: unknown): string {
  * Logs an OAuth/Clerk error with its full code, message, and error list so
  * failures are diagnosable from console output (not just "[object Object]").
  */
-export function logOAuthError(context: string, err: unknown): void {
+export function logClerkError(context: string, err: unknown): void {
   let details: string;
   try {
     const e = err as { name?: string; message?: string; status?: number; stack?: string };
