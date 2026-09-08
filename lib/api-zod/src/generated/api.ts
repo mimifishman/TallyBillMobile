@@ -58,6 +58,78 @@ export const LoginResponse = zod.object({
 });
 
 /**
+ * Always answers 200 for an address that is not registered, so the response cannot be used to discover which emails have accounts.
+ * @summary Email a password reset code
+ */
+export const ForgotPasswordBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const ForgotPasswordResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Set a new password using the emailed reset code
+ */
+export const resetPasswordBodyNewPasswordMin = 8;
+
+export const ResetPasswordBody = zod.object({
+  email: zod.string().email(),
+  code: zod
+    .string()
+    .describe("The six-digit code emailed by \/auth\/forgot-password"),
+  newPassword: zod.string().min(resetPasswordBodyNewPasswordMin),
+});
+
+export const ResetPasswordResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Get the signed-in user's profile
+ */
+export const GetCurrentUserResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  firstName: zod.string().nullable(),
+  lastName: zod.string().nullable(),
+  displayName: zod.string(),
+});
+
+/**
+ * Sending only one of firstName or lastName leaves the other unchanged. displayName is recomputed from both names by the server.
+ * @summary Update the signed-in user's name
+ */
+export const UpdateCurrentUserBody = zod
+  .object({
+    firstName: zod.string().optional(),
+    lastName: zod.string().optional(),
+  })
+  .describe(
+    "Supply at least one field. An empty or blank string clears that name.",
+  );
+
+export const UpdateCurrentUserResponse = zod.object({
+  firstName: zod.string().nullable(),
+  lastName: zod.string().nullable(),
+  displayName: zod.string().nullable(),
+});
+
+/**
+ * @summary Move bills made while signed out onto the signed-in account
+ */
+export const ClaimGuestBillsBody = zod.object({
+  guestOwnerId: zod
+    .string()
+    .describe("The guest id the bills were created under"),
+});
+
+export const ClaimGuestBillsResponse = zod.object({
+  claimed: zod.number().describe("How many bills moved onto the account"),
+});
+
+/**
  * @summary Get user's bills
  */
 export const GetBillsResponseItem = zod.object({
@@ -109,6 +181,60 @@ export const CreateBillBody = zod.object({
   taxPercent: zod.number(),
   tipPercent: zod.number(),
 });
+
+/**
+ * No auth: a signed-out client keeps its own bill ids on the device and passes them back. Returns an empty array when ids is missing or holds no numbers. isOwner is true only for bills whose guestOwnerId matches the one supplied.
+ * @summary Look up bills made while signed out, by id
+ */
+export const GetGuestBillsQueryParams = zod.object({
+  ids: zod.coerce
+    .string()
+    .optional()
+    .describe('Comma-separated bill ids, e.g. \"12,15,18\"'),
+  guestOwnerId: zod.coerce
+    .string()
+    .optional()
+    .describe("The device's guest id, used to work out isOwner"),
+});
+
+export const GetGuestBillsResponseItem = zod.object({
+  id: zod.number(),
+  ownerUserId: zod.number().nullish(),
+  title: zod.string(),
+  date: zod.string(),
+  currency: zod.string().nullish(),
+  taxPercent: zod.number(),
+  tipPercent: zod.number(),
+  joinCode: zod.string(),
+  createdAt: zod.coerce.date(),
+  receiptImagePath: zod
+    .string()
+    .nullish()
+    .describe("Object storage path of the scanned receipt image"),
+  settled: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when every line item on the bill has been assigned to at least one person",
+    ),
+  isOwner: zod
+    .boolean()
+    .optional()
+    .describe("True when the authenticated user is the owner of this bill"),
+  users: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        color: zod.string(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Lightweight participant summary for list rendering (id, name, color)",
+    ),
+});
+export const GetGuestBillsResponse = zod.array(GetGuestBillsResponseItem);
 
 /**
  * @summary Join a bill by code
@@ -437,6 +563,14 @@ export const DeleteBillParams = zod.object({
 });
 
 /**
+ * Removes only the caller's access row. The bill, its lines and its participant names are untouched. An owner cannot leave their own bill.
+ * @summary Give up your own access to a bill someone else owns
+ */
+export const LeaveBillParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+/**
  * @summary Get bill line items
  */
 export const GetBillLinesParams = zod.object({
@@ -690,6 +824,32 @@ export const GetBillTotalsResponse = zod.object({
       }),
     )
     .describe("Line items that have not been assigned to anyone"),
+});
+
+/**
+ * The client PUTs the image straight to uploadURL, then saves the returned objectPath onto the bill via PATCH /bills/{billId}.
+ * @summary Get a short-lived URL for uploading this bill's receipt photo
+ */
+export const RequestReceiptUploadUrlParams = zod.object({
+  billId: zod.coerce.number(),
+});
+
+export const RequestReceiptUploadUrlResponse = zod.object({
+  uploadURL: zod.string().describe("Short-lived URL to PUT the image to"),
+  objectPath: zod
+    .string()
+    .describe("Path to save as the bill's receiptImagePath"),
+});
+
+/**
+ * The server answers 302 with a signed, one-hour Location URL rather than the bytes themselves. Because every HTTP client follows that redirect, the response described here as 200 is what a caller actually receives: the image. Only the object currently saved as the bill's receiptImagePath is served; anything else is 404.
+
+The 200 is written out rather than the raw 302 on purpose. A 3xx with no declared body makes the generator fold a bare `void` into this operation's error union, which tells callers nothing and hides the real ErrorResponse behind it.
+ * @summary Fetch this bill's receipt photo
+ */
+export const GetReceiptImageParams = zod.object({
+  billId: zod.coerce.number(),
+  objectId: zod.coerce.string(),
 });
 
 /**

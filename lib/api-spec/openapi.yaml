@@ -154,7 +154,137 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Email a password reset code
+      description: >-
+        Always answers 200 for an address that is not registered, so the
+        response cannot be used to discover which emails have accounts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "200":
+          description: A reset code was sent, or the email is not registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Email missing, or the account signs in through Google or Apple
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForgotPasswordError"
+        "500":
+          description: The reset code could not be sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Set a new password using the emailed reset code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Missing field, password too short, or the code is wrong or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /me:
+    get:
+      operationId: getCurrentUser
+      tags: [account]
+      summary: Get the signed-in user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCurrentUser
+      tags: [account]
+      summary: Update the signed-in user's name
+      description: >-
+        Sending only one of firstName or lastName leaves the other unchanged.
+        displayName is recomputed from both names by the server.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCurrentUserRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdatedProfile"
+        "400":
+          description: Neither firstName nor lastName was supplied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteAccount
       tags: [account]
@@ -180,6 +310,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /me/claim-guest-bills:
+    post:
+      operationId: claimGuestBills
+      tags: [account]
+      summary: Move bills made while signed out onto the signed-in account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimGuestBillsRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimGuestBillsResponse"
+        "400":
+          description: guestOwnerId is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # GET /me/events and GET /bills/{billId}/events are deliberately absent.
+  # Both are text/event-stream endpoints that stay open and push updates for
+  # as long as the client is connected. A generated react-query hook would
+  # issue one request, wait for an end that never comes, and hand back the
+  # accumulated bytes as a single string — so declaring them would produce a
+  # client that no caller should use. The app reads both with XHR/EventSource
+  # instead: see artifacts/mobile/app/(tabs)/bills.tsx and
+  # artifacts/mobile/app/bill/[id]/index.tsx.
 
   /bills:
     get:
@@ -228,6 +400,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /bills/guest:
+    get:
+      operationId: getGuestBills
+      tags: [bills]
+      summary: Look up bills made while signed out, by id
+      description: >-
+        No auth: a signed-out client keeps its own bill ids on the device and
+        passes them back. Returns an empty array when ids is missing or holds
+        no numbers. isOwner is true only for bills whose guestOwnerId matches
+        the one supplied.
+      parameters:
+        - name: ids
+          in: query
+          required: false
+          description: Comma-separated bill ids, e.g. "12,15,18"
+          schema:
+            type: string
+        - name: guestOwnerId
+          in: query
+          required: false
+          description: The device's guest id, used to work out isOwner
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bill"
 
   /bills/join:
     post:
@@ -392,6 +597,38 @@ paths:
           description: No content
         "403":
           description: Not the bill owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bills/{billId}/leave:
+    delete:
+      operationId: leaveBill
+      tags: [bills]
+      summary: Give up your own access to a bill someone else owns
+      description: >-
+        Removes only the caller's access row. The bill, its lines and its
+        participant names are untouched. An owner cannot leave their own bill.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Left the bill
+        "403":
+          description: The owner cannot leave their own bill — delete it instead
           content:
             application/json:
               schema:
@@ -741,6 +978,99 @@ paths:
                 $ref: "#/components/schemas/BillTotals"
         "404":
           description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bills/{billId}/storage/uploads/request-url:
+    post:
+      operationId: requestReceiptUploadUrl
+      tags: [bills]
+      summary: Get a short-lived URL for uploading this bill's receipt photo
+      description: >-
+        The client PUTs the image straight to uploadURL, then saves the
+        returned objectPath onto the bill via PATCH /bills/{billId}.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "403":
+          description: No access to this bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The upload URL could not be generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bills/{billId}/storage/objects/uploads/{objectId}:
+    get:
+      operationId: getReceiptImage
+      tags: [bills]
+      summary: Fetch this bill's receipt photo
+      description: >-
+        The server answers 302 with a signed, one-hour Location URL rather than
+        the bytes themselves. Because every HTTP client follows that redirect,
+        the response described here as 200 is what a caller actually receives:
+        the image. Only the object currently saved as the bill's
+        receiptImagePath is served; anything else is 404.
+
+
+        The 200 is written out rather than the raw 302 on purpose. A 3xx with
+        no declared body makes the generator fold a bare `void` into this
+        operation's error union, which tells callers nothing and hides the real
+        ErrorResponse behind it.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: objectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The receipt image, after following the 302 redirect
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: No access to this bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: This object is not this bill's receipt image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The image could not be served
           content:
             application/json:
               schema:
@@ -1099,6 +1429,127 @@ components:
           type: string
       required:
         - error
+
+    ForgotPasswordError:
+      type: object
+      description: >-
+        An ErrorResponse that may carry a machine-readable code. The only code
+        currently sent is OAUTH_ACCOUNT, meaning the account signs in through
+        Google or Apple and so has no password to reset.
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [OAUTH_ACCOUNT]
+      required:
+        - error
+
+    ForgotPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          description: The six-digit code emailed by /auth/forgot-password
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - email
+        - code
+        - newPassword
+
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - displayName
+
+    UpdateCurrentUserRequest:
+      type: object
+      description: >-
+        Supply at least one field. An empty or blank string clears that name.
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    UpdatedProfile:
+      type: object
+      properties:
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+      required:
+        - firstName
+        - lastName
+        - displayName
+
+    ClaimGuestBillsRequest:
+      type: object
+      properties:
+        guestOwnerId:
+          type: string
+          description: The guest id the bills were created under
+      required:
+        - guestOwnerId
+
+    ClaimGuestBillsResponse:
+      type: object
+      properties:
+        claimed:
+          type: integer
+          description: How many bills moved onto the account
+      required:
+        - claimed
+
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          description: Short-lived URL to PUT the image to
+        objectPath:
+          type: string
+          description: Path to save as the bill's receiptImagePath
+      required:
+        - uploadURL
+        - objectPath
 
     RegisterRequest:
       type: object

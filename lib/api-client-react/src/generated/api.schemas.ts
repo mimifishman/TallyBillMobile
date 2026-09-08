@@ -13,6 +13,72 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type ForgotPasswordErrorCode =
+  (typeof ForgotPasswordErrorCode)[keyof typeof ForgotPasswordErrorCode];
+
+export const ForgotPasswordErrorCode = {
+  OAUTH_ACCOUNT: "OAUTH_ACCOUNT",
+} as const;
+
+/**
+ * An ErrorResponse that may carry a machine-readable code. The only code currently sent is OAUTH_ACCOUNT, meaning the account signs in through Google or Apple and so has no password to reset.
+ */
+export interface ForgotPasswordError {
+  error: string;
+  code?: ForgotPasswordErrorCode;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  /** The six-digit code emailed by /auth/forgot-password */
+  code: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
+export interface CurrentUser {
+  id: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string;
+}
+
+/**
+ * Supply at least one field. An empty or blank string clears that name.
+ */
+export interface UpdateCurrentUserRequest {
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface UpdatedProfile {
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string | null;
+}
+
+export interface ClaimGuestBillsRequest {
+  /** The guest id the bills were created under */
+  guestOwnerId: string;
+}
+
+export interface ClaimGuestBillsResponse {
+  /** How many bills moved onto the account */
+  claimed: number;
+}
+
+export interface UploadUrlResponse {
+  /** Short-lived URL to PUT the image to */
+  uploadURL: string;
+  /** Path to save as the bill's receiptImagePath */
+  objectPath: string;
+}
+
 export interface RegisterRequest {
   email: string;
   /** @minLength 6 */
@@ -269,6 +335,17 @@ export interface UpdateCircleMemberRequest {
   name: string;
   linkedEmail?: string | null;
 }
+
+export type GetGuestBillsParams = {
+  /**
+   * Comma-separated bill ids, e.g. "12,15,18"
+   */
+  ids?: string;
+  /**
+   * The device's guest id, used to work out isOwner
+   */
+  guestOwnerId?: string;
+};
 
 export type BulkCreateBillLinesBody = {
   lines: CreateBillLineRequest[];
