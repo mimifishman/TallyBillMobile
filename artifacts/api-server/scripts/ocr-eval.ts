@@ -5,6 +5,7 @@
  *   pnpm run eval:ocr -- --only he        only Hebrew fixtures
  *   pnpm run eval:ocr -- --repeat 3       run each receipt 3 times (latency spread)
  *   OCR_BASE=http://localhost:5000 pnpm run eval:ocr
+ *   OCR_FIXTURES=/path/to/other/photos pnpm run eval:ocr
  *
  * Posts each photo to the running server's /api/ocr, so what it measures is the
  * real path the app takes — the same prompt, the same model, the same network.
@@ -30,7 +31,8 @@ import { basename, extname, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const RECEIPTS = join(here, "..", "fixtures", "receipts");
+/** Override to score a different set, e.g. upright copies of the same photos. */
+const RECEIPTS = process.env["OCR_FIXTURES"] ?? join(here, "..", "fixtures", "receipts");
 const EXPECTED = join(here, "..", "fixtures", "expected");
 const OUT = join(here, "..", "fixtures", "out");
 
