@@ -1,0 +1,9 @@
+# Receipt fixtures are real photos with real personal data on them — names,
+# card digits, addresses, times and places. They must never be committed.
+# Keep them locally; share them out of band if a teammate needs the same set.
+receipts/
+out/
+
+# Hand-checked expectations are just counts and totals, so they are safe to
+# commit and are what makes the eval reproducible for someone else.
+!expected/
