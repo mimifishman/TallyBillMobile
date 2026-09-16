@@ -10,5 +10,10 @@ export interface OcrLineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  /** Amount charged for the line, after any discount printed for it. */
   total: number;
+  /** Amount before the line's discount, null when it was not discounted. */
+  originalTotal?: number | null;
+  /** Printed wording of the line's discount, e.g. "25% Happy Hour". */
+  discountLabel?: string | null;
 }

@@ -39,15 +39,44 @@ for (const [name, input, want] of cases) {
   if (!ok) console.log(`      want ${JSON.stringify(want)}\n      got  ${JSON.stringify(got)}`);
 }
 
+// A discounted line: total is what was charged, originalTotal is what it was
+// before, and unitPrice follows the charged amount — never the original.
+const discounted = normalizeLineItems([
+  { description: "סלט קיסר", quantity: 1, unitPrice: null, total: 43.0, originalTotal: 57.0, discountLabel: "25% Happy Hour" },
+]);
+const d = discounted[0];
+const okDiscount = d && d.total === 43.0 && d.originalTotal === 57.0 && d.unitPrice === 43.0 && d.discountLabel === "25% Happy Hour";
+if (!okDiscount) { failed++; console.log("      got ", JSON.stringify(d)); }
+console.log(`${okDiscount ? "PASS" : "FAIL"}  a discounted line keeps the charged total and the original`);
+
+// An originalTotal that is not actually higher is noise, not a discount.
+const notDiscounted = normalizeLineItems([
+  { description: "Cola", quantity: 1, unitPrice: null, total: 15.0, originalTotal: 15.0, discountLabel: "25% Happy Hour" },
+]);
+const n = notDiscounted[0];
+const okNoDiscount = n && n.originalTotal === null && n.discountLabel === null;
+if (!okNoDiscount) { failed++; console.log("      got ", JSON.stringify(n)); }
+console.log(`${okNoDiscount ? "PASS" : "FAIL"}  an originalTotal equal to the total is not treated as a discount`);
+
+// A discounted multi-quantity line must not be re-multiplied either.
+const both = normalizeLineItems([
+  { description: "Beer", quantity: 2, unitPrice: null, total: 18.0, originalTotal: 24.0, discountLabel: "Happy Hour" },
+])[0];
+const okBoth = both && both.total === 18.0 && both.unitPrice === 9.0 && both.originalTotal === 24.0;
+if (!okBoth) { failed++; console.log("      got ", JSON.stringify(both)); }
+console.log(`${okBoth ? "PASS" : "FAIL"}  a discounted quantity-2 line stays at its charged total`);
+
 // Dropped rows
 const dropped = normalizeLineItems([
   { description: "", quantity: 1, unitPrice: 5, total: 5 },
   { description: "No price", quantity: 1, unitPrice: null, total: null },
   { description: "Zero", quantity: 1, unitPrice: 0, total: 0 },
+  { description: "25% Happy Hour", quantity: 1, unitPrice: null, total: -14 },
+  { description: "הנחה 100.00%", quantity: 1, unitPrice: null, total: -36 },
 ]);
 const okDrop = dropped.length === 0;
 if (!okDrop) failed++;
-console.log(`${okDrop ? "PASS" : "FAIL"}  rows with no description or no price are dropped`);
+console.log(`${okDrop ? "PASS" : "FAIL"}  rows with no description, no price, or a negative price are dropped`);
 
 // Whole-receipt total
 const receipt = normalizeLineItems([

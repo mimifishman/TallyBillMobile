@@ -921,9 +921,31 @@ export const OcrReceiptResponse = zod.object({
       description: zod.string(),
       quantity: zod.number(),
       unitPrice: zod.number(),
-      total: zod.number(),
+      total: zod
+        .number()
+        .describe(
+          "Amount charged for the line, after any discount printed for it.",
+        ),
+      originalTotal: zod
+        .number()
+        .nullish()
+        .describe(
+          "Amount before the line's discount, null when it was not discounted.",
+        ),
+      discountLabel: zod
+        .string()
+        .nullish()
+        .describe(
+          'Printed wording of the line\'s discount, e.g. \"25% Happy Hour\".',
+        ),
     }),
   ),
+  billDiscount: zod
+    .number()
+    .nullish()
+    .describe(
+      "A discount printed against the whole bill rather than one item, as a positive number. Null when the receipt has none.",
+    ),
   taxAmount: zod.number().nullish(),
   tipAmount: zod.number().nullish(),
   currency: zod.string().nullish(),

@@ -9,6 +9,8 @@ import type { OcrLineItem } from "./ocrLineItem";
 
 export interface OcrResult {
   items: OcrLineItem[];
+  /** A discount printed against the whole bill rather than one item, as a positive number. Null when the receipt has none. */
+  billDiscount?: number | null;
   taxAmount?: number | null;
   tipAmount?: number | null;
   currency?: string | null;

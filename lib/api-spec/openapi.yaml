@@ -2031,6 +2031,15 @@ components:
           type: number
         total:
           type: number
+          description: Amount charged for the line, after any discount printed for it.
+        originalTotal:
+          type: number
+          nullable: true
+          description: Amount before the line's discount, null when it was not discounted.
+        discountLabel:
+          type: string
+          nullable: true
+          description: Printed wording of the line's discount, e.g. "25% Happy Hour".
       required:
         - description
         - quantity
@@ -2044,6 +2053,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OcrLineItem"
+        billDiscount:
+          type: number
+          nullable: true
+          description: >-
+            A discount printed against the whole bill rather than one item,
+            as a positive number. Null when the receipt has none.
         taxAmount:
           type: number
           nullable: true
