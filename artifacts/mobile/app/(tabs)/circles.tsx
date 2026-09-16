@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,6 +53,35 @@ export default function CirclesScreen() {
     },
   });
 
+  // Circles are edited on their own screen — members added, renamed, removed —
+  // and this list shows a member count that goes stale the moment that happens.
+  // Coming back to the tab is the user saying "show me the list again", so it
+  // is refetched then rather than left until the cache decides it is old.
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
+
+  // Tracked apart from isRefetching, which is also true for the refetch on
+  // focus above — binding the control to that would flash a spinner every time
+  // the tab is opened, for a refresh nobody asked for.
+  const [pulling, setPulling] = useState(false);
+  const pullToRefresh = (
+    <RefreshControl
+      refreshing={pulling}
+      onRefresh={async () => {
+        setPulling(true);
+        try {
+          await refetch();
+        } finally {
+          setPulling(false);
+        }
+      }}
+      tintColor={colors.primaryText}
+    />
+  );
+
   const handleCreate = () => {
     if (!newCircleName.trim()) return;
     createMutation.mutate({ data: { name: newCircleName.trim() } });
@@ -83,7 +113,7 @@ export default function CirclesScreen() {
           <ActivityIndicator color={colors.primaryText} />
         </View>
       ) : isError && !circles ? (
-        <ScrollView contentContainerStyle={styles.emptyContainer}>
+        <ScrollView contentContainerStyle={styles.emptyContainer} refreshControl={pullToRefresh}>
           <LoadErrorView
             title="Couldn't load your circles"
             message="Check your connection and try again. Your circles are safe."
@@ -93,7 +123,7 @@ export default function CirclesScreen() {
           />
         </ScrollView>
       ) : !circles || circles.length === 0 ? (
-        <ScrollView contentContainerStyle={styles.emptyContainer}>
+        <ScrollView contentContainerStyle={styles.emptyContainer} refreshControl={pullToRefresh}>
           <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="users" size={36} color={colors.mutedForeground} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No circles yet</Text>
@@ -113,6 +143,7 @@ export default function CirclesScreen() {
         <ScrollView
           style={styles.flex}
           contentContainerStyle={[styles.list, { paddingBottom: bottomPadding }]}
+          refreshControl={pullToRefresh}
         >
           {circles.map((circle) => (
             <TouchableOpacity
