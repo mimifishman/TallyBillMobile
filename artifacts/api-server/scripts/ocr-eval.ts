@@ -6,10 +6,19 @@
  *   pnpm run eval:ocr -- --repeat 3       run each receipt 3 times (latency spread)
  *   OCR_BASE=http://localhost:5000 pnpm run eval:ocr
  *   OCR_FIXTURES=/path/to/other/photos pnpm run eval:ocr
+ *   pnpm run eval:ocr -- --local        call the model directly, no server
  *
  * Posts each photo to the running server's /api/ocr, so what it measures is the
  * real path the app takes — the same prompt, the same model, the same network.
  * Latency here is what a user actually waits.
+ *
+ * `--local` instead calls the model straight from here, using the prompt and the
+ * parsing this repo currently holds. That is how a prompt change gets scored
+ * before it is deployed anywhere: the server route can only ever run the code
+ * that is already live. It needs the two OCR variables, which it reads from
+ * artifacts/api-server/.env.local — a gitignored file that never goes near a
+ * commit. Latency from a --local run is not comparable to a server run, since
+ * it skips the app's own network hop.
  *
  * Put photos in fixtures/receipts/ (gitignored — real receipts carry personal
  * data). Prefix the filename with the language so English and Hebrew are scored
@@ -29,6 +38,9 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { basename, extname, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import OpenAI from "openai";
+import { OCR_PROMPT } from "../src/lib/receipt-prompt.ts";
+import { normalizeLineItems, normalizeBillDiscount } from "../src/lib/receipt-line-items.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Override to score a different set, e.g. upright copies of the same photos. */
@@ -45,6 +57,7 @@ function arg(flag: string): string | undefined {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 const only = arg("--only");
+const local = process.argv.includes("--local");
 const repeat = Number(arg("--repeat") ?? 1);
 
 interface Expected {
@@ -103,7 +116,63 @@ function percentile(values: number[], p: number): number {
 const pad = (s: string | number, w: number) => String(s).padEnd(w);
 const padL = (s: string | number, w: number) => String(s).padStart(w);
 
+let _openai: OpenAI | null = null;
+function openaiClient(): OpenAI {
+  if (_openai) return _openai;
+  const envPath = join(here, "..", ".env.local");
+  if (!process.env["AI_INTEGRATIONS_OPENAI_API_KEY"] && existsSync(envPath)) {
+    process.loadEnvFile(envPath);
+  }
+  const baseURL = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+  const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  if (!baseURL || !apiKey) {
+    console.error("--local needs AI_INTEGRATIONS_OPENAI_BASE_URL and AI_INTEGRATIONS_OPENAI_API_KEY.");
+    console.error(`Put them in ${envPath} (gitignored), one per line, or export them.`);
+    process.exit(1);
+  }
+  _openai = new OpenAI({ baseURL, apiKey });
+  return _openai;
+}
+
+/** The model call the route makes, with this repo's prompt and parsing. */
+async function scanLocally(file: string): Promise<{ ms: number; items: OcrItem[]; currency: string | null }> {
+  const bytes = readFileSync(join(RECEIPTS, file));
+  const dataUrl = `data:${mimeOf(file)};base64,${bytes.toString("base64")}`;
+
+  const startedAt = Date.now();
+  const completion = await openaiClient().chat.completions.create({
+    model: process.env["OCR_MODEL"] ?? "gpt-4o",
+    temperature: 0,
+    max_completion_tokens: 2048,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: OCR_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+          { type: "text", text: "Extract the line items, tax, tip, and currency from this receipt as JSON." },
+        ],
+      },
+    ],
+  });
+  const ms = Date.now() - startedAt;
+
+  const raw = completion.choices[0]?.message?.content ?? "";
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("no JSON in model response");
+  const parsed = JSON.parse(match[0]) as { items?: unknown[]; currency?: string | null; billDiscount?: unknown };
+
+  const items = normalizeLineItems(parsed.items as never) as unknown as OcrItem[];
+  const billDiscount = normalizeBillDiscount(parsed.billDiscount);
+  if (billDiscount !== null) {
+    process.stdout.write(`\n  (${file}: billDiscount ${billDiscount.toFixed(2)})`);
+  }
+  return { ms, items, currency: parsed.currency ?? null };
+}
+
 async function scanOnce(file: string): Promise<{ ms: number; items: OcrItem[]; currency: string | null }> {
+  if (local) return scanLocally(file);
   const bytes = readFileSync(join(RECEIPTS, file));
   const body = JSON.stringify({
     imageBase64: bytes.toString("base64"),
@@ -141,7 +210,7 @@ async function run(): Promise<void> {
   }
 
   mkdirSync(OUT, { recursive: true });
-  console.log(`${files.length} receipt(s) against ${BASE}, ${repeat} run(s) each\n`);
+  console.log(`${files.length} receipt(s) against ${local ? "the model directly (this repo's prompt)" : BASE}, ${repeat} run(s) each\n`);
 
   const rows: Row[] = [];
 
