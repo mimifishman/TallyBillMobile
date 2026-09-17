@@ -186,6 +186,22 @@ export default function ScanScreen() {
     if (tip > 0) setTipInput(String(tip));
   }, [billData]);
 
+  /**
+   * How far the selected items sit from the receipt's own total.
+   *
+   * Only shown when the receipt actually printed a total AND the scan says they
+   * disagree. A scan with nothing to check against stays quiet rather than
+   * claiming either way, and unticking an item is a deliberate act — so the gap
+   * is measured against everything that was read, not against the selection.
+   */
+  const receiptGap = useMemo(() => {
+    if (scan.reconciled !== false || scan.printedTotal == null) return null;
+    const readTotal = scan.items.reduce((sum, i) => sum + (Number.isFinite(i.total) ? i.total : 0), 0);
+    const difference = Math.round((readTotal - scan.printedTotal) * 100) / 100;
+    if (difference === 0) return null;
+    return { difference, printedTotal: scan.printedTotal };
+  }, [scan.reconciled, scan.printedTotal, scan.items]);
+
   const taxPercent = toPercent(taxMode, taxInput, selectedTotal);
   const tipPercent = toPercent(tipMode, tipInput, selectedTotal);
   const taxAmount = amountFromPercent(taxPercent, selectedTotal);
@@ -528,6 +544,19 @@ export default function ScanScreen() {
                 <Text style={[styles.addItemText, { color: colors.primaryText }]}>Add item</Text>
               </TouchableOpacity>
 
+              {receiptGap ? (
+                <View style={[styles.receiptGap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                  <Feather name="alert-triangle" size={16} color={colors.mutedForeground} style={styles.receiptGapIcon} />
+                  <Text style={[styles.receiptGapText, { color: colors.foreground }]}>
+                    {receiptGap.difference < 0 ? "Something may be missing. " : "This may be too high. "}
+                    <Text style={{ color: colors.mutedForeground }}>
+                      The receipt says {formatMoney(receiptGap.printedTotal, billData?.bill.currency)}, but these items come to{" "}
+                      {formatMoney(receiptGap.printedTotal + receiptGap.difference, billData?.bill.currency)}. Check before adding.
+                    </Text>
+                  </Text>
+                </View>
+              ) : null}
+
               <View style={[styles.taxTipCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.taxTipSubtotalRow}>
                   <Text style={[styles.taxTipLabel, { color: colors.mutedForeground }]}>SUBTOTAL</Text>
@@ -748,6 +777,9 @@ const styles = StyleSheet.create({
   checkbox: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   reviewItemBody: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACING.sm, minHeight: 36 },
   quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 }, // TODO: one-off
+  receiptGap: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm, padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, marginBottom: SPACING.md },
+  receiptGapIcon: { marginTop: 1 }, // TODO: one-off
+  receiptGapText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", lineHeight: 18 }, // TODO: one-off
   reviewItemNameCol: { flex: 1, gap: 2 },
   reviewItemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
   reviewItemOriginal: { fontSize: 11, fontFamily: "Inter_400Regular" }, // TODO: one-off

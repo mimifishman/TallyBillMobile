@@ -11,6 +11,12 @@ export interface OcrResult {
   items: OcrLineItem[];
   /** A discount printed against the whole bill rather than one item, as a positive number. Null when the receipt has none. */
   billDiscount?: number | null;
+  /** The receipt's own total for the items, after any discount and before tax and tip, read off the receipt rather than computed. Null when the receipt does not print one. */
+  printedTotal?: number | null;
+  /** What the returned items add up to, after their own discounts. */
+  itemsTotal?: number;
+  /** True when the items agree with the receipt's own total, false when they do not, null when the receipt printed no total to check. Null is not a pass — it means unknown. */
+  reconciled?: boolean | null;
   taxAmount?: number | null;
   tipAmount?: number | null;
   currency?: string | null;

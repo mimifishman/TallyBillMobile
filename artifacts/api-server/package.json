@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:line-items": "node --experimental-strip-types scripts/check-line-items.ts",
+    "check:reconcile": "node --experimental-strip-types scripts/check-reconcile.ts",
     "eval:ocr": "node --experimental-strip-types scripts/ocr-eval.ts",
     "prep:fixtures": "node --experimental-strip-types scripts/prep-fixtures.ts"
   },
