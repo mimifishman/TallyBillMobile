@@ -2,6 +2,7 @@ import { Router } from "express";
 import OpenAI from "openai";
 import { normalizeLineItems, normalizeBillDiscount, type RawLineItem } from "../lib/receipt-line-items.js";
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
+import { prepareReceipt } from "../lib/receipt-image.js";
 
 const router = Router();
 
@@ -96,11 +97,17 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const mimeType = fileName?.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-  const dataUrl = `data:${mimeType};base64,${imageBase64}`;
-
   try {
     const openai = getOpenAIClient();
+
+    // Turn the photo the right way up before the model sees it. Phones record
+    // rotation in an EXIF tag rather than in the pixels, and the model does not
+    // honour it, so a receipt shot sideways is read sideways.
+    const prepared = await prepareReceipt(Buffer.from(imageBase64, "base64"));
+    const mimeType = prepared.rotated || !fileName?.toLowerCase().endsWith(".png")
+      ? "image/jpeg"
+      : "image/png";
+    const dataUrl = `data:${mimeType};base64,${prepared.buffer.toString("base64")}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",

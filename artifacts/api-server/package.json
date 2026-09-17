@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:line-items": "node --experimental-strip-types scripts/check-line-items.ts",
-    "eval:ocr": "node --experimental-strip-types scripts/ocr-eval.ts"
+    "eval:ocr": "node --experimental-strip-types scripts/ocr-eval.ts",
+    "prep:fixtures": "node --experimental-strip-types scripts/prep-fixtures.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.9",
@@ -27,7 +28,8 @@
     "openai": "^6.37.0",
     "pino": "^9",
     "pino-http": "^10",
-    "resend": "4.0.0"
+    "resend": "4.0.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
