@@ -1,5 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import { normalizeLineItems, type RawLineItem } from "../lib/receipt-line-items.js";
 
 const router = Router();
 
@@ -16,15 +17,8 @@ function getOpenAIClient(): OpenAI {
   return _openai;
 }
 
-interface AIReceiptItem {
-  description: string;
-  quantity: number | null;
-  unitPrice: number | null;
-  total: number | null;
-}
-
 interface AIReceiptResponse {
-  items?: AIReceiptItem[];
+  items?: RawLineItem[];
   taxAmount?: number | null;
   tipAmount?: number | null;
   currency?: string | null;
@@ -37,9 +31,9 @@ Return ONLY valid JSON with this exact structure:
   "items": [
     {
       "description": "item name",
-      "quantity": 1,
-      "unitPrice": 9.99,
-      "total": 9.99
+      "quantity": 2,
+      "unitPrice": 4.99,
+      "total": 9.98
     }
   ],
   "taxAmount": 1.50,
@@ -53,7 +47,10 @@ Rules:
 - Preserve the original language and script of each item description exactly as printed (Hebrew, Arabic, Latin, etc.). Do not translate or transliterate.
 - For right-to-left scripts (Hebrew, Arabic), preserve the visual character order as it appears on the receipt.
 - quantity must be a positive number — use 1 if not shown on the receipt.
-- unitPrice = total / quantity. If only one of unitPrice or total is visible, compute the other.
+- "total" is the amount charged for the WHOLE line, exactly as printed at the end of that line. It already accounts for the quantity. NEVER multiply a printed amount by the quantity.
+- If the line shows only ONE amount, that amount is "total". A line reading "2  Beer  12.00" means quantity 2 and total 12.00 — it does NOT mean 24.00.
+- Only when the line shows TWO amounts is the per-unit one "unitPrice". A line reading "2  Beer  6.00  12.00" means quantity 2, unitPrice 6.00, total 12.00.
+- unitPrice = total / quantity. Always fill in "total"; never leave it null.
 - taxAmount and tipAmount are the receipt-level amounts (use null if absent — do NOT confuse subtotal or total with tax).
 - currency is the 3-letter ISO code (e.g. "USD", "ILS", "EUR"). Use null only if you genuinely cannot infer it from currency symbols, language, or store name.
 - Preserve the order of items as they appear on the receipt, top to bottom.
@@ -181,18 +178,7 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    const lineItems = (parsed.items || []).map((item) => {
-      const description = item.description || "";
-      const quantity = item.quantity ?? 1;
-      const total = item.total ?? (item.unitPrice != null ? item.unitPrice * quantity : 0);
-      const unitPrice = item.unitPrice ?? (quantity > 0 ? total / quantity : total);
-      return {
-        description,
-        quantity,
-        unitPrice: Math.round(unitPrice * 100) / 100,
-        total: Math.round(total * 100) / 100,
-      };
-    }).filter((item) => item.description && item.total > 0);
+    const lineItems = normalizeLineItems(parsed.items);
 
     res.json({
       items: lineItems,
