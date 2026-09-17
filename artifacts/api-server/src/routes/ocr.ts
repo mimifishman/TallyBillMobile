@@ -1,6 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import { normalizeLineItems, type RawLineItem } from "../lib/receipt-line-items.js";
+import { normalizeLineItems, normalizeBillDiscount, type RawLineItem } from "../lib/receipt-line-items.js";
+import { OCR_PROMPT } from "../lib/receipt-prompt.js";
 
 const router = Router();
 
@@ -19,43 +20,11 @@ function getOpenAIClient(): OpenAI {
 
 interface AIReceiptResponse {
   items?: RawLineItem[];
+  billDiscount?: number | null;
   taxAmount?: number | null;
   tipAmount?: number | null;
   currency?: string | null;
 }
-
-const OCR_PROMPT = `You are a receipt parser. Look at the receipt image and extract every purchased line item plus tax, tip, and currency.
-
-Return ONLY valid JSON with this exact structure:
-{
-  "items": [
-    {
-      "description": "item name",
-      "quantity": 2,
-      "unitPrice": 4.99,
-      "total": 9.98
-    }
-  ],
-  "taxAmount": 1.50,
-  "tipAmount": null,
-  "currency": "USD"
-}
-
-Rules:
-- Include EVERY purchased line item. Never skip a line item, even if some characters are unclear — read it to the best of your ability and use the most likely characters.
-- Omit subtotals, totals, payment lines, store header/footer text, and order/receipt numbers.
-- Preserve the original language and script of each item description exactly as printed (Hebrew, Arabic, Latin, etc.). Do not translate or transliterate.
-- For right-to-left scripts (Hebrew, Arabic), preserve the visual character order as it appears on the receipt.
-- quantity must be a positive number — use 1 if not shown on the receipt.
-- "total" is the amount charged for the WHOLE line, exactly as printed at the end of that line. It already accounts for the quantity. NEVER multiply a printed amount by the quantity.
-- If the line shows only ONE amount, that amount is "total". A line reading "2  Beer  12.00" means quantity 2 and total 12.00 — it does NOT mean 24.00.
-- Only when the line shows TWO amounts is the per-unit one "unitPrice". A line reading "2  Beer  6.00  12.00" means quantity 2, unitPrice 6.00, total 12.00.
-- unitPrice = total / quantity. Always fill in "total"; never leave it null.
-- taxAmount and tipAmount are the receipt-level amounts (use null if absent — do NOT confuse subtotal or total with tax).
-- currency is the 3-letter ISO code (e.g. "USD", "ILS", "EUR"). Use null only if you genuinely cannot infer it from currency symbols, language, or store name.
-- Preserve the order of items as they appear on the receipt, top to bottom.
-- A line item description is text — never put a number or price into the description field.
-- Return ONLY the JSON object, no markdown fences, no commentary.`;
 
 router.post("/translate", async (req, res) => {
   const { descriptions, targetLanguage } = req.body;
@@ -182,6 +151,7 @@ router.post("/", async (req, res) => {
 
     res.json({
       items: lineItems,
+      billDiscount: normalizeBillDiscount(parsed.billDiscount),
       taxAmount: parsed.taxAmount ?? null,
       tipAmount: parsed.tipAmount ?? null,
       currency: parsed.currency ?? null,

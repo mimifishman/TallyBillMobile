@@ -1,11 +1,20 @@
 /**
  * Turns the model's raw line items into the shape the app stores.
  *
- * The printed amount on a receipt line is the amount charged for that whole
- * line — it already includes the quantity. Multiplying it by the quantity again
- * is what made multi-quantity lines come out doubled (quantity 2) or tripled
- * (quantity 3). So the line total is taken as printed and never re-multiplied;
- * unitPrice is derived from it instead.
+ * Two things here exist because getting them wrong puts a wrong number in front
+ * of a person paying:
+ *
+ * 1. The printed amount on a receipt line is the amount charged for that whole
+ *    line — it already includes the quantity. Multiplying it by the quantity
+ *    again is what made multi-quantity lines come out doubled (quantity 2) or
+ *    tripled (quantity 3). So the line total is taken as printed and never
+ *    re-multiplied; unitPrice is derived from it instead.
+ *
+ * 2. `total` is the amount actually charged, after any discount printed for
+ *    that line. The prompt is what applies the discount, so that exactly one
+ *    number counts and nothing can be subtracted twice. `originalTotal` carries
+ *    the pre-discount amount purely so the app can show where the number came
+ *    from, and is kept only when it really is higher than what was charged.
  */
 
 export interface RawLineItem {
@@ -13,6 +22,8 @@ export interface RawLineItem {
   quantity?: number | null;
   unitPrice?: number | null;
   total?: number | null;
+  originalTotal?: number | null;
+  discountLabel?: string | null;
 }
 
 export interface LineItem {
@@ -20,6 +31,8 @@ export interface LineItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  originalTotal: number | null;
+  discountLabel: string | null;
 }
 
 function positiveNumber(value: unknown): number | null {
@@ -36,18 +49,32 @@ export function normalizeLineItems(items: RawLineItem[] | undefined | null): Lin
 
     const quantity = positiveNumber(item.quantity) ?? 1;
 
-    // The line total as printed wins. When the model reports only one amount it
+    // The line total as charged wins. When the model reports only one amount it
     // is that printed line amount, whichever field it landed in — so use it as
     // the line total rather than as a per-unit price to multiply up.
     const total = positiveNumber(item.total) ?? positiveNumber(item.unitPrice);
     if (total === null) return acc;
+
+    // A discount row of its own, or a fully comped line, is not something the
+    // app can show or split. The prompt folds those into their item instead.
+    const originalTotal = positiveNumber(item.originalTotal);
+    const wasDiscounted = originalTotal !== null && originalTotal > total;
+    const label = typeof item.discountLabel === "string" ? item.discountLabel.trim() : "";
 
     acc.push({
       description,
       quantity,
       unitPrice: round2(total / quantity),
       total: round2(total),
+      originalTotal: wasDiscounted ? round2(originalTotal) : null,
+      discountLabel: wasDiscounted && label ? label : null,
     });
     return acc;
   }, []);
+}
+
+/** A discount printed against the whole bill rather than against one item. */
+export function normalizeBillDiscount(value: unknown): number | null {
+  const n = positiveNumber(typeof value === "number" ? Math.abs(value) : Math.abs(Number(value)));
+  return n === null ? null : round2(n);
 }
