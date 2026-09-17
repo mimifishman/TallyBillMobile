@@ -66,17 +66,28 @@ const okBoth = both && both.total === 18.0 && both.unitPrice === 9.0 && both.ori
 if (!okBoth) { failed++; console.log("      got ", JSON.stringify(both)); }
 console.log(`${okBoth ? "PASS" : "FAIL"}  a discounted quantity-2 line stays at its charged total`);
 
+// A line comped to nothing is still a line. Dropping it hides an item people
+// actually ordered, and takes the discount that made it free with it.
+const comped = normalizeLineItems([
+  { description: "שיק פאי", quantity: 1, unitPrice: null, total: 0, originalTotal: 36.0, discountLabel: "הנחה 100.00%" },
+])[0];
+const okComped = comped && comped.total === 0 && comped.unitPrice === 0 && comped.originalTotal === 36.0
+  && comped.discountLabel === "הנחה 100.00%";
+if (!okComped) { failed++; console.log("      got ", JSON.stringify(comped)); }
+console.log(`${okComped ? "PASS" : "FAIL"}  an item comped to nothing is kept, with its discount`);
+
 // Dropped rows
 const dropped = normalizeLineItems([
   { description: "", quantity: 1, unitPrice: 5, total: 5 },
   { description: "No price", quantity: 1, unitPrice: null, total: null },
   { description: "Zero", quantity: 1, unitPrice: 0, total: 0 },
+  { description: "Zero, no original", quantity: 1, unitPrice: null, total: 0, originalTotal: null },
   { description: "25% Happy Hour", quantity: 1, unitPrice: null, total: -14 },
   { description: "הנחה 100.00%", quantity: 1, unitPrice: null, total: -36 },
 ]);
 const okDrop = dropped.length === 0;
 if (!okDrop) failed++;
-console.log(`${okDrop ? "PASS" : "FAIL"}  rows with no description, no price, or a negative price are dropped`);
+console.log(`${okDrop ? "PASS" : "FAIL"}  rows with no description, no price at all, or a negative price are dropped`);
 
 // Whole-receipt total
 const receipt = normalizeLineItems([

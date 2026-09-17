@@ -40,6 +40,19 @@ function positiveNumber(value: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/**
+ * Like positiveNumber but keeps an exact zero, for a line that was comped.
+ *
+ * Absence has to be rejected explicitly: Number(null) is 0 and Number("") is 0,
+ * so a missing total would otherwise read as a free item and quietly wipe the
+ * line's price.
+ */
+function nonNegativeNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {
@@ -49,22 +62,27 @@ export function normalizeLineItems(items: RawLineItem[] | undefined | null): Lin
 
     const quantity = positiveNumber(item.quantity) ?? 1;
 
+    const originalTotal = positiveNumber(item.originalTotal);
+
     // The line total as charged wins. When the model reports only one amount it
     // is that printed line amount, whichever field it landed in — so use it as
     // the line total rather than as a per-unit price to multiply up.
-    const total = positiveNumber(item.total) ?? positiveNumber(item.unitPrice);
+    //
+    // Zero is a real charge when the line was comped: a "100% הנחה" leaves an
+    // item that was genuinely ordered and is genuinely free, and dropping it
+    // both hides it from the people splitting and, worse, silently loses the
+    // discount that made it free. Zero with no original price behind it is just
+    // a line with no price, and still goes.
+    const charged = nonNegativeNumber(item.total) ?? positiveNumber(item.unitPrice);
+    const total = charged === 0 && originalTotal === null ? null : charged;
     if (total === null) return acc;
-
-    // A discount row of its own, or a fully comped line, is not something the
-    // app can show or split. The prompt folds those into their item instead.
-    const originalTotal = positiveNumber(item.originalTotal);
     const wasDiscounted = originalTotal !== null && originalTotal > total;
     const label = typeof item.discountLabel === "string" ? item.discountLabel.trim() : "";
 
     acc.push({
       description,
       quantity,
-      unitPrice: round2(total / quantity),
+      unitPrice: total === 0 ? 0 : round2(total / quantity),
       total: round2(total),
       originalTotal: wasDiscounted ? round2(originalTotal) : null,
       discountLabel: wasDiscounted && label ? label : null,
