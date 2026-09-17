@@ -64,6 +64,10 @@ interface LineItemRowProps {
   quantity: number;
   unitPrice: number;
   total: number;
+  /** Price before this line's discount. Null when it was not discounted. */
+  originalTotal?: number | null;
+  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
+  discountLabel?: string | null;
   assignedUserIds: number[];
   billUsers: BillMember[];
   currency?: string | null;
@@ -81,6 +85,8 @@ export function LineItemRow({
   quantity,
   unitPrice,
   total,
+  originalTotal,
+  discountLabel,
   assignedUserIds,
   billUsers,
   currency,
@@ -94,6 +100,7 @@ export function LineItemRow({
   const currencySymbol = getCurrencySymbol(currency);
   const [editing, setEditing] = useState(false);
   const [editDesc, setEditDesc] = useState(description);
+  const isDiscounted = originalTotal != null && Number(originalTotal) > Number(total);
   const [editTotal, setEditTotal] = useState(String(total));
   const [editQty, setEditQty] = useState(String(quantity));
 
@@ -195,6 +202,13 @@ export function LineItemRow({
               </Text>
             )}
             <Text style={[styles.itemTotal, { color: colors.mutedForeground }]}>
+              {/* The old price stays beside the new one, struck through: a
+                  number that dropped without saying why reads as a mistake. */}
+              {isDiscounted ? (
+                <Text style={[styles.wasPrice, { color: colors.mutedForeground }]}>
+                  {currencySymbol ? `${currencySymbol} ` : ""}{Number(originalTotal).toFixed(2)}{" "}
+                </Text>
+              ) : null}
               {currencySymbol ? `${currencySymbol} ` : ""}{Number(total).toFixed(2)}
               {quantity > 1 ? (
                 <Text style={[styles.unitPrice, { color: colors.mutedForeground }]}>
@@ -202,6 +216,11 @@ export function LineItemRow({
                 </Text>
               ) : null}
             </Text>
+            {isDiscounted && discountLabel ? (
+              <Text style={[styles.discountLabel, { color: colors.primaryText }]} numberOfLines={1}>
+                {discountLabel}
+              </Text>
+            ) : null}
           </View>
           {quantity > 1 && (
             <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primaryText }]} accessibilityLabel="Split item quantity">
@@ -281,6 +300,8 @@ const styles = StyleSheet.create({
   originalDescription: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, paddingLeft: 28 }, // TODO: one-off
   itemTotal: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
   unitPrice: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
+  wasPrice: { fontSize: 12, fontFamily: "Inter_400Regular", textDecorationLine: "line-through" }, // TODO: one-off
+  discountLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 1 }, // TODO: one-off
   splitBtn: { flexDirection: "row", alignItems: "center", gap: SPACING.xs, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 5 },
   splitBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   iconBtn: { padding: 6 },
