@@ -47,3 +47,12 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Secrets. Anything with a real key in it stays out of git.
+# artifacts/mobile/.env.development is deliberately tracked and stays tracked:
+# it holds only a Clerk *publishable* key and a dev hostname, both of which are
+# public by design and have to ship inside the client bundle anyway.
+.env
+.env.*
+!.env.example
+!artifacts/mobile/.env.development
