@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "check:line-items": "node --experimental-strip-types scripts/check-line-items.ts"
+    "check:line-items": "node --experimental-strip-types scripts/check-line-items.ts",
+    "eval:ocr": "node --experimental-strip-types scripts/ocr-eval.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.9",

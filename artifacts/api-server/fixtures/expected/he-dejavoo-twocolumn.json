@@ -1,0 +1,7 @@
+{
+  "items": 5,
+  "total": 208.00,
+  "currency": "ILS",
+  "note": "THIRD DISCOUNT FORMAT — two price columns. Each line carries a full price in the מחיר column AND an already-discounted line total in the סה\"כ column, with the discount named on an indented sub-line below it (₪HH nn). Rows: TROPICAL BUSH 59 -> 30 (HH 29), HONEY POT 62 -> 31 (HH 31), סורנטיני קאצ'ו א פפה 68 -> 51 (HH 17), סלט שורשים 61 -> 45 (HH 16), מקלות פולנטה 68 -> 51 (HH 17). Full prices sum to 318.00, the HH sub-lines sum to 110.00, and the net column sums to 208.00, matching the printed 'הנחת Happy Hour ₪-110.0'. The failure mode to watch for is reading the מחיר column instead of סה\"כ, which inflates the bill by 110.00 — over 50 percent. Photo rotated 90 degrees, creased across the item block.",
+  "footerNote": "The footer below the items is NOT scored and was not reconciled: it reads סה\"כ לפני מע\"מ ₪90.0, מע\"מ 18.0% ₪16.2, then ₪106 on the DejaVoo card terminal and a ₪12.77 service line. Those figures do not follow arithmetically from the 208.00 of items on this photo, and the receipt is marked 2 סועדים at table 306, so it may be one share of a split table. Resolve with the user before treating any of them as a printed total."
+}
