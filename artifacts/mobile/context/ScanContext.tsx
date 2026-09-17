@@ -21,6 +21,13 @@ interface ScanState {
   items: ParsedItem[];
   errorMessage: string | null;
   receiptImagePath: string | null;
+  /**
+   * The receipt's own total for its items, when it printed one, and whether
+   * what was read agrees with it. `reconciled` is null when there was no total
+   * to check against — which is unknown, not a pass.
+   */
+  printedTotal: number | null;
+  reconciled: boolean | null;
   translating: boolean;
   translateError: string | null;
 }
@@ -78,6 +85,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     items: [],
     errorMessage: null,
     receiptImagePath: null,
+    printedTotal: null,
+    reconciled: null,
     translating: false,
     translateError: null,
   });
@@ -98,6 +107,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         items: [],
         errorMessage: null,
         receiptImagePath: null,
+        printedTotal: null,
+        reconciled: null,
         translating: false,
         translateError: null,
       });
@@ -122,6 +133,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
                   ...prev,
                   status: "ready",
                   items: data.items.map((item) => ({ ...item, selected: true })),
+                  printedTotal: data.printedTotal ?? null,
+                  reconciled: data.reconciled ?? null,
                 }));
                 saveReceiptImage(uri, billId).then((objectPath) => {
                   if (myGeneration !== generationRef.current) return;
@@ -156,7 +169,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => {
     generationRef.current += 1;
-    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, translating: false, translateError: null });
+    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, printedTotal: null, reconciled: null, translating: false, translateError: null });
   }, []);
 
   const setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>> = useCallback(

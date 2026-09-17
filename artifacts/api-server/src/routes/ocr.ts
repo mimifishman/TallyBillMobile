@@ -1,6 +1,12 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import { normalizeLineItems, normalizeBillDiscount, type RawLineItem } from "../lib/receipt-line-items.js";
+import {
+  normalizeLineItems,
+  normalizeBillDiscount,
+  normalizePrintedTotal,
+  checkAgainstPrintedTotal,
+  type RawLineItem,
+} from "../lib/receipt-line-items.js";
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
 import { prepareReceipt } from "../lib/receipt-image.js";
 
@@ -22,6 +28,7 @@ function getOpenAIClient(): OpenAI {
 interface AIReceiptResponse {
   items?: RawLineItem[];
   billDiscount?: number | null;
+  printedTotal?: number | null;
   taxAmount?: number | null;
   tipAmount?: number | null;
   currency?: string | null;
@@ -155,10 +162,22 @@ router.post("/", async (req, res) => {
     }
 
     const lineItems = normalizeLineItems(parsed.items);
+    const billDiscount = normalizeBillDiscount(parsed.billDiscount);
+    // The receipt's own total, checked against what was actually read. This
+    // cannot fix a bad scan, but it can say one happened — which is the
+    // difference between a wrong number shown confidently and one flagged.
+    const check = checkAgainstPrintedTotal(
+      lineItems,
+      normalizePrintedTotal(parsed.printedTotal),
+      billDiscount,
+    );
 
     res.json({
       items: lineItems,
-      billDiscount: normalizeBillDiscount(parsed.billDiscount),
+      billDiscount,
+      printedTotal: check.printedTotal,
+      itemsTotal: check.itemsTotal,
+      reconciled: check.reconciled,
       taxAmount: parsed.taxAmount ?? null,
       tipAmount: parsed.tipAmount ?? null,
       currency: parsed.currency ?? null,

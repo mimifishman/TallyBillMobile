@@ -20,6 +20,7 @@ Return ONLY valid JSON with this exact structure:
     }
   ],
   "billDiscount": null,
+  "printedTotal": 19.96,
   "taxAmount": 1.50,
   "tipAmount": null,
   "currency": "USD"
@@ -39,6 +40,9 @@ Rules:
 - currency is the 3-letter ISO code (e.g. "USD", "ILS", "EUR"). Use null only if you genuinely cannot infer it from currency symbols, language, or store name.
 - Preserve the order of items as they appear on the receipt, top to bottom.
 - A line item description is text — never put a number or price into the description field.
+- "printedTotal" is the receipt's own total for the ITEMS: what the line items come to after any discount, and BEFORE tax, service and tip. It is read off the receipt, never added up by you — its whole purpose is to be an independent check on the items you returned.
+  On a Hebrew receipt it is usually the line marked "סה\"כ הזמנה" or "סה\"כ לתשלום"; where a receipt prints an items subtotal, then a discount, then a final figure, "printedTotal" is the FINAL figure.
+  Use null if the receipt genuinely does not print one. Never guess it, and never copy a card-payment or change-due amount into it.
 
 DISCOUNTS — receipts print these in several different ways, and missing one overcharges the person paying. Never skip one.
 - A discount is any line with a negative amount, or any line labelled as a discount, promotion, happy hour, loyalty, member price, or a percentage off. In Hebrew it is usually "הנחה".

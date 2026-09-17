@@ -96,3 +96,66 @@ export function normalizeBillDiscount(value: unknown): number | null {
   const n = positiveNumber(typeof value === "number" ? Math.abs(value) : Math.abs(Number(value)));
   return n === null ? null : round2(n);
 }
+
+/**
+ * The receipt's own total for the items, if it printed one.
+ *
+ * Kept separate from anything computed here on purpose: it is only useful as an
+ * independent check, so the moment it is derived from the items it stops being
+ * evidence of anything.
+ */
+export function normalizePrintedTotal(value: unknown): number | null {
+  const n = positiveNumber(value);
+  return n === null ? null : round2(n);
+}
+
+export interface ReceiptCheck {
+  /** What the returned items add up to, after their own discounts. */
+  itemsTotal: number;
+  /** The receipt's own figure, or null when it did not print one. */
+  printedTotal: number | null;
+  /**
+   * True when the two agree, false when they do not, null when the receipt
+   * printed no total to check against. Null is not a pass — it means unknown.
+   */
+  reconciled: boolean | null;
+  /** Signed gap, items minus receipt. Negative means items are missing. */
+  difference: number | null;
+}
+
+/**
+ * Compares what was read against what the receipt says it should come to.
+ *
+ * This is the cheap half of reconciliation: one subtraction, no second model
+ * call, so it adds nothing to the scan budget. It cannot fix a bad read, but it
+ * can say that one happened — which is the difference between a wrong number
+ * shown confidently and a wrong number flagged for a human to look at.
+ *
+ * A bill-level discount is subtracted first, because it is the one thing the
+ * receipt applies to its own total that the line items do not carry.
+ *
+ * The tolerance allows two cents for rounding, or 1% on larger bills where a
+ * receipt's own rounding of percentage discounts can legitimately drift further
+ * than that.
+ */
+export function checkAgainstPrintedTotal(
+  items: LineItem[],
+  printedTotal: number | null,
+  billDiscount: number | null = null,
+): ReceiptCheck {
+  const itemsTotal = round2(items.reduce((sum, item) => sum + item.total, 0));
+  const expected = round2(itemsTotal - (billDiscount ?? 0));
+
+  if (printedTotal === null) {
+    return { itemsTotal, printedTotal: null, reconciled: null, difference: null };
+  }
+
+  const difference = round2(expected - printedTotal);
+  const tolerance = Math.max(0.02, printedTotal * 0.01);
+  return {
+    itemsTotal,
+    printedTotal,
+    reconciled: Math.abs(difference) <= tolerance,
+    difference,
+  };
+}
