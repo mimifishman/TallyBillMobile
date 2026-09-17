@@ -10,6 +10,36 @@ function parseBillId(req: { params: Record<string, unknown> }): number {
   return parseInt(String(req.params["billId"] ?? ""), 10);
 }
 
+/**
+ * The discount columns for a write, from a request body.
+ *
+ * A discount is only real when there is an original price above what was
+ * actually charged. Anything else — a missing originalTotal, one that is not
+ * higher than the total — clears the discount rather than storing a half of
+ * one, so a line can never claim a saving it did not have.
+ */
+function discountColumns(body: {
+  total?: unknown;
+  originalTotal?: unknown;
+  discountAmount?: unknown;
+  discountLabel?: unknown;
+}): { originalTotal: string | null; discountAmount: string; discountLabel: string | null } {
+  const total = Number(body.total ?? 0);
+  const originalTotal = Number(body.originalTotal);
+  const discounted = Number.isFinite(originalTotal) && originalTotal > total;
+  if (!discounted) {
+    return { originalTotal: null, discountAmount: "0", discountLabel: null };
+  }
+  // Trust the difference over a supplied amount: total and originalTotal are
+  // what the rest of the app adds up, so the amount has to agree with them.
+  const label = typeof body.discountLabel === "string" ? body.discountLabel.trim() : "";
+  return {
+    originalTotal: String(Math.round(originalTotal * 100) / 100),
+    discountAmount: String(Math.round((originalTotal - total) * 100) / 100),
+    discountLabel: label === "" ? null : label,
+  };
+}
+
 async function getBillLinesWithAssignments(billId: number) {
   const lines = await db.select().from(billLinesTable)
     .where(eq(billLinesTable.billId, billId))
@@ -70,6 +100,7 @@ router.post("/", async (req, res) => {
     quantity: String(quantity ?? 1),
     unitPrice: String(unitPrice ?? 0),
     total: String(total ?? 0),
+    ...discountColumns(req.body),
     position,
   }).returning();
   notifyBillChanged(billId);
@@ -84,13 +115,22 @@ router.post("/bulk", async (req, res) => {
     return;
   }
   const insertedLines = await db.insert(billLinesTable).values(
-    lines.map((l: { description: string; originalDescription?: string | null; quantity: number; unitPrice: number; total: number }) => ({
+    lines.map((l: {
+      description: string;
+      originalDescription?: string | null;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+      originalTotal?: number | null;
+      discountLabel?: string | null;
+    }) => ({
       billId,
       description: l.description,
       originalDescription: l.originalDescription ?? null,
       quantity: String(l.quantity ?? 1),
       unitPrice: String(l.unitPrice ?? 0),
       total: String(l.total ?? 0),
+      ...discountColumns(l),
     }))
   ).returning();
   notifyBillChanged(billId);
@@ -105,7 +145,10 @@ router.put("/:lineId", async (req, res) => {
     ...(description && { description }),
     ...(quantity !== undefined && { quantity: String(quantity) }),
     ...(unitPrice !== undefined && { unitPrice: String(unitPrice) }),
-    ...(total !== undefined && { total: String(total) }),
+    // The discount is rewritten whenever the total is, because the two only
+    // mean anything together — a new total beside a stale original would show
+    // a saving that no longer matches what is charged.
+    ...(total !== undefined && { total: String(total), ...discountColumns(req.body) }),
   })
     .where(and(eq(billLinesTable.id, lineId), eq(billLinesTable.billId, billId)))
     .returning();

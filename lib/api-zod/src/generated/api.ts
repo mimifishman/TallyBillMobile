@@ -111,6 +111,12 @@ export const GetBillsResponseItem = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
   tipPercent: zod.number(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe(
+      "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+    ),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
   receiptImagePath: zod
@@ -183,6 +189,12 @@ export const GetGuestBillsResponseItem = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
   tipPercent: zod.number(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe(
+      "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+    ),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
   receiptImagePath: zod
@@ -229,6 +241,12 @@ export const JoinBillResponse = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
   tipPercent: zod.number(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe(
+      "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+    ),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
   receiptImagePath: zod
@@ -275,6 +293,12 @@ export const GetBillByCodeResponse = zod.object({
     currency: zod.string().nullish(),
     taxPercent: zod.number(),
     tipPercent: zod.number(),
+    discountPercent: zod
+      .number()
+      .optional()
+      .describe(
+        "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+      ),
     joinCode: zod.string(),
     createdAt: zod.coerce.date(),
     receiptImagePath: zod
@@ -317,7 +341,27 @@ export const GetBillByCodeResponse = zod.object({
         ),
       quantity: zod.number(),
       unitPrice: zod.number(),
-      total: zod.number(),
+      total: zod
+        .number()
+        .describe(
+          "The amount actually charged for this line, after any discount on it.",
+        ),
+      originalTotal: zod
+        .number()
+        .nullish()
+        .describe(
+          "What the line cost before its discount. Null when it was not discounted.",
+        ),
+      discountAmount: zod
+        .number()
+        .optional()
+        .describe("Money off this line. Zero when it was not discounted."),
+      discountLabel: zod
+        .string()
+        .nullish()
+        .describe(
+          'How the receipt worded the discount, e.g. \"25% Happy Hour\".',
+        ),
       position: zod.number().nullish(),
       assignedUserIds: zod.array(zod.number()),
       createdAt: zod.coerce.date(),
@@ -369,6 +413,12 @@ export const GetBillResponse = zod.object({
     currency: zod.string().nullish(),
     taxPercent: zod.number(),
     tipPercent: zod.number(),
+    discountPercent: zod
+      .number()
+      .optional()
+      .describe(
+        "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+      ),
     joinCode: zod.string(),
     createdAt: zod.coerce.date(),
     receiptImagePath: zod
@@ -411,7 +461,27 @@ export const GetBillResponse = zod.object({
         ),
       quantity: zod.number(),
       unitPrice: zod.number(),
-      total: zod.number(),
+      total: zod
+        .number()
+        .describe(
+          "The amount actually charged for this line, after any discount on it.",
+        ),
+      originalTotal: zod
+        .number()
+        .nullish()
+        .describe(
+          "What the line cost before its discount. Null when it was not discounted.",
+        ),
+      discountAmount: zod
+        .number()
+        .optional()
+        .describe("Money off this line. Zero when it was not discounted."),
+      discountLabel: zod
+        .string()
+        .nullish()
+        .describe(
+          'How the receipt worded the discount, e.g. \"25% Happy Hour\".',
+        ),
       position: zod.number().nullish(),
       assignedUserIds: zod.array(zod.number()),
       createdAt: zod.coerce.date(),
@@ -460,6 +530,10 @@ export const UpdateBillBody = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number().optional(),
   tipPercent: zod.number().optional(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe("The rate offered when a line is newly marked as discounted."),
 });
 
 export const UpdateBillResponse = zod.object({
@@ -470,6 +544,12 @@ export const UpdateBillResponse = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
   tipPercent: zod.number(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe(
+      "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+    ),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
   receiptImagePath: zod
@@ -514,6 +594,10 @@ export const PatchBillBody = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number().optional(),
   tipPercent: zod.number().optional(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe("The rate offered when a line is newly marked as discounted."),
   receiptImagePath: zod
     .string()
     .nullish()
@@ -528,6 +612,12 @@ export const PatchBillResponse = zod.object({
   currency: zod.string().nullish(),
   taxPercent: zod.number(),
   tipPercent: zod.number(),
+  discountPercent: zod
+    .number()
+    .optional()
+    .describe(
+      "The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself.",
+    ),
   joinCode: zod.string(),
   createdAt: zod.coerce.date(),
   receiptImagePath: zod
@@ -592,7 +682,25 @@ export const GetBillLinesResponseItem = zod.object({
     ),
   quantity: zod.number(),
   unitPrice: zod.number(),
-  total: zod.number(),
+  total: zod
+    .number()
+    .describe(
+      "The amount actually charged for this line, after any discount on it.",
+    ),
+  originalTotal: zod
+    .number()
+    .nullish()
+    .describe(
+      "What the line cost before its discount. Null when it was not discounted.",
+    ),
+  discountAmount: zod
+    .number()
+    .optional()
+    .describe("Money off this line. Zero when it was not discounted."),
+  discountLabel: zod
+    .string()
+    .nullish()
+    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   position: zod.number().nullish(),
   assignedUserIds: zod.array(zod.number()),
   createdAt: zod.coerce.date(),
@@ -616,7 +724,25 @@ export const CreateBillLineBody = zod.object({
     ),
   quantity: zod.number(),
   unitPrice: zod.number(),
-  total: zod.number(),
+  total: zod
+    .number()
+    .describe(
+      "The amount actually charged for this line, after any discount on it.",
+    ),
+  originalTotal: zod
+    .number()
+    .nullish()
+    .describe(
+      "What the line cost before its discount. Null or absent clears the discount.",
+    ),
+  discountAmount: zod
+    .number()
+    .optional()
+    .describe("Money off this line. Zero or absent means no discount."),
+  discountLabel: zod
+    .string()
+    .nullish()
+    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   afterLineId: zod.number().nullish(),
 });
 
@@ -639,7 +765,27 @@ export const BulkCreateBillLinesBody = zod.object({
         ),
       quantity: zod.number(),
       unitPrice: zod.number(),
-      total: zod.number(),
+      total: zod
+        .number()
+        .describe(
+          "The amount actually charged for this line, after any discount on it.",
+        ),
+      originalTotal: zod
+        .number()
+        .nullish()
+        .describe(
+          "What the line cost before its discount. Null or absent clears the discount.",
+        ),
+      discountAmount: zod
+        .number()
+        .optional()
+        .describe("Money off this line. Zero or absent means no discount."),
+      discountLabel: zod
+        .string()
+        .nullish()
+        .describe(
+          'How the receipt worded the discount, e.g. \"25% Happy Hour\".',
+        ),
       afterLineId: zod.number().nullish(),
     }),
   ),
@@ -663,7 +809,25 @@ export const UpdateBillLineBody = zod.object({
     ),
   quantity: zod.number(),
   unitPrice: zod.number(),
-  total: zod.number(),
+  total: zod
+    .number()
+    .describe(
+      "The amount actually charged for this line, after any discount on it.",
+    ),
+  originalTotal: zod
+    .number()
+    .nullish()
+    .describe(
+      "What the line cost before its discount. Null or absent clears the discount.",
+    ),
+  discountAmount: zod
+    .number()
+    .optional()
+    .describe("Money off this line. Zero or absent means no discount."),
+  discountLabel: zod
+    .string()
+    .nullish()
+    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   afterLineId: zod.number().nullish(),
 });
 
@@ -679,7 +843,25 @@ export const UpdateBillLineResponse = zod.object({
     ),
   quantity: zod.number(),
   unitPrice: zod.number(),
-  total: zod.number(),
+  total: zod
+    .number()
+    .describe(
+      "The amount actually charged for this line, after any discount on it.",
+    ),
+  originalTotal: zod
+    .number()
+    .nullish()
+    .describe(
+      "What the line cost before its discount. Null when it was not discounted.",
+    ),
+  discountAmount: zod
+    .number()
+    .optional()
+    .describe("Money off this line. Zero when it was not discounted."),
+  discountLabel: zod
+    .string()
+    .nullish()
+    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   position: zod.number().nullish(),
   assignedUserIds: zod.array(zod.number()),
   createdAt: zod.coerce.date(),

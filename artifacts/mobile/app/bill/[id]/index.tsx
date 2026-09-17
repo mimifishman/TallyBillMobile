@@ -52,6 +52,8 @@ import {
 import { pickColor } from "@/utils/pickColor";
 import { apiErrorMessage } from "@/utils/apiErrors";
 import { TaxTipField } from "@/components/TaxTipField";
+import { DiscountSheet, type DiscountLineInput, type DiscountResult } from "@/components/DiscountSheet";
+import { totalDiscount } from "@/utils/discount";
 import { amountFromPercent, fmtPct, toPercent, type MoneyMode } from "@/utils/taxTip";
 import { getCurrencySymbol, formatMoney } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
@@ -116,6 +118,7 @@ export default function BillDetailScreen() {
   } | null>(null);
 
   const [showSplitModal, setShowSplitModal] = useState(false);
+  const [showDiscount, setShowDiscount] = useState(false);
   const [splitLineId, setSplitLineId] = useState<number | null>(null);
   const [splitQtyInput, setSplitQtyInput] = useState("");
 
@@ -691,6 +694,22 @@ export default function BillDetailScreen() {
   const fmt = (n: number) => formatMoney(n, bill.currency);
 
   const subtotal = lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0);
+
+  // Lines carry their own discount, so the bill-wide figure is just their sum.
+  // Shown as one row because that is how a receipt prints it, and because a
+  // per-line strike-through already says which lines it came off.
+  const discountTotal = totalDiscount(
+    lines.map((l) => ({ discountAmount: parseFloat(String((l as { discountAmount?: string }).discountAmount ?? 0)) })),
+  );
+  const discountLines: DiscountLineInput[] = lines.map((l) => ({
+    id: l.id,
+    description: l.description,
+    total: parseFloat(String(l.total)) || 0,
+    originalTotal: (l as { originalTotal?: string | null }).originalTotal != null
+      ? parseFloat(String((l as { originalTotal?: string | null }).originalTotal))
+      : null,
+  }));
+  const defaultDiscountPercent = parseFloat(String((bill as { discountPercent?: string }).discountPercent ?? 0)) || 0;
   const taxPercent = parseFloat(String(bill.taxPercent)) || 0;
   const tipPercent = parseFloat(String(bill.tipPercent)) || 0;
   const taxAmount = Math.round(subtotal * (taxPercent / 100) * 100) / 100;
@@ -700,6 +719,41 @@ export default function BillDetailScreen() {
   const taxTipPercent = {
     tax: toPercent(taxMode, taxInput, subtotal),
     tip: toPercent(tipMode, tipInput, subtotal),
+  };
+
+  /**
+   * Writes back only the lines whose price actually moved. A bill can have many
+   * lines and most of them are usually untouched, so sending all of them would
+   * be a burst of writes that all land on the same screen for no gain.
+   */
+  const handleDiscountSave = (results: DiscountResult[], newDefaultPercent: number) => {
+    setShowDiscount(false);
+    const byId = new Map(lines.map((l) => [l.id, l]));
+    for (const result of results) {
+      const line = byId.get(result.id);
+      if (!line) continue;
+      const currentTotal = parseFloat(String(line.total)) || 0;
+      const currentOriginal = (line as { originalTotal?: string | null }).originalTotal != null
+        ? parseFloat(String((line as { originalTotal?: string | null }).originalTotal))
+        : null;
+      if (currentTotal === result.total && currentOriginal === result.originalTotal) continue;
+      const quantity = parseFloat(String(line.quantity)) || 1;
+      updateLineMutation.mutate({
+        billId,
+        lineId: line.id,
+        data: {
+          description: line.description,
+          quantity,
+          unitPrice: Math.round((result.total / quantity) * 100) / 100,
+          total: result.total,
+          originalTotal: result.originalTotal,
+          discountLabel: result.discountLabel,
+        },
+      });
+    }
+    if (newDefaultPercent !== defaultDiscountPercent) {
+      patchBillMutation.mutate({ billId, data: { discountPercent: newDefaultPercent } });
+    }
   };
 
   const openTaxTip = () => {
@@ -729,6 +783,42 @@ export default function BillDetailScreen() {
     { key: "tax" as const, name: "Tax", percent: taxPercent, amount: taxAmount },
     { key: "tip" as const, name: "Tip", percent: tipPercent, amount: tipAmount },
   ];
+
+  /**
+   * The discount row. Unlike tax and tip it is only offered when there is
+   * something to take it off, because an empty item list gives the sheet
+   * nothing to show.
+   */
+  const renderDiscountRow = () => {
+    const isSet = discountTotal > 0;
+    const body = (
+      <>
+        <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Discount</Text>
+        <View style={styles.summaryValueGroup}>
+          <Text style={[styles.summaryValue, { color: isSet ? colors.primaryText : colors.foreground }]}>
+            {isSet ? `−${fmt(discountTotal)}` : fmt(0)}
+          </Text>
+          {canEditHeader && lines.length > 0 ? (
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          ) : null}
+        </View>
+      </>
+    );
+    if (!canEditHeader || lines.length === 0) {
+      return <View key="discount" style={styles.summaryRow}>{body}</View>;
+    }
+    return (
+      <TouchableOpacity
+        key="discount"
+        onPress={() => setShowDiscount(true)}
+        style={[styles.summaryRow, styles.editableRow]}
+        accessibilityRole="button"
+        accessibilityLabel={isSet ? `Discount, ${fmt(discountTotal)} off. Edit` : "Add a discount"}
+      >
+        {body}
+      </TouchableOpacity>
+    );
+  };
 
   const renderTaxTipRow = (row: (typeof taxTipRows)[number]) => {
     const isSet = row.percent > 0;
@@ -922,6 +1012,10 @@ export default function BillDetailScreen() {
                 quantity={parseFloat(String(line.quantity))}
                 unitPrice={parseFloat(String(line.unitPrice))}
                 total={parseFloat(String(line.total))}
+                originalTotal={(line as typeof line & { originalTotal?: string | null }).originalTotal != null
+                  ? parseFloat(String((line as typeof line & { originalTotal?: string | null }).originalTotal))
+                  : null}
+                discountLabel={(line as typeof line & { discountLabel?: string | null }).discountLabel ?? null}
                 assignedUserIds={line.assignedUserIds}
                 billUsers={users}
                 currency={bill.currency}
@@ -945,10 +1039,14 @@ export default function BillDetailScreen() {
               inside a card where every other row is static. */}
           {canEditHeader ? (
             <View style={[styles.editableRows, { backgroundColor: colors.muted }]}>
+              {renderDiscountRow()}
               {taxTipRows.map(renderTaxTipRow)}
             </View>
           ) : (
-            taxTipRows.map(renderTaxTipRow)
+            <>
+              {discountTotal > 0 ? renderDiscountRow() : null}
+              {taxTipRows.map(renderTaxTipRow)}
+            </>
           )}
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryRow}>
@@ -1227,6 +1325,15 @@ export default function BillDetailScreen() {
           )}
         </TouchableOpacity>
       )}
+
+      <DiscountSheet
+        visible={showDiscount}
+        lines={discountLines}
+        defaultPercent={defaultDiscountPercent}
+        currency={bill.currency}
+        onSave={handleDiscountSave}
+        onClose={() => setShowDiscount(false)}
+      />
 
       <BottomSheet visible={showSplitModal} onClose={() => setShowSplitModal(false)} title="Split Quantity">
         <View style={styles.sheetContent}>
