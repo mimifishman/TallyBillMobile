@@ -12,4 +12,6 @@ export interface UpdateBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+  /** The rate offered when a line is newly marked as discounted. */
+  discountPercent?: number;
 }

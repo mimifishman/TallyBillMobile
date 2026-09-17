@@ -15,6 +15,8 @@ export interface Bill {
   currency?: string | null;
   taxPercent: number;
   tipPercent: number;
+  /** The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself. */
+  discountPercent?: number;
   joinCode: string;
   createdAt: Date;
   /** Object storage path of the scanned receipt image */

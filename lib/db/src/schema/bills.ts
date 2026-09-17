@@ -11,6 +11,12 @@ export const billsTable = pgTable("bills", {
   currency: text("currency"),
   taxPercent: numeric("tax_percent", { precision: 10, scale: 4 }).notNull().default("0"),
   tipPercent: numeric("tip_percent", { precision: 10, scale: 4 }).notNull().default("0"),
+  /**
+   * The rate offered when a line is newly marked as discounted — the bill's
+   * default, not a rate applied to anything by itself. Each line keeps its own
+   * amount, so one line can sit at a different rate to the rest.
+   */
+  discountPercent: numeric("discount_percent", { precision: 10, scale: 4 }).notNull().default("0"),
   joinCode: text("join_code").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   guestOwnerId: text("guest_owner_id"),

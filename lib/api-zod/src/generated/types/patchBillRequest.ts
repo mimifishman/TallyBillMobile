@@ -13,6 +13,8 @@ export interface PatchBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+  /** The rate offered when a line is newly marked as discounted. */
+  discountPercent?: number;
   /** Object storage path of the scanned receipt image */
   receiptImagePath?: string | null;
 }

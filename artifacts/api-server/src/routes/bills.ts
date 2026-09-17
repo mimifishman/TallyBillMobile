@@ -141,7 +141,7 @@ router.get("/guest", async (req, res) => {
 });
 
 router.post("/", optionalAuth, async (req: AuthRequest, res) => {
-  const { title, date, currency, taxPercent, tipPercent, guestOwnerId } = req.body;
+  const { title, date, currency, taxPercent, tipPercent, discountPercent, guestOwnerId } = req.body;
   if (!title || !date) {
     res.status(400).json({ error: "title and date are required" });
     return;
@@ -158,6 +158,7 @@ router.post("/", optionalAuth, async (req: AuthRequest, res) => {
       currency: currency || null,
       taxPercent: String(taxPercent ?? 0),
       tipPercent: String(tipPercent ?? 0),
+      discountPercent: String(discountPercent ?? 0),
       joinCode,
       guestOwnerId: isGuest ? guestOwnerId.trim() : null,
       isGuestBill: isGuest,
@@ -331,13 +332,14 @@ router.get("/:billId/events",
 
 router.put("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
   const billId = parseInt(String(req.params["billId"]));
-  const { title, date, currency, taxPercent, tipPercent } = req.body;
+  const { title, date, currency, taxPercent, tipPercent, discountPercent } = req.body;
   const [updated] = await db.update(billsTable).set({
     ...(title && { title }),
     ...(date && { date }),
     ...(currency !== undefined && { currency: currency || null }),
     ...(taxPercent !== undefined && { taxPercent: String(taxPercent) }),
     ...(tipPercent !== undefined && { tipPercent: String(tipPercent) }),
+    ...(discountPercent !== undefined && { discountPercent: String(discountPercent) }),
   }).where(eq(billsTable.id, billId)).returning();
   notifyBillChanged(billId);
   res.json(updated);
@@ -357,7 +359,7 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
       return;
     }
   }
-  const { title, date, currency, taxPercent, tipPercent, receiptImagePath } = req.body;
+  const { title, date, currency, taxPercent, tipPercent, discountPercent, receiptImagePath } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {
     res.status(400).json({ error: "title cannot be empty" });
     return;
@@ -380,6 +382,7 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     ...(currency !== undefined && { currency: currency || null }),
     ...(taxPercent !== undefined && { taxPercent: String(parseFloat(taxPercent) || 0) }),
     ...(tipPercent !== undefined && { tipPercent: String(parseFloat(tipPercent) || 0) }),
+    ...(discountPercent !== undefined && { discountPercent: String(parseFloat(discountPercent) || 0) }),
     ...(receiptImagePath !== undefined && { receiptImagePath: receiptImagePath || null }),
   }).where(eq(billsTable.id, billId)).returning();
   notifyBillChanged(billId);

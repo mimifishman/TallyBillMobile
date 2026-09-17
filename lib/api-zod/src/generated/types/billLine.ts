@@ -14,7 +14,14 @@ export interface BillLine {
   originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
+  /** The amount actually charged for this line, after any discount on it. */
   total: number;
+  /** What the line cost before its discount. Null when it was not discounted. */
+  originalTotal?: number | null;
+  /** Money off this line. Zero when it was not discounted. */
+  discountAmount?: number;
+  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
+  discountLabel?: string | null;
   position?: number | null;
   assignedUserIds: number[];
   createdAt: Date;

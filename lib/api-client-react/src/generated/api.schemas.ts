@@ -103,6 +103,8 @@ export interface Bill {
   currency?: string | null;
   taxPercent: number;
   tipPercent: number;
+  /** The rate offered when a line is newly marked as discounted — the bill's default, not a rate applied to anything by itself. */
+  discountPercent?: number;
   joinCode: string;
   createdAt: string;
   /** Object storage path of the scanned receipt image */
@@ -123,7 +125,14 @@ export interface BillLine {
   originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
+  /** The amount actually charged for this line, after any discount on it. */
   total: number;
+  /** What the line cost before its discount. Null when it was not discounted. */
+  originalTotal?: number | null;
+  /** Money off this line. Zero when it was not discounted. */
+  discountAmount?: number;
+  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
+  discountLabel?: string | null;
   position?: number | null;
   assignedUserIds: number[];
   createdAt: string;
@@ -169,6 +178,8 @@ export interface UpdateBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+  /** The rate offered when a line is newly marked as discounted. */
+  discountPercent?: number;
 }
 
 export interface PatchBillRequest {
@@ -178,6 +189,8 @@ export interface PatchBillRequest {
   currency?: string | null;
   taxPercent?: number;
   tipPercent?: number;
+  /** The rate offered when a line is newly marked as discounted. */
+  discountPercent?: number;
   /** Object storage path of the scanned receipt image */
   receiptImagePath?: string | null;
 }
@@ -209,7 +222,14 @@ export interface CreateBillLineRequest {
   originalDescription?: string | null;
   quantity: number;
   unitPrice: number;
+  /** The amount actually charged for this line, after any discount on it. */
   total: number;
+  /** What the line cost before its discount. Null or absent clears the discount. */
+  originalTotal?: number | null;
+  /** Money off this line. Zero or absent means no discount. */
+  discountAmount?: number;
+  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
+  discountLabel?: string | null;
   afterLineId?: number | null;
 }
 

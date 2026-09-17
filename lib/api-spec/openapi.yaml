@@ -1605,6 +1605,11 @@ components:
           type: number
         tipPercent:
           type: number
+        discountPercent:
+          type: number
+          description: >-
+            The rate offered when a line is newly marked as discounted — the
+            bill's default, not a rate applied to anything by itself.
         joinCode:
           type: string
         createdAt:
@@ -1710,6 +1715,9 @@ components:
           type: number
         tipPercent:
           type: number
+        discountPercent:
+          type: number
+          description: The rate offered when a line is newly marked as discounted.
 
     PatchBillRequest:
       type: object
@@ -1726,6 +1734,9 @@ components:
           type: number
         tipPercent:
           type: number
+        discountPercent:
+          type: number
+          description: The rate offered when a line is newly marked as discounted.
         receiptImagePath:
           type: string
           nullable: true
@@ -1833,6 +1844,18 @@ components:
           type: number
         total:
           type: number
+          description: The amount actually charged for this line, after any discount on it.
+        originalTotal:
+          type: number
+          nullable: true
+          description: What the line cost before its discount. Null when it was not discounted.
+        discountAmount:
+          type: number
+          description: Money off this line. Zero when it was not discounted.
+        discountLabel:
+          type: string
+          nullable: true
+          description: How the receipt worded the discount, e.g. "25% Happy Hour".
         position:
           type: number
           nullable: true
@@ -1868,6 +1891,18 @@ components:
           type: number
         total:
           type: number
+          description: The amount actually charged for this line, after any discount on it.
+        originalTotal:
+          type: number
+          nullable: true
+          description: What the line cost before its discount. Null or absent clears the discount.
+        discountAmount:
+          type: number
+          description: Money off this line. Zero or absent means no discount.
+        discountLabel:
+          type: string
+          nullable: true
+          description: How the receipt worded the discount, e.g. "25% Happy Hour".
         afterLineId:
           type: integer
           nullable: true
