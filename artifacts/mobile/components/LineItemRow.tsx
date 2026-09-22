@@ -74,7 +74,14 @@ interface LineItemRowProps {
   onToggleUser: (lineId: number, billUserId: number) => void;
   onBulkToggleUsers: (lineId: number, billUserIds: number[]) => void;
   onDelete: (lineId: number) => void;
-  onUpdate: (lineId: number, data: { description: string; quantity: number; total: number }) => void;
+  onUpdate: (lineId: number, data: {
+    description: string;
+    quantity: number;
+    /** The full price, before any discount on this line. */
+    total: number;
+    /** Money off this line. Zero clears the discount. */
+    discountAmount: number;
+  }) => void;
   onSplit: (lineId: number) => void;
 }
 
@@ -101,23 +108,32 @@ export function LineItemRow({
   const [editing, setEditing] = useState(false);
   const [editDesc, setEditDesc] = useState(description);
   const isDiscounted = originalTotal != null && Number(originalTotal) > Number(total);
-  const [editTotal, setEditTotal] = useState(String(total));
+  // Edited as the FULL price plus what comes off it, so a discount survives an
+  // edit rather than being silently dropped by it.
+  const [editTotal, setEditTotal] = useState(String(isDiscounted ? originalTotal : total));
   const [editQty, setEditQty] = useState(String(quantity));
+  const [editDiscount, setEditDiscount] = useState(
+    isDiscounted ? String(Math.round((Number(originalTotal) - Number(total)) * 100) / 100) : "",
+  );
 
   const isFullyAssigned = billUsers.length > 0 && billUsers.every((u) => assignedUserIds.includes(u.id));
   const hasAnyAssigned = assignedUserIds.length > 0;
 
   const handleEdit = () => {
     setEditDesc(description);
-    setEditTotal(String(total));
+    setEditTotal(String(isDiscounted ? originalTotal : total));
     setEditQty(String(quantity));
+    setEditDiscount(isDiscounted ? String(Math.round((Number(originalTotal) - Number(total)) * 100) / 100) : "");
     setEditing(true);
   };
 
   const handleSave = () => {
     const newTotal = parseFloat(editTotal) || 0;
     const newQty = Math.max(1, parseInt(editQty) || 1);
-    onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal });
+    // Never more off than the line costs — a negative line is not something the
+    // split, the tax or the tip can do anything sensible with.
+    const newDiscount = Math.min(Math.max(0, parseFloat(editDiscount) || 0), newTotal);
+    onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal, discountAmount: newDiscount });
     setEditing(false);
   };
 
@@ -175,6 +191,20 @@ export function LineItemRow({
               placeholder="0.00"
               placeholderTextColor={colors.mutedForeground}
             />
+            {/* Always offered, so a discount can be corrected here rather than
+                being lost by the edit it survived until now. */}
+            <View style={styles.editQtyWrap}>
+              <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Off</Text>
+              <TextInput
+                style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+                value={editDiscount}
+                onChangeText={setEditDiscount}
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor={colors.mutedForeground}
+                accessibilityLabel={`Discount on ${description}`}
+              />
+            </View>
             {quantity > 1 && (
               <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primaryText }]} accessibilityLabel="Split item quantity">
                 <Feather name="scissors" size={13} color={colors.primaryText} />
