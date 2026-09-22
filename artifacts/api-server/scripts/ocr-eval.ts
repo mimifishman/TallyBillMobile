@@ -64,6 +64,8 @@ interface Expected {
   items?: number;
   total?: number;
   currency?: string;
+  /** Item names read off the photo by eye. Scored as a set, not in order. */
+  itemDescriptions?: string[];
 }
 
 interface OcrItem {
@@ -76,6 +78,11 @@ interface OcrItem {
 interface Row {
   name: string;
   language: string;
+  /** Item names as returned, so runs can be compared against each other. */
+  descriptions: string[];
+  /** Names matched against the hand-read truth, when there is any. */
+  namesOk: number | null;
+  namesTotal: number | null;
   ms: number;
   items: number;
   sum: number;
@@ -105,6 +112,33 @@ function mimeOf(name: string): string {
   if (ext === ".webp") return "image/webp";
   if (ext === ".heic") return "image/heic";
   return "image/jpeg";
+}
+
+
+/**
+ * Loose comparison for an item name.
+ *
+ * A receipt's own punctuation is not what is being tested — the model writing
+ * "ספרייט זירו" where the paper has "ספרייט ז'ירו" has read the item correctly.
+ * Quoting marks, whitespace and case are stripped; the letters are not.
+ */
+function normalizeName(value: string): string {
+  return value
+    .replace(/[\u0022\u0027\u05F3\u05F4\u2018\u2019\u201C\u201D`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** How many of the expected names came back, compared as a set. */
+function matchNames(got: string[], want: string[]): number {
+  const pool = got.map(normalizeName);
+  let matched = 0;
+  for (const name of want.map(normalizeName)) {
+    const at = pool.indexOf(name);
+    if (at !== -1) { pool.splice(at, 1); matched++; }
+  }
+  return matched;
 }
 
 function percentile(values: number[], p: number): number {
@@ -230,12 +264,19 @@ async function run(): Promise<void> {
         const itemsOk = expected?.items == null ? null : items.length === expected.items;
         const totalOk = expected?.total == null ? null : Math.abs(sum - expected.total) <= 0.01;
 
-        rows.push({ name: label, language, ms, items: items.length, sum, currency, maxQuantity, expected, itemsOk, totalOk });
+        const descriptions = items.map((i) => String(i.description ?? ""));
+        const want = expected?.itemDescriptions;
+        rows.push({
+          name: label, language, ms, items: items.length, sum, currency, maxQuantity, expected, itemsOk, totalOk,
+          descriptions,
+          namesOk: want ? matchNames(descriptions, want) : null,
+          namesTotal: want ? want.length : null,
+        });
         writeFileSync(join(OUT, `${basename(file, extname(file))}${repeat > 1 ? `-${run}` : ""}.json`), JSON.stringify(items, null, 2));
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, expected, itemsOk: null, totalOk: null, error: message });
+        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, expected, itemsOk: null, totalOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
         process.stdout.write("!");
       }
     }
@@ -243,8 +284,8 @@ async function run(): Promise<void> {
   console.log("\n");
 
   // Per receipt
-  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total");
-  console.log("-".repeat(88));
+  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total  names");
+  console.log("-".repeat(95));
   for (const r of rows) {
     if (r.error) {
       console.log(pad(r.name, 30) + "  ERROR  " + r.error.slice(0, 48));
@@ -255,7 +296,8 @@ async function run(): Promise<void> {
       pad(r.name, 30) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
       padL(r.currency ?? "-", 5) + padL(`x${r.maxQuantity}`, 6) +
       padL(r.itemsOk === null ? "-" : r.itemsOk ? "ok" : "MISS", 7) +
-      padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) + flag
+      padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) +
+      padL(r.namesTotal === null ? "-" : `${r.namesOk}/${r.namesTotal}`, 7) + flag
     );
   }
 
@@ -277,6 +319,28 @@ async function run(): Promise<void> {
       padL(good.filter((r) => r.ms > BUDGET_MS).length, 10) + padL(scored("itemsOk"), 10) + padL(scored("totalOk"), 10) +
       padL(group.filter((r) => r.error).length, 8)
     );
+  }
+
+  // Run-to-run agreement on item names.
+  //
+  // This needs no hand-read truth, and it is the sharper signal: a name that
+  // changes between two runs of the same bytes was not read off the receipt at
+  // all. A name that is wrong the same way every time is at least a misreading
+  // of something that is there.
+  if (repeat > 1) {
+    console.log("\n" + pad("receipt", 30) + padL("name agreement", 16) + "  names that moved");
+    console.log("-".repeat(80));
+    for (const file of [...new Set(rows.map((r) => r.name.replace(/ #\d+$/, "")))]) {
+      const runs = rows.filter((r) => !r.error && r.name.replace(/ #\d+$/, "") === file);
+      if (runs.length < 2) continue;
+      const first = runs[0]!.descriptions.map(normalizeName);
+      const stable = first.filter((name) => runs.every((r) => r.descriptions.map(normalizeName).includes(name)));
+      const moved = [...new Set(runs.flatMap((r) => r.descriptions).filter((d) => !stable.includes(normalizeName(d))))];
+      console.log(
+        pad(file, 30) + padL(`${stable.length}/${first.length}`, 16) +
+        "  " + (moved.length === 0 ? "-" : moved.slice(0, 4).join(" | ")),
+      );
+    }
   }
 
   const unscored = rows.filter((r) => !r.error && !r.expected).length;

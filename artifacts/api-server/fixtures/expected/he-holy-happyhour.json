@@ -1,5 +1,12 @@
 {
-  "total": 128.00,
+  "total": 128.0,
   "currency": "ILS",
-  "note": "DISCOUNTS. Printed lines: 15.00, 15.00, 57.00, -14.00 (25% Happy Hour), 74.00, -19.00 (25% Happy Hour). Four purchased items, two negative discount lines, netting the printed total of 128.00. 'items' is deliberately unset: how a discount should be represented is an open design question, so only the total is scored here. A run that returns items summing to 161.00 has dropped both discounts. Photo rotated 90 degrees."
+  "note": "DISCOUNTS. Printed lines: 15.00, 15.00, 57.00, -14.00 (25% Happy Hour), 74.00, -19.00 (25% Happy Hour). Four purchased items, two negative discount lines, netting the printed total of 128.00. 'items' is deliberately unset: how a discount should be represented is an open design question, so only the total is scored here. A run that returns items summing to 161.00 has dropped both discounts. Photo rotated 90 degrees.",
+  "itemDescriptions": [
+    "קולה",
+    "ספרייט זירו",
+    "סלט קיסר",
+    "פיצה יוונית"
+  ],
+  "descriptionsNote": "Read off the photo by eye. Scored as a set, not in order, and normalised for whitespace and quoting marks — the point is whether the right words came back, not their arrangement."
 }
