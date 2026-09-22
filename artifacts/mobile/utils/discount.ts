@@ -90,8 +90,13 @@ export function apportion(amount: number, lines: DiscountableLine[]): Map<number
     return result;
   }
 
+  // Never take off more than there was to take. A discount that exceeds the
+  // bill would otherwise drive every line negative, and a negative line is not
+  // something the split, the tax or the tip can do anything sensible with.
+  const capped = Math.min(amount, totalBase);
+
   // Work in whole cents so there is nothing left to drift.
-  const targetCents = Math.round(amount * 100);
+  const targetCents = Math.round(capped * 100);
   const exact = bases.map((b) => ({ ...b, cents: (b.base / totalBase) * targetCents }));
   const floors = exact.map((e) => ({ ...e, floor: Math.floor(e.cents), rest: e.cents - Math.floor(e.cents) }));
 
