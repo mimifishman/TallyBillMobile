@@ -65,7 +65,7 @@ const lop = [...apportion(7.77, lopsided).values()];
 check("a lopsided split still adds back exactly", Math.abs(lop.reduce((a, b) => a + b, 0) - 7.77) < 1e-9, lop);
 
 // The awkward case from the design note: 94.00 over the five Back Yard items.
-const spread = applyAmount(94, backyard.slice(0, 5), "Happy Hour");
+const spread = applyAmount(94, backyard.slice(0, 5));
 const spreadSum = totalDiscount(spread);
 check("94.00 spread across the five items adds back to 94.00", spreadSum === 94, spreadSum);
 check("spreading by price matches 20% on every line",
@@ -77,16 +77,13 @@ const reviewLines = [
   line(1, 124), line(2, 80), line(3, 69), line(4, 113),
   line(5, 84), line(6, 51), line(7, 51),
 ];
-const spreadAcross = applyAmount(94, reviewLines, "Discount on the receipt");
+const spreadAcross = applyAmount(94, reviewLines);
 const spreadOff = totalDiscount(spreadAcross);
 check("Back Yard: a 94.00 receipt discount spreads to exactly 94.00", spreadOff === 94, spreadOff);
 const paid = Math.round(spreadAcross.reduce((sum, l) => sum + l.total, 0) * 100) / 100;
 check("Back Yard: the lines then come to the printed 478.00", paid === 478, paid);
 check("Back Yard: every line keeps its full price for display",
   spreadAcross.every((l, i) => l.originalTotal === reviewLines[i]!.total), spreadAcross.map((l) => l.originalTotal));
-check("Back Yard: the receipt's own wording is carried",
-  spreadAcross.every((l) => l.discountLabel === "Discount on the receipt"));
-
 // A discount bigger than the bill must not push any line negative, and must not
 // take more off than there was to take.
 const overshoot = applyAmount(500, [line(1, 10), line(2, 20)]);
@@ -99,9 +96,12 @@ check("a discount larger than the bill takes off at most the bill",
 check("a rate above 100 is capped", parsePercent("150") === 100);
 check("rubbish reads as no discount", parsePercent("abc") === 0 && parsePercent("-5") === 0);
 
-// --- Labels ---------------------------------------------------------------
-check("an unlabelled discount describes itself", applyPercent(line(1, 100), 20).discountLabel === "20% off");
-check("a receipt's own wording wins", applyPercent(line(1, 100), 25, "25% Happy Hour").discountLabel === "25% Happy Hour");
+// --- How a discount reads -------------------------------------------------
+// No wording is stored for a discount. What is shown is worked out from the two
+// prices, so the check is that those two prices say the rate that was applied.
+const shown = applyPercent(line(1, 100), 20);
+check("a discount's rate can be read back off its two prices",
+  shown.originalTotal === 100 && shown.total === 80, shown);
 
 // --- Working out which items a printed discount came off. -----------------
 const inferred = inferDiscountSelection(reviewLines, 94);
