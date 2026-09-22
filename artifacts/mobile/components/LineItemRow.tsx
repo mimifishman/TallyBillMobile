@@ -66,8 +66,6 @@ interface LineItemRowProps {
   total: number;
   /** Price before this line's discount. Null when it was not discounted. */
   originalTotal?: number | null;
-  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
-  discountLabel?: string | null;
   assignedUserIds: number[];
   billUsers: BillMember[];
   currency?: string | null;
@@ -93,7 +91,6 @@ export function LineItemRow({
   unitPrice,
   total,
   originalTotal,
-  discountLabel,
   assignedUserIds,
   billUsers,
   currency,
@@ -108,6 +105,21 @@ export function LineItemRow({
   const [editing, setEditing] = useState(false);
   const [editDesc, setEditDesc] = useState(description);
   const isDiscounted = originalTotal != null && Number(originalTotal) > Number(total);
+  /**
+   * What to say about the discount: always the rate, worked out from the two
+   * prices.
+   *
+   * Deliberately not the stored label. A label can go stale when a price is
+   * edited, can be lost by a write that forgets it, and differs between items
+   * depending on where the discount came from — a bill showing "20% off" on one
+   * line and "Discount on the receipt" on the next reads as two different
+   * things when it is one. The rate is derived, so it is always right and
+   * always the same shape, and it is the thing someone can check against the
+   * paper in their hand.
+   */
+  const discountNote = isDiscounted
+    ? `${Math.round(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 1000) / 10}% off`
+    : null;
   // Edited as the FULL price plus what comes off it, so a discount survives an
   // edit rather than being silently dropped by it.
   const [editTotal, setEditTotal] = useState(String(isDiscounted ? originalTotal : total));
@@ -119,6 +131,7 @@ export function LineItemRow({
   );
   /** Untouched, the amount read off the receipt is kept to the agora. */
   const [discountEdited, setDiscountEdited] = useState(false);
+  const [priceEdited, setPriceEdited] = useState(false);
 
   const isFullyAssigned = billUsers.length > 0 && billUsers.every((u) => assignedUserIds.includes(u.id));
   const hasAnyAssigned = assignedUserIds.length > 0;
@@ -133,18 +146,32 @@ export function LineItemRow({
         : "",
     );
     setDiscountEdited(false);
+    setPriceEdited(false);
     setEditing(true);
   };
 
   const handleSave = () => {
+    // A rate outside 0-100 is refused rather than quietly capped. Capping it
+    // turned a mistyped 150 into a free item and showed "100% off" — a figure
+    // nobody entered — leaving the bill short with nothing on screen to say so.
+    if (discountPercentError) return;
+
     const newTotal = parseFloat(editTotal) || 0;
     const newQty = Math.max(1, parseInt(editQty) || 1);
-    // Never more off than the line costs — a negative line is not something the
-    // split, the tax or the tip can do anything sensible with.
-    const newDiscount = Math.min(Math.max(0, editDiscountMoney), newTotal);
+    const newDiscount = Math.max(0, Math.min(editDiscountMoney, newTotal));
     onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal, discountAmount: newDiscount });
     setEditing(false);
   };
+
+  /** Set while the typed rate is not a discount anything could mean. */
+  const discountPercentError = (() => {
+    const raw = editDiscount.trim();
+    if (raw === "") return null;
+    const percent = Number(raw.replace(",", "."));
+    if (!Number.isFinite(percent) || percent < 0) return "0 to 100";
+    if (percent > 100) return "0 to 100";
+    return null;
+  })();
 
   /**
    * Money off, worked out from the rate typed. Left exactly as it was when the
@@ -155,7 +182,14 @@ export function LineItemRow({
     const price = parseFloat(editTotal) || 0;
     const percent = parseFloat(editDiscount) || 0;
     if (percent <= 0 || price <= 0) return 0;
-    if (!discountEdited && isDiscounted) return Math.round((Number(originalTotal) - Number(total)) * 100) / 100;
+    // The stored amount is kept only while nothing it depends on has moved. Once
+    // the price changes, the rate is what the person meant — someone who sets
+    // 20% and then corrects 124.00 to 155.00 expects 20% of the new price, not
+    // the old money. Untouched, a discount read off a receipt keeps the exact
+    // figure the receipt printed.
+    if (!discountEdited && !priceEdited && isDiscounted) {
+      return Math.round((Number(originalTotal) - Number(total)) * 100) / 100;
+    }
     return Math.round(price * (percent / 100) * 100) / 100;
   })();
 
@@ -207,6 +241,7 @@ export function LineItemRow({
                 value={editQty}
                 onChangeText={setEditQty}
                 keyboardType="number-pad"
+                selectTextOnFocus
                 placeholder="1"
                 placeholderTextColor={colors.mutedForeground}
               />
@@ -214,8 +249,9 @@ export function LineItemRow({
             <TextInput
               style={[styles.editInputSmall, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
               value={editTotal}
-              onChangeText={setEditTotal}
+              onChangeText={(v) => { setEditTotal(v); setPriceEdited(true); }}
               keyboardType="numeric"
+              selectTextOnFocus
               placeholder="0.00"
               placeholderTextColor={colors.mutedForeground}
             />
@@ -225,7 +261,16 @@ export function LineItemRow({
                 <Feather name="scissors" size={13} color={colors.primaryText} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
+            {/* Dimmed and inert while the rate is out of range, so the button
+                does not look like it works and then do nothing. */}
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={discountPercentError !== null}
+              style={[
+                styles.saveBtn,
+                { backgroundColor: colors.primary, opacity: discountPercentError ? 0.5 : 1 },
+              ]}
+            >
               <Text style={styles.saveBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -236,16 +281,28 @@ export function LineItemRow({
           <View style={styles.editRow}>
             <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Discount</Text>
             <TextInput
-              style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+              style={[
+                styles.editInputQty,
+                {
+                  color: colors.foreground,
+                  borderColor: discountPercentError ? colors.destructive : colors.border,
+                  backgroundColor: colors.card,
+                },
+              ]}
               value={editDiscount}
               onChangeText={(v) => { setEditDiscount(v); setDiscountEdited(true); }}
               keyboardType="decimal-pad"
+              selectTextOnFocus
               placeholder="0"
               placeholderTextColor={colors.mutedForeground}
               accessibilityLabel={`Discount percent on ${description}`}
             />
             <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>%</Text>
-            {editCharged !== null ? (
+            {discountPercentError ? (
+              <Text style={[styles.editCharged, { color: colors.destructive }]} numberOfLines={1}>
+                {discountPercentError}
+              </Text>
+            ) : editCharged !== null ? (
               <Text style={[styles.editCharged, { color: colors.primaryText }]} numberOfLines={1}>
                 you pay {editCharged.toFixed(2)}
               </Text>
@@ -283,9 +340,9 @@ export function LineItemRow({
                 </Text>
               ) : null}
             </Text>
-            {isDiscounted && discountLabel ? (
+            {discountNote ? (
               <Text style={[styles.discountLabel, { color: colors.primaryText }]} numberOfLines={1}>
-                {discountLabel}
+                {discountNote}
               </Text>
             ) : null}
           </View>

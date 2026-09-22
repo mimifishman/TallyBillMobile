@@ -817,6 +817,8 @@ export default function ScanScreen() {
                     <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
                       {priced.charged.toFixed(2)}
                     </Text>
+                    {/* Worked out from the two prices, so it cannot go stale
+                        when one is edited or vanish if a label is lost. */}
                     {priced.percent !== null ? (
                       <Text style={[styles.reviewItemOff, { color: colors.primaryText }]}>
                         {priced.percent}% off

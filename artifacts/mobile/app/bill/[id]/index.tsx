@@ -597,9 +597,14 @@ export default function BillDetailScreen() {
         quantity: lineData.quantity,
         unitPrice: (lineData.total - lineData.discountAmount) / (lineData.quantity || 1),
         total: Math.round((lineData.total - lineData.discountAmount) * 100) / 100,
-        // Sent every time, so an edit neither drops a discount nor leaves a
-        // stale original claiming a saving that no longer matches the price.
+        // Both sent every time, so an edit neither drops a discount nor leaves
+        // a stale original claiming a saving that no longer matches the price.
+        // The label is rebuilt from the numbers rather than carried over: after
+        // an edit the old wording may describe a rate that no longer applies.
         originalTotal: lineData.discountAmount > 0 ? lineData.total : null,
+        discountLabel: lineData.discountAmount > 0 && lineData.total > 0
+          ? `${Math.round((lineData.discountAmount / lineData.total) * 1000) / 10}% off`
+          : null,
       },
     });
   };
@@ -716,7 +721,8 @@ export default function BillDetailScreen() {
   const currencySymbol = getCurrencySymbol(bill.currency);
   const fmt = (n: number) => formatMoney(n, bill.currency);
 
-  const subtotal = lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0);
+  /** What is actually owed for the items: each line's total is already net. */
+  const chargedTotal = Math.round(lines.reduce((sum, l) => sum + parseFloat(String(l.total)), 0) * 100) / 100;
 
   // Lines carry their own discount, so the bill-wide figure is just their sum.
   // Shown as one row because that is how a receipt prints it, and because a
@@ -724,6 +730,19 @@ export default function BillDetailScreen() {
   const discountTotal = totalDiscount(
     lines.map((l) => ({ discountAmount: parseFloat(String((l as { discountAmount?: string }).discountAmount ?? 0)) })),
   );
+
+  /**
+   * The subtotal shown is BEFORE the discount, so the card can be read down:
+   * subtotal, less discount, plus tax and tip, equals total.
+   *
+   * Line totals are stored net, so the discount has to be added back to get
+   * there. Showing the net figure and then a discount row beneath it made the
+   * four rows contradict each other — 269.92 less 79.98 plus 45.88 is 235.82,
+   * not the 315.80 the card also showed, and the total was the one that was
+   * right. This is also how the review screen presents the same bill, so it
+   * reads the same before and after the items are added.
+   */
+  const subtotal = Math.round((chargedTotal + discountTotal) * 100) / 100;
   const discountLines: DiscountLineInput[] = lines.map((l) => ({
     id: l.id,
     description: l.description,
@@ -735,13 +754,15 @@ export default function BillDetailScreen() {
   const defaultDiscountPercent = parseFloat(String((bill as { discountPercent?: string }).discountPercent ?? 0)) || 0;
   const taxPercent = parseFloat(String(bill.taxPercent)) || 0;
   const tipPercent = parseFloat(String(bill.tipPercent)) || 0;
-  const taxAmount = Math.round(subtotal * (taxPercent / 100) * 100) / 100;
-  const tipAmount = Math.round(subtotal * (tipPercent / 100) * 100) / 100;
-  const grandTotal = subtotal + taxAmount + tipAmount;
+  // Worked out on what is owed, not on the pre-discount subtotal: tax is
+  // charged on the discounted price and a tip on a cheaper bill is smaller.
+  const taxAmount = Math.round(chargedTotal * (taxPercent / 100) * 100) / 100;
+  const tipAmount = Math.round(chargedTotal * (tipPercent / 100) * 100) / 100;
+  const grandTotal = Math.round((chargedTotal + taxAmount + tipAmount) * 100) / 100;
 
   const taxTipPercent = {
-    tax: toPercent(taxMode, taxInput, subtotal),
-    tip: toPercent(tipMode, tipInput, subtotal),
+    tax: toPercent(taxMode, taxInput, chargedTotal),
+    tip: toPercent(tipMode, tipInput, chargedTotal),
   };
 
   /**
@@ -796,7 +817,7 @@ export default function BillDetailScreen() {
     if (mode === current) return;
     const pct = which === "tax" ? taxTipPercent.tax : taxTipPercent.tip;
     const next = pct > 0
-      ? String(mode === "amount" ? amountFromPercent(pct, subtotal) : pct)
+      ? String(mode === "amount" ? amountFromPercent(pct, chargedTotal) : pct)
       : "";
     if (which === "tax") { setTaxInput(next); setTaxMode(mode); }
     else { setTipInput(next); setTipMode(mode); }
@@ -1038,7 +1059,6 @@ export default function BillDetailScreen() {
                 originalTotal={(line as typeof line & { originalTotal?: string | null }).originalTotal != null
                   ? parseFloat(String((line as typeof line & { originalTotal?: string | null }).originalTotal))
                   : null}
-                discountLabel={(line as typeof line & { discountLabel?: string | null }).discountLabel ?? null}
                 assignedUserIds={line.assignedUserIds}
                 billUsers={users}
                 currency={bill.currency}
@@ -1172,7 +1192,10 @@ export default function BillDetailScreen() {
         <View style={styles.sheetContent}>
           <View style={styles.taxTipSubtotal}>
             <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>SUBTOTAL</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(subtotal)}</Text>
+            {/* The charged figure, because it is what the rates below are
+                applied to. There is no discount row in this sheet to explain a
+                gap, so showing the pre-discount one would not tie up. */}
+            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{fmt(chargedTotal)}</Text>
           </View>
           <TaxTipField
             label="Tax"
@@ -1180,9 +1203,9 @@ export default function BillDetailScreen() {
             onModeChange={(mode) => changeMode("tax", mode)}
             value={taxInput}
             onValueChange={setTaxInput}
-            computed={amountFromPercent(taxTipPercent.tax, subtotal)}
+            computed={amountFromPercent(taxTipPercent.tax, chargedTotal)}
             currency={bill.currency}
-            canUseAmount={subtotal > 0}
+            canUseAmount={chargedTotal > 0}
           />
           <TaxTipField
             label="Tip"
@@ -1190,17 +1213,17 @@ export default function BillDetailScreen() {
             onModeChange={(mode) => changeMode("tip", mode)}
             value={tipInput}
             onValueChange={setTipInput}
-            computed={amountFromPercent(taxTipPercent.tip, subtotal)}
+            computed={amountFromPercent(taxTipPercent.tip, chargedTotal)}
             currency={bill.currency}
-            canUseAmount={subtotal > 0}
+            canUseAmount={chargedTotal > 0}
           />
           <View style={styles.taxTipTotal}>
             <Text style={[styles.summaryLabel, styles.summaryTotalLabel, { color: colors.foreground }]}>Total</Text>
             <Text style={[styles.summaryValue, styles.summaryTotalValue, { color: colors.primaryText }]}>
               {fmt(
-                subtotal +
-                  amountFromPercent(taxTipPercent.tax, subtotal) +
-                  amountFromPercent(taxTipPercent.tip, subtotal),
+                chargedTotal +
+                  amountFromPercent(taxTipPercent.tax, chargedTotal) +
+                  amountFromPercent(taxTipPercent.tip, chargedTotal),
               )}
             </Text>
           </View>

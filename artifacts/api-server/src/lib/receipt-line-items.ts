@@ -109,6 +109,42 @@ export function normalizePrintedTotal(value: unknown): number | null {
   return n === null ? null : round2(n);
 }
 
+/**
+ * Decides whether a bill-level discount should be taken off, or is only the
+ * receipt restating one already inside the item totals.
+ *
+ * A receipt that prices each line twice — full price in one column, charged
+ * price in another — often also totals the saving at the foot. Read literally
+ * that line looks like money still to come off, and taking it twice undercharges
+ * the bill: the DejaVoo fixture prints five lines summing to 208.00 and a
+ * "-110.00 Happy Hour" beneath them, and applying it again gives 98.00 against
+ * a receipt that says 208.00 is due.
+ *
+ * The receipt settles it. Whichever reading lands on the printed total is the
+ * right one, and the model does not have to get it right for this to work.
+ * Where there is no printed total to check against, the discount is dropped
+ * rather than guessed at — a bill that is too high is visible to everyone
+ * paying, while one that is too low is not, and the printed-total warning has
+ * nothing to fire on either way.
+ */
+export function shouldApplyBillDiscount(
+  itemsTotal: number,
+  printedTotal: number | null,
+  billDiscount: number | null,
+): boolean {
+  if (billDiscount === null || billDiscount <= 0) return false;
+  if (printedTotal === null) return false;
+
+  const tolerance = Math.max(0.02, printedTotal * 0.01);
+  const withDiscount = Math.abs(round2(itemsTotal - billDiscount) - printedTotal) <= tolerance;
+  const withoutDiscount = Math.abs(round2(itemsTotal) - printedTotal) <= tolerance;
+
+  // Only when taking it off is what agrees with the receipt, and leaving it on
+  // does not. If both readings land on the total the discount is 0 in all but
+  // name, and if neither does the receipt has not told us which is meant.
+  return withDiscount && !withoutDiscount;
+}
+
 export interface ReceiptCheck {
   /** What the returned items add up to, after their own discounts. */
   itemsTotal: number;

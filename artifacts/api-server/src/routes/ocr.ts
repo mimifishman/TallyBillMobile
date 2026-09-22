@@ -5,6 +5,7 @@ import {
   normalizeBillDiscount,
   normalizePrintedTotal,
   checkAgainstPrintedTotal,
+  shouldApplyBillDiscount,
   type RawLineItem,
 } from "../lib/receipt-line-items.js";
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
@@ -162,15 +163,20 @@ router.post("/", async (req, res) => {
     }
 
     const lineItems = normalizeLineItems(parsed.items);
-    const billDiscount = normalizeBillDiscount(parsed.billDiscount);
+    const printedTotal = normalizePrintedTotal(parsed.printedTotal);
+    const itemsTotal = Math.round(lineItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
+
+    // A footer discount is only passed on when taking it off is what agrees
+    // with the receipt's own total. Otherwise it is the receipt restating a
+    // saving already inside the line totals, and applying it would undercharge.
+    const claimedDiscount = normalizeBillDiscount(parsed.billDiscount);
+    const billDiscount = shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount)
+      ? claimedDiscount
+      : null;
     // The receipt's own total, checked against what was actually read. This
     // cannot fix a bad scan, but it can say one happened — which is the
     // difference between a wrong number shown confidently and one flagged.
-    const check = checkAgainstPrintedTotal(
-      lineItems,
-      normalizePrintedTotal(parsed.printedTotal),
-      billDiscount,
-    );
+    const check = checkAgainstPrintedTotal(lineItems, printedTotal, billDiscount);
 
     res.json({
       items: lineItems,
