@@ -45,6 +45,7 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
   const [discountDraft, setDiscountDraft] = useState("");
   /** Untouched, the discount read off the receipt is kept to the agora. */
   const [discountEdited, setDiscountEdited] = useState(false);
+  const [priceEdited, setPriceEdited] = useState(false);
   const [quantityError, setQuantityError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
       setPriceError(null);
       setDiscountError(null);
       setDiscountEdited(false);
+      setPriceEdited(false);
     }
   }, [visible, mode, initial]);
 
@@ -78,7 +80,11 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
     const price = Number(priceDraft.trim().replace(",", "."));
     const percent = Number(discountDraft.trim().replace(",", ".") || "0");
     if (!Number.isFinite(price) || !Number.isFinite(percent) || percent <= 0) return 0;
-    if (!discountEdited && initial && initial.discountAmount > 0) return initial.discountAmount;
+    // Kept only while nothing it depends on has moved: once the price changes,
+    // the rate is what the person meant.
+    if (!discountEdited && !priceEdited && initial && initial.discountAmount > 0) {
+      return initial.discountAmount;
+    }
     return Math.round(price * (percent / 100) * 100) / 100;
   })();
 
@@ -191,6 +197,7 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
               value={priceDraft}
               onChangeText={(v) => {
                 setPriceDraft(v);
+                setPriceEdited(true);
                 setPriceError(null);
               }}
               keyboardType="decimal-pad"

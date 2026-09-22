@@ -597,9 +597,14 @@ export default function BillDetailScreen() {
         quantity: lineData.quantity,
         unitPrice: (lineData.total - lineData.discountAmount) / (lineData.quantity || 1),
         total: Math.round((lineData.total - lineData.discountAmount) * 100) / 100,
-        // Sent every time, so an edit neither drops a discount nor leaves a
-        // stale original claiming a saving that no longer matches the price.
+        // Both sent every time, so an edit neither drops a discount nor leaves
+        // a stale original claiming a saving that no longer matches the price.
+        // The label is rebuilt from the numbers rather than carried over: after
+        // an edit the old wording may describe a rate that no longer applies.
         originalTotal: lineData.discountAmount > 0 ? lineData.total : null,
+        discountLabel: lineData.discountAmount > 0 && lineData.total > 0
+          ? `${Math.round((lineData.discountAmount / lineData.total) * 1000) / 10}% off`
+          : null,
       },
     });
   };
@@ -1038,7 +1043,6 @@ export default function BillDetailScreen() {
                 originalTotal={(line as typeof line & { originalTotal?: string | null }).originalTotal != null
                   ? parseFloat(String((line as typeof line & { originalTotal?: string | null }).originalTotal))
                   : null}
-                discountLabel={(line as typeof line & { discountLabel?: string | null }).discountLabel ?? null}
                 assignedUserIds={line.assignedUserIds}
                 billUsers={users}
                 currency={bill.currency}
