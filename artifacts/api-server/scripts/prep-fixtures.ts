@@ -42,8 +42,8 @@ if (files.length === 0) {
 }
 
 console.log(`${files.length} receipt(s) -> ${out}\n`);
-console.log("receipt".padEnd(30) + "ms".padStart(5) + "rotated".padStart(9) + "size".padStart(11) + "  mean");
-console.log("-".repeat(66));
+console.log("receipt".padEnd(30) + "ms".padStart(5) + "rotated".padStart(9) + "cropped".padStart(9) + "size".padStart(11) + "  mean");
+console.log("-".repeat(75));
 
 for (const file of files) {
   const input = readFileSync(join(RECEIPTS, file));
@@ -60,6 +60,7 @@ for (const file of files) {
     file.padEnd(30) +
     String(prepared.durationMs).padStart(5) +
     (prepared.rotated ? "yes" : "no").padStart(9) +
+    (prepared.croppedTop > 0 ? `${Math.round(prepared.croppedTop * 100)}%` : "no").padStart(9) +
     `${Math.round(prepared.buffer.length / 1024)}kB`.padStart(11) +
     `  ${mean.toFixed(0)}${mean < 100 ? "  <- TOO DARK" : ""}`,
   );
