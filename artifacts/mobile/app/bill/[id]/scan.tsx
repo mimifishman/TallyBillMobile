@@ -181,6 +181,24 @@ export default function ScanScreen() {
     return { selectedCount: count, selectedTotal: total };
   }, [scan.items]);
 
+  /**
+   * What a row should show: the amount that will actually be charged for it,
+   * and the price it was before, when a discount took something off.
+   *
+   * Held here rather than in the row so the rows and the totals cannot drift —
+   * a row showing 124.00 above a subtotal that had already taken 20% off it was
+   * the bug this fixes.
+   */
+  const pricedItem = (index: number, total: number) => {
+    const discount = itemDiscounts.get(index);
+    if (!discount) return { charged: total, was: null as number | null, percent: null as number | null };
+    const charged = Math.round((discount.originalTotal - discount.amount) * 100) / 100;
+    const percent = discount.originalTotal > 0
+      ? Math.round((discount.amount / discount.originalTotal) * 1000) / 10
+      : null;
+    return { charged, was: discount.originalTotal, percent };
+  };
+
   useEffect(() => {
     AsyncStorage.getItem(PREF_LANGUAGE_KEY).then((val) => {
       if (val) setPreferredLanguage(val);
@@ -261,6 +279,15 @@ export default function ScanScreen() {
   );
 
   // Only discounts on items still ticked count towards the bill.
+  const chargedTotal = useMemo(() => {
+    let sum = 0;
+    scan.items.forEach((item, index) => {
+      if (!isCountedItem(item)) return;
+      sum += pricedItem(index, Number.isFinite(item.total) ? item.total : 0).charged;
+    });
+    return Math.round(sum * 100) / 100;
+  }, [scan.items, itemDiscounts]);
+
   const discountAmount = useMemo(() => {
     let off = 0;
     scan.items.forEach((item, index) => {
@@ -271,7 +298,7 @@ export default function ScanScreen() {
   }, [scan.items, itemDiscounts]);
   // Tax and tip follow the discounted figure — the receipt charges tax on what
   // is actually owed, and a tip on a discounted bill is the smaller tip.
-  const discountedTotal = Math.round((selectedTotal - discountAmount) * 100) / 100;
+  const discountedTotal = chargedTotal;
   const taxPercent = toPercent(taxMode, taxInput, discountedTotal);
   const tipPercent = toPercent(tipMode, tipInput, discountedTotal);
   const taxAmount = amountFromPercent(taxPercent, discountedTotal);
@@ -705,6 +732,7 @@ export default function ScanScreen() {
           renderItem={({ item, index }) => {
             const displayName = item.translatedDescription ?? item.description;
             const originalName = item.translatedDescription ? item.description : null;
+            const priced = pricedItem(index, Number.isFinite(item.total) ? item.total : 0);
             return (
               <View
                 style={[
@@ -747,9 +775,21 @@ export default function ScanScreen() {
                       </Text>
                     )}
                   </View>
-                  <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
-                    {item.total.toFixed(2)}
-                  </Text>
+                  <View style={styles.reviewItemPrices}>
+                    {priced.was !== null ? (
+                      <Text style={[styles.reviewItemWas, { color: colors.mutedForeground }]}>
+                        {priced.was.toFixed(2)}
+                      </Text>
+                    ) : null}
+                    <Text style={[styles.reviewItemTotal, { color: item.selected ? colors.primary : colors.mutedForeground }]}>
+                      {priced.charged.toFixed(2)}
+                    </Text>
+                    {priced.percent !== null ? (
+                      <Text style={[styles.reviewItemOff, { color: colors.primaryText }]}>
+                        {priced.percent}% off
+                      </Text>
+                    ) : null}
+                  </View>
                   <View style={[styles.editIconBtn, { backgroundColor: colors.muted }]}>
                     <Feather name="edit-2" size={13} color={colors.primaryText} />
                   </View>
@@ -919,6 +959,9 @@ const styles = StyleSheet.create({
   checkbox: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   reviewItemBody: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACING.sm, minHeight: 36 },
   quantityBadge: { fontSize: 12, fontFamily: "Inter_600SemiBold", minWidth: 22 }, // TODO: one-off
+  reviewItemPrices: { alignItems: "flex-end" },
+  reviewItemWas: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", textDecorationLine: "line-through" },
+  reviewItemOff: { fontSize: 11, fontFamily: "Inter_500Medium" }, // TODO: one-off
   discountRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: SPACING.sm },
   discountValue: { flexDirection: "row", alignItems: "center", gap: SPACING.xs },
   discountHint: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", marginTop: -SPACING.xs, marginBottom: SPACING.sm },
