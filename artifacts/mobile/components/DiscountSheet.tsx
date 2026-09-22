@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BottomSheet } from "@/components/BottomSheet";
 import { PressableScale } from "@/components/PressableScale";
@@ -70,9 +70,25 @@ export function DiscountSheet({
   /** Which item is having its own rate typed, if any. */
   const [editing, setEditing] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  /** Whether the bill already had a discount when this was opened. */
+  const [hadDiscountOnOpen, setHadDiscountOnOpen] = useState(false);
 
+  /**
+   * Seeded once per opening, not whenever `lines` changes.
+   *
+   * The parent rebuilds that array on every render, so it is a new object every
+   * time. Depending on it meant this effect re-ran mid-edit and reset the rates
+   * to whatever was already saved — typing in the rate box was enough to wipe a
+   * discount just applied.
+   */
+  const seededFor = useRef(false);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      seededFor.current = false;
+      return;
+    }
+    if (seededFor.current) return;
+    seededFor.current = true;
     // Open showing what the bill already has, so opening the sheet to check
     // something cannot quietly change it.
     const existing = new Map<number, number>();
@@ -83,6 +99,7 @@ export function DiscountSheet({
       }
     }
     setRates(existing);
+    setHadDiscountOnOpen(existing.size > 0);
     setSelected(new Set());
     setRateDraft(String(defaultPercent > 0 ? Math.round(defaultPercent * 100) / 100 : 20));
     setEditing(null);
@@ -314,7 +331,11 @@ export function DiscountSheet({
 
       <PressableScale onPress={handleSave} style={[styles.save, { backgroundColor: colors.primary }]}>
         <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-          {rates.size === 0 ? "Remove discount" : `Done · ${formatMoney(preview.after, currency)}`}
+          {/* "Remove discount" only when there is one to remove. On a bill with
+              none it read as an odd thing to offer as the main action. */}
+          {rates.size === 0
+            ? hadDiscountOnOpen ? "Remove discount" : "Done"
+            : `Done · ${formatMoney(preview.after, currency)}`}
         </Text>
       </PressableScale>
     </BottomSheet>
