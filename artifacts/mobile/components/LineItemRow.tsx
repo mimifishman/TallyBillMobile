@@ -151,14 +151,27 @@ export function LineItemRow({
   };
 
   const handleSave = () => {
+    // A rate outside 0-100 is refused rather than quietly capped. Capping it
+    // turned a mistyped 150 into a free item and showed "100% off" — a figure
+    // nobody entered — leaving the bill short with nothing on screen to say so.
+    if (discountPercentError) return;
+
     const newTotal = parseFloat(editTotal) || 0;
     const newQty = Math.max(1, parseInt(editQty) || 1);
-    // Never more off than the line costs — a negative line is not something the
-    // split, the tax or the tip can do anything sensible with.
-    const newDiscount = Math.min(Math.max(0, editDiscountMoney), newTotal);
+    const newDiscount = Math.max(0, Math.min(editDiscountMoney, newTotal));
     onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal, discountAmount: newDiscount });
     setEditing(false);
   };
+
+  /** Set while the typed rate is not a discount anything could mean. */
+  const discountPercentError = (() => {
+    const raw = editDiscount.trim();
+    if (raw === "") return null;
+    const percent = Number(raw.replace(",", "."));
+    if (!Number.isFinite(percent) || percent < 0) return "0 to 100";
+    if (percent > 100) return "0 to 100";
+    return null;
+  })();
 
   /**
    * Money off, worked out from the rate typed. Left exactly as it was when the
@@ -248,7 +261,16 @@ export function LineItemRow({
                 <Feather name="scissors" size={13} color={colors.primaryText} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
+            {/* Dimmed and inert while the rate is out of range, so the button
+                does not look like it works and then do nothing. */}
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={discountPercentError !== null}
+              style={[
+                styles.saveBtn,
+                { backgroundColor: colors.primary, opacity: discountPercentError ? 0.5 : 1 },
+              ]}
+            >
               <Text style={styles.saveBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -259,7 +281,14 @@ export function LineItemRow({
           <View style={styles.editRow}>
             <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Discount</Text>
             <TextInput
-              style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+              style={[
+                styles.editInputQty,
+                {
+                  color: colors.foreground,
+                  borderColor: discountPercentError ? colors.destructive : colors.border,
+                  backgroundColor: colors.card,
+                },
+              ]}
               value={editDiscount}
               onChangeText={(v) => { setEditDiscount(v); setDiscountEdited(true); }}
               keyboardType="decimal-pad"
@@ -269,7 +298,11 @@ export function LineItemRow({
               accessibilityLabel={`Discount percent on ${description}`}
             />
             <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>%</Text>
-            {editCharged !== null ? (
+            {discountPercentError ? (
+              <Text style={[styles.editCharged, { color: colors.destructive }]} numberOfLines={1}>
+                {discountPercentError}
+              </Text>
+            ) : editCharged !== null ? (
               <Text style={[styles.editCharged, { color: colors.primaryText }]} numberOfLines={1}>
                 you pay {editCharged.toFixed(2)}
               </Text>
