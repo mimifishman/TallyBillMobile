@@ -237,20 +237,31 @@ export default function ScanScreen() {
 
     const lines = scan.items.map((item, index) => ({ id: index, total: item.total, originalTotal: null }));
     const inferred = inferDiscountSelection(lines, scan.billDiscount);
-    const label = "Discount on the receipt";
 
     const next = new Map<number, { amount: number; originalTotal: number; label: string | null }>();
     if (inferred) {
+      // Labelled with the rate, the same as a discount entered by hand. "20%
+      // off" is something a person can check against the receipt at a glance;
+      // "Discount on the receipt" only says that one exists.
+      const label = `${Math.round(inferred.percent * 100) / 100}% off`;
       for (const id of inferred.lineIds) {
         const applied = applyPercent(lines[id]!, inferred.percent, label);
         next.set(id, { amount: applied.discountAmount, originalTotal: applied.originalTotal!, label });
       }
     } else {
-      // Spread it over everything, which at least lands the bill on the right
-      // figure, and leave it obvious enough to correct.
-      for (const share of applyAmount(scan.billDiscount, lines, label)) {
+      // Which items the discount came off could not be worked out, so it is
+      // spread over everything — that lands the bill on the right figure and
+      // leaves something obvious to correct.
+      for (const share of applyAmount(scan.billDiscount, lines, "Discount")) {
         if (share.discountAmount > 0) {
-          next.set(share.id, { amount: share.discountAmount, originalTotal: share.originalTotal!, label });
+          const percent = share.originalTotal
+            ? Math.round((share.discountAmount / share.originalTotal) * 1000) / 10
+            : 0;
+          next.set(share.id, {
+            amount: share.discountAmount,
+            originalTotal: share.originalTotal!,
+            label: percent > 0 ? `${percent}% off` : "Discount",
+          });
         }
       }
     }
