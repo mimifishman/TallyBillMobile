@@ -5,7 +5,12 @@
  * dropped line item, a dropped discount, and a bill-level discount that the
  * items legitimately do not carry.
  */
-import { checkAgainstPrintedTotal, normalizePrintedTotal, type LineItem } from "../src/lib/receipt-line-items.ts";
+import {
+  checkAgainstPrintedTotal,
+  normalizePrintedTotal,
+  shouldApplyBillDiscount,
+  type LineItem,
+} from "../src/lib/receipt-line-items.ts";
 
 let failed = 0;
 function check(name: string, ok: boolean, got?: unknown) {
@@ -58,6 +63,32 @@ check("1% drift on a large bill reconciles", largeOk.reconciled === true, largeO
 
 check("a zero or negative printed total is treated as absent",
   normalizePrintedTotal(0) === null && normalizePrintedTotal(-5) === null && normalizePrintedTotal("177.00") === 177);
+
+// --- Whether a footer discount is real, or the receipt restating one. ------
+// DejaVoo prices every line twice and totals the saving at the foot: five lines
+// summing to 208.00, "-110.00 Happy Hour" beneath them, and 208.00 due. Taking
+// the 110.00 again gives 98.00 and undercharges the bill by the whole saving.
+check("a footer discount already inside the item totals is not applied again",
+  shouldApplyBillDiscount(208, 208, 110) === false);
+
+// Back Yard is the opposite: its items are full price and the discount has not
+// been applied to them, so it must be.
+check("a footer discount the items do not carry is applied",
+  shouldApplyBillDiscount(572, 478, 94) === true);
+
+check("no printed total to check against means the discount is not applied",
+  shouldApplyBillDiscount(208, null, 110) === false);
+check("no discount, nothing to apply",
+  shouldApplyBillDiscount(208, 208, null) === false && shouldApplyBillDiscount(208, 208, 0) === false);
+
+// Neither reading lands on the printed total: the receipt has not said which is
+// meant, so the discount is left off and the mismatch is shown to the user.
+check("an unexplained gap does not get a discount applied to it",
+  shouldApplyBillDiscount(300, 250, 94) === false);
+
+// A cent of rounding must not flip the decision.
+check("a rounding drift still counts as agreeing",
+  shouldApplyBillDiscount(572, 478.01, 94) === true);
 
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);
