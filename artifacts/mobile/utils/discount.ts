@@ -138,3 +138,61 @@ export function applyAmount(amount: number, lines: DiscountableLine[], label?: s
 export function totalDiscount(lines: Array<{ discountAmount?: number | null }>): number {
   return round2(lines.reduce((sum, l) => sum + (Number(l.discountAmount) || 0), 0));
 }
+
+/** Rates a receipt actually prints. Anything else is not worth guessing at. */
+const COMMON_RATES = [5, 10, 12.5, 15, 20, 25, 30, 33, 40, 50, 60, 75, 100];
+
+/** Above this the subset search is not worth doing; 2^16 is already 65k. */
+const MAX_LINES_TO_INFER = 16;
+
+export interface InferredDiscount {
+  /** Ids of the lines the discount appears to have applied to. */
+  lineIds: number[];
+  percent: number;
+}
+
+/**
+ * Works out which items a printed discount came off, when it can be known.
+ *
+ * A receipt says "-94.00" but not what it applied to, and on the fixture that
+ * prompted this it applied to five lines of seven. Guessing wrong is worse than
+ * not guessing — it would silently discount the wrong person's dish — so this
+ * only answers when the answer is unambiguous.
+ *
+ * The search is over subsets: for each one, is the printed discount a round
+ * percentage of that subset's total? On the Back Yard receipt exactly one
+ * combination works, 20% off 470.00 of the 572.00, and the two 51.00 lines are
+ * left out. Where several combinations work, or none does, this returns null
+ * and the choice stays with the person holding the receipt.
+ *
+ * Subsets are enumerated rather than solved cleverly because a bill has a
+ * handful of lines, not thousands, and a plain loop is easier to be sure of.
+ */
+export function inferDiscountSelection(
+  lines: DiscountableLine[],
+  discountAmount: number,
+): InferredDiscount | null {
+  if (discountAmount <= 0 || lines.length === 0 || lines.length > MAX_LINES_TO_INFER) return null;
+
+  const bases = lines.map((line) => ({ id: line.id, base: baseTotalOf(line) }));
+  const target = Math.round(discountAmount * 100);
+
+  let found: InferredDiscount | null = null;
+  for (let mask = 1; mask < 1 << bases.length; mask++) {
+    let subtotal = 0;
+    for (let i = 0; i < bases.length; i++) if (mask & (1 << i)) subtotal += bases[i]!.base;
+    if (subtotal <= 0) continue;
+
+    for (const percent of COMMON_RATES) {
+      if (Math.round(subtotal * percent) !== target) continue;
+      // A second answer means the receipt does not say which is right.
+      if (found) return null;
+      found = {
+        lineIds: bases.filter((_, i) => mask & (1 << i)).map((b) => b.id),
+        percent,
+      };
+      break;
+    }
+  }
+  return found;
+}
