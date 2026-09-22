@@ -33,6 +33,7 @@ import { LanguagePicker } from "@/components/LanguagePicker";
 import { ReviewItemSheet, type ReviewItemValues } from "@/components/ReviewItemSheet";
 import { TaxTipField } from "@/components/TaxTipField";
 import { amountFromPercent, toPercent, type MoneyMode } from "@/utils/taxTip";
+import { applyAmount } from "@/utils/discount";
 
 const THUMBNAIL_HEIGHT = 300;
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
@@ -150,6 +151,8 @@ export default function ScanScreen() {
   const [taxInput, setTaxInput] = useState("");
   const [tipMode, setTipMode] = useState<MoneyMode>("percent");
   const [tipInput, setTipInput] = useState("");
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountMode, setDiscountMode] = useState<MoneyMode>("amount");
   const taxTipSeeded = useRef(false);
   const keyboardHeight = useKeyboardHeight();
 
@@ -187,6 +190,25 @@ export default function ScanScreen() {
   }, [billData]);
 
   /**
+   * Seeds the discount from the receipt, once.
+   *
+   * A bill-level discount is not carried by any item, so if it is not offered
+   * here it is simply lost — the user would have to notice the receipt says 94
+   * less than the items and work it out themselves. Seeded as an amount rather
+   * than a rate because that is what the receipt prints.
+   *
+   * Guarded so a later scan result cannot overwrite a figure already typed.
+   */
+  const seededDiscountRef = useRef(false);
+  useEffect(() => {
+    if (seededDiscountRef.current) return;
+    if (scan.billDiscount == null || scan.billDiscount <= 0) return;
+    seededDiscountRef.current = true;
+    setDiscountMode("amount");
+    setDiscountInput(scan.billDiscount.toFixed(2));
+  }, [scan.billDiscount]);
+
+  /**
    * How far the selected items sit from the receipt's own total.
    *
    * Only shown when the receipt actually printed a total AND the scan says they
@@ -202,17 +224,26 @@ export default function ScanScreen() {
     return { difference, printedTotal: scan.printedTotal };
   }, [scan.reconciled, scan.printedTotal, scan.items]);
 
-  const taxPercent = toPercent(taxMode, taxInput, selectedTotal);
-  const tipPercent = toPercent(tipMode, tipInput, selectedTotal);
-  const taxAmount = amountFromPercent(taxPercent, selectedTotal);
-  const tipAmount = amountFromPercent(tipPercent, selectedTotal);
-  const grandTotal = selectedTotal + taxAmount + tipAmount;
+  // A discount never takes a bill below zero, and never exceeds what is there.
+  const discountPercent = toPercent(discountMode, discountInput, selectedTotal);
+  const discountAmount = Math.min(
+    amountFromPercent(discountPercent, selectedTotal),
+    Math.round(selectedTotal * 100) / 100,
+  );
+  // Tax and tip follow the discounted figure — the receipt charges tax on what
+  // is actually owed, and a tip on a discounted bill is the smaller tip.
+  const discountedTotal = Math.round((selectedTotal - discountAmount) * 100) / 100;
+  const taxPercent = toPercent(taxMode, taxInput, discountedTotal);
+  const tipPercent = toPercent(tipMode, tipInput, discountedTotal);
+  const taxAmount = amountFromPercent(taxPercent, discountedTotal);
+  const tipAmount = amountFromPercent(tipPercent, discountedTotal);
+  const grandTotal = discountedTotal + taxAmount + tipAmount;
 
   // Switching unit converts what is already there, rather than clearing it —
   // "8.5%" becomes the sum it works out to, and back again.
   const changeTaxMode = (mode: MoneyMode) => {
     if (mode === taxMode) return;
-    const asAmount = amountFromPercent(taxPercent, selectedTotal);
+    const asAmount = amountFromPercent(taxPercent, discountedTotal);
     if (mode === "amount") setTaxInput(taxPercent > 0 ? String(asAmount) : "");
     else setTaxInput(taxPercent > 0 ? String(taxPercent) : "");
     setTaxMode(mode);
@@ -220,7 +251,7 @@ export default function ScanScreen() {
 
   const changeTipMode = (mode: MoneyMode) => {
     if (mode === tipMode) return;
-    const asAmount = amountFromPercent(tipPercent, selectedTotal);
+    const asAmount = amountFromPercent(tipPercent, discountedTotal);
     if (mode === "amount") setTipInput(tipPercent > 0 ? String(asAmount) : "");
     else setTipInput(tipPercent > 0 ? String(tipPercent) : "");
     setTipMode(mode);
@@ -357,16 +388,40 @@ export default function ScanScreen() {
       Alert.alert("Nothing selected", "Select at least one item to add");
       return;
     }
+    // A bill-level discount is spread across the lines rather than kept apart,
+    // because a share of a line is how everything downstream already works —
+    // each person pays their slice of the line total, and tax and tip follow
+    // from that. Splitting it here means none of that has to know about it.
+    //
+    // Shares use the largest remainder method, so they add back to exactly the
+    // amount entered. Rounding each on its own would leave the bill a cent or
+    // two away from the receipt, which is the whole thing this avoids.
+    const shares = discountAmount > 0
+      ? applyAmount(
+          discountAmount,
+          selected.map((item, index) => ({ id: index, total: item.total, originalTotal: null })),
+          scan.billDiscount != null && Math.abs(scan.billDiscount - discountAmount) < 0.005
+            ? "Discount on the receipt"
+            : "Discount",
+        )
+      : null;
+
     bulkCreateMutation.mutate({
       billId,
       data: {
-        lines: selected.map(({ description, translatedDescription, quantity, unitPrice, total }) => ({
-          description: translatedDescription ?? description,
-          originalDescription: translatedDescription ? description : null,
-          quantity,
-          unitPrice,
-          total,
-        })),
+        lines: selected.map(({ description, translatedDescription, quantity, unitPrice, total }, index) => {
+          const share = shares?.[index];
+          const charged = share ? share.total : total;
+          return {
+            description: translatedDescription ?? description,
+            originalDescription: translatedDescription ? description : null,
+            quantity,
+            unitPrice: quantity > 0 ? Math.round((charged / quantity) * 100) / 100 : charged,
+            total: charged,
+            originalTotal: share?.originalTotal ?? null,
+            discountLabel: share?.discountLabel ?? null,
+          };
+        }),
       },
     });
   };
@@ -564,6 +619,24 @@ export default function ScanScreen() {
                     {formatMoney(selectedTotal, billData?.bill.currency)}
                   </Text>
                 </View>
+                <TaxTipField
+                  label="Discount"
+                  mode={discountMode}
+                  onModeChange={(mode) => {
+                    if (mode === discountMode) return;
+                    setDiscountInput(
+                      discountPercent > 0
+                        ? String(mode === "amount" ? amountFromPercent(discountPercent, selectedTotal) : discountPercent)
+                        : "",
+                    );
+                    setDiscountMode(mode);
+                  }}
+                  value={discountInput}
+                  onValueChange={setDiscountInput}
+                  computed={-discountAmount}
+                  currency={billData?.bill.currency}
+                  canUseAmount={selectedTotal > 0}
+                />
                 <TaxTipField
                   label="Tax"
                   mode={taxMode}

@@ -28,6 +28,12 @@ interface ScanState {
    */
   printedTotal: number | null;
   reconciled: boolean | null;
+  /**
+   * A discount the receipt applies to the whole bill rather than to one item,
+   * as a positive number. The items do not carry it, so it has to be offered
+   * on the review screen or it is simply lost.
+   */
+  billDiscount: number | null;
   translating: boolean;
   translateError: string | null;
 }
@@ -87,6 +93,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     receiptImagePath: null,
     printedTotal: null,
     reconciled: null,
+    billDiscount: null,
     translating: false,
     translateError: null,
   });
@@ -109,6 +116,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         receiptImagePath: null,
         printedTotal: null,
         reconciled: null,
+        billDiscount: null,
         translating: false,
         translateError: null,
       });
@@ -135,6 +143,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
                   items: data.items.map((item) => ({ ...item, selected: true })),
                   printedTotal: data.printedTotal ?? null,
                   reconciled: data.reconciled ?? null,
+                  billDiscount: data.billDiscount ?? null,
                 }));
                 saveReceiptImage(uri, billId).then((objectPath) => {
                   if (myGeneration !== generationRef.current) return;
@@ -169,7 +178,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => {
     generationRef.current += 1;
-    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, printedTotal: null, reconciled: null, translating: false, translateError: null });
+    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, printedTotal: null, reconciled: null, billDiscount: null, translating: false, translateError: null });
   }, []);
 
   const setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>> = useCallback(

@@ -70,6 +70,30 @@ check("94.00 spread across the five items adds back to 94.00", spreadSum === 94,
 check("spreading by price matches 20% on every line",
   spread.every((s, i) => s.total === discounted[i]!.total), spread.map((s) => s.total));
 
+// --- The review screen's job: a receipt-level discount spread over the items.
+// Back Yard prints 572.00 of items, a -94.00 guest discount, and 478.00 to pay.
+const reviewLines = [
+  line(1, 124), line(2, 80), line(3, 69), line(4, 113),
+  line(5, 84), line(6, 51), line(7, 51),
+];
+const spreadAcross = applyAmount(94, reviewLines, "Discount on the receipt");
+const spreadOff = totalDiscount(spreadAcross);
+check("Back Yard: a 94.00 receipt discount spreads to exactly 94.00", spreadOff === 94, spreadOff);
+const paid = Math.round(spreadAcross.reduce((sum, l) => sum + l.total, 0) * 100) / 100;
+check("Back Yard: the lines then come to the printed 478.00", paid === 478, paid);
+check("Back Yard: every line keeps its full price for display",
+  spreadAcross.every((l, i) => l.originalTotal === reviewLines[i]!.total), spreadAcross.map((l) => l.originalTotal));
+check("Back Yard: the receipt's own wording is carried",
+  spreadAcross.every((l) => l.discountLabel === "Discount on the receipt"));
+
+// A discount bigger than the bill must not push any line negative, and must not
+// take more off than there was to take.
+const overshoot = applyAmount(500, [line(1, 10), line(2, 20)]);
+check("a discount larger than the bill leaves no negative line",
+  overshoot.every((l) => l.total >= 0), overshoot.map((l) => l.total));
+check("a discount larger than the bill takes off at most the bill",
+  totalDiscount(overshoot) === 30, totalDiscount(overshoot));
+
 // --- Percent parsing ------------------------------------------------------
 check("a rate above 100 is capped", parsePercent("150") === 100);
 check("rubbish reads as no discount", parsePercent("abc") === 0 && parsePercent("-5") === 0);
