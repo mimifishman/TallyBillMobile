@@ -21,17 +21,29 @@ export interface DiscountResult {
 }
 
 /**
- * Enter a discount rate and choose which items it comes off.
+ * Enter discounts and choose which items each one comes off.
  *
- * A receipt's discount almost never covers the whole bill. On the fixtures this
- * was built against, one restaurant took 20% off five of seven lines, and
- * another gave happy hour on the food while the drinks paid full price — so
- * picking items is the main job here, not an advanced option.
+ * A receipt discount rarely covers the whole bill. On the fixtures this was
+ * built against, one restaurant took 20% off five of seven lines, and another
+ * gave happy hour to the food while the drinks paid full price. So choosing
+ * items is the main job here, not an advanced option.
  *
- * The rate at the top is the default for anything ticked. A line can then be
- * given its own rate, which is what "20% off, but drinks are 50%" needs. Every
- * rate is measured against the undiscounted price, so changing the default
- * never compounds onto a discount already taken.
+ * It works in rounds: tick some items, set a rate, apply. Then tick a different
+ * set, set a different rate, apply again. That is what "30% off food, 20% off
+ * drinks" is — two rounds — and it is why the rate at the top does not reach
+ * back and change items that were already given one.
+ *
+ * An item holds exactly ONE rate. Applying a rate to an item that already had
+ * one replaces it rather than adding to it, which makes stacking impossible by
+ * construction — there is no order-of-application question to answer, and no
+ * way to double-discount someone's dish. This is where other systems come
+ * unstuck: Shopify POS allows a single cart discount and no stacking at all,
+ * and Square users report that ringing up two groups and tapping two discount
+ * buttons does the wrong thing. Toast arrives at the same place from the other
+ * side, with an "applies to everything except" list.
+ *
+ * Every rate is measured against the undiscounted price, so re-applying never
+ * compounds onto a discount already taken.
  */
 export function DiscountSheet({
   visible,
@@ -51,17 +63,18 @@ export function DiscountSheet({
 }) {
   const colors = useColors();
   const [rateDraft, setRateDraft] = useState("");
-  /** Per-line rate. A line missing from this map is not discounted. */
+  /** The rate applied to each item. An item missing here has no discount. */
   const [rates, setRates] = useState<Map<number, number>>(new Map());
-  /** Which line is having its own rate typed, if any. */
-  const [overriding, setOverriding] = useState<number | null>(null);
-  const [overrideDraft, setOverrideDraft] = useState("");
+  /** Ticked for the NEXT round. Separate from which items already have a rate. */
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  /** Which item is having its own rate typed, if any. */
+  const [editing, setEditing] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   useEffect(() => {
     if (!visible) return;
-    // Open showing what the bill already has: anything discounted stays ticked
-    // at its own rate, so opening the sheet to check something cannot quietly
-    // change it.
+    // Open showing what the bill already has, so opening the sheet to check
+    // something cannot quietly change it.
     const existing = new Map<number, number>();
     for (const line of lines) {
       if (line.originalTotal != null && line.originalTotal > line.total) {
@@ -70,12 +83,10 @@ export function DiscountSheet({
       }
     }
     setRates(existing);
-    const opening = existing.size > 0
-      ? [...existing.values()][0]!
-      : defaultPercent > 0 ? defaultPercent : 20;
-    setRateDraft(String(Math.round(opening * 100) / 100));
-    setOverriding(null);
-    setOverrideDraft("");
+    setSelected(new Set());
+    setRateDraft(String(defaultPercent > 0 ? Math.round(defaultPercent * 100) / 100 : 20));
+    setEditing(null);
+    setEditDraft("");
   }, [visible, lines, defaultPercent]);
 
   const rate = parsePercent(rateDraft);
@@ -92,49 +103,61 @@ export function DiscountSheet({
     return { off: Math.round(off * 100) / 100, after: Math.round(after * 100) / 100 };
   }, [lines, rates]);
 
-  const allOn = lines.length > 0 && rates.size === lines.length;
+  const allSelected = lines.length > 0 && selected.size === lines.length;
 
   const toggle = (id: number) => {
-    setRates((prev) => {
-      const next = new Map(prev);
+    setSelected((prev) => {
+      const next = new Set(prev);
       if (next.has(id)) next.delete(id);
-      else next.set(id, rate > 0 ? rate : 20);
+      else next.add(id);
       return next;
     });
   };
 
   const toggleAll = () => {
-    setRates((prev) => {
-      if (prev.size === lines.length) return new Map();
-      const next = new Map<number, number>();
-      for (const line of lines) next.set(line.id, rate > 0 ? rate : 20);
-      return next;
-    });
+    setSelected((prev) => (prev.size === lines.length ? new Set() : new Set(lines.map((l) => l.id))));
   };
 
-  /** Retyping the top rate moves every line that is still on the old default. */
-  const handleRateChange = (text: string) => {
-    const previous = parsePercent(rateDraft);
-    setRateDraft(text);
-    const next = parsePercent(text);
-    setRates((prev) => {
-      const updated = new Map(prev);
-      for (const [id, value] of prev) if (value === previous) updated.set(id, next);
-      return updated;
-    });
-  };
-
-  const commitOverride = () => {
-    if (overriding === null) return;
-    const value = parsePercent(overrideDraft);
+  /**
+   * Stamps the rate onto the ticked items and clears the ticks, ready for the
+   * next round. An item that already had a rate takes the new one instead —
+   * never both.
+   */
+  const applyToSelected = () => {
+    if (rate <= 0 || selected.size === 0) return;
     setRates((prev) => {
       const next = new Map(prev);
-      if (value > 0) next.set(overriding, value);
-      else next.delete(overriding);
+      for (const id of selected) next.set(id, rate);
       return next;
     });
-    setOverriding(null);
-    setOverrideDraft("");
+    setSelected(new Set());
+  };
+
+  /** Puts an item back to full price. */
+  const clearOne = (id: number) => {
+    setRates((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const clearAll = () => {
+    setRates(new Map());
+    setSelected(new Set());
+  };
+
+  const commitEdit = () => {
+    if (editing === null) return;
+    const value = parsePercent(editDraft);
+    setRates((prev) => {
+      const next = new Map(prev);
+      if (value > 0) next.set(editing, value);
+      else next.delete(editing);
+      return next;
+    });
+    setEditing(null);
+    setEditDraft("");
   };
 
   const handleSave = () => {
@@ -147,6 +170,13 @@ export function DiscountSheet({
     );
   };
 
+  /** Rates in use, so the footer can say what was applied and to how many. */
+  const groups = useMemo(() => {
+    const byRate = new Map<number, number>();
+    for (const value of rates.values()) byRate.set(value, (byRate.get(value) ?? 0) + 1);
+    return [...byRate.entries()].sort((a, b) => b[0] - a[0]);
+  }, [rates]);
+
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Discount">
       <View style={styles.rateRow}>
@@ -154,7 +184,7 @@ export function DiscountSheet({
         <View style={[styles.rateBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <TextInput
             value={rateDraft}
-            onChangeText={handleRateChange}
+            onChangeText={setRateDraft}
             keyboardType="decimal-pad"
             selectTextOnFocus
             style={[styles.rateInput, { color: colors.foreground }]}
@@ -164,38 +194,65 @@ export function DiscountSheet({
         </View>
       </View>
 
+      {/* Applying in rounds is what lets one bill hold several discounts: tick a
+          group, set a rate, apply; then do it again for the next group. */}
+      <PressableScale
+        onPress={applyToSelected}
+        disabled={rate <= 0 || selected.size === 0}
+        style={[
+          styles.apply,
+          {
+            backgroundColor: rate > 0 && selected.size > 0 ? colors.primary : colors.muted,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.applyText,
+            { color: rate > 0 && selected.size > 0 ? colors.primaryForeground : colors.mutedForeground },
+          ]}
+        >
+          {selected.size === 0
+            ? "Tick the items this comes off"
+            : `Take ${Math.round(rate * 100) / 100}% off ${selected.size} item${selected.size === 1 ? "" : "s"}`}
+        </Text>
+      </PressableScale>
+
       <View style={styles.listHeader}>
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Applies to</Text>
         <TouchableOpacity onPress={toggleAll} accessibilityRole="button">
           <Text style={[styles.selectAll, { color: colors.primaryText }]}>
-            {allOn ? "Clear all" : "Select all"}
+            {allSelected ? "Untick all" : "Tick all"}
           </Text>
         </TouchableOpacity>
+        {rates.size > 0 ? (
+          <TouchableOpacity onPress={clearAll} accessibilityRole="button">
+            <Text style={[styles.selectAll, { color: colors.mutedForeground }]}>Clear discounts</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
         {lines.map((line) => {
           const linePercent = rates.get(line.id);
-          const on = linePercent !== undefined;
+          const ticked = selected.has(line.id);
           const base = baseTotalOf(line);
           const result = applyPercent(line, linePercent ?? 0);
-          const isOverridden = on && linePercent !== rate;
           return (
             <View key={line.id} style={[styles.item, { borderBottomColor: colors.border }]}>
               <TouchableOpacity
                 onPress={() => toggle(line.id)}
                 style={styles.itemMain}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: on }}
+                accessibilityState={{ checked: ticked }}
                 accessibilityLabel={line.description}
               >
                 <View
                   style={[
                     styles.check,
-                    { borderColor: on ? colors.primaryText : colors.border, backgroundColor: on ? colors.primaryText : "transparent" },
+                    { borderColor: ticked ? colors.primaryText : colors.border, backgroundColor: ticked ? colors.primaryText : "transparent" },
                   ]}
                 >
-                  {on ? <Text style={styles.checkMark}>✓</Text> : null}
+                  {ticked ? <Text style={styles.checkMark}>✓</Text> : null}
                 </View>
                 <Text numberOfLines={1} style={[styles.itemName, { color: colors.foreground }]}>
                   {line.description}
@@ -203,14 +260,14 @@ export function DiscountSheet({
               </TouchableOpacity>
 
               <View style={styles.itemRight}>
-                {on ? (
-                  overriding === line.id ? (
+                {linePercent !== undefined ? (
+                  editing === line.id ? (
                     <View style={[styles.overrideBox, { borderColor: colors.primaryText, backgroundColor: colors.card }]}>
                       <TextInput
-                        value={overrideDraft}
-                        onChangeText={setOverrideDraft}
-                        onBlur={commitOverride}
-                        onSubmitEditing={commitOverride}
+                        value={editDraft}
+                        onChangeText={setEditDraft}
+                        onBlur={commitEdit}
+                        onSubmitEditing={commitEdit}
                         keyboardType="decimal-pad"
                         autoFocus
                         selectTextOnFocus
@@ -221,29 +278,19 @@ export function DiscountSheet({
                     </View>
                   ) : (
                     <TouchableOpacity
-                      onPress={() => {
-                        setOverriding(line.id);
-                        setOverrideDraft(String(linePercent ?? rate));
-                      }}
+                      onPress={() => { setEditing(line.id); setEditDraft(String(linePercent)); }}
+                      onLongPress={() => clearOne(line.id)}
                       accessibilityRole="button"
-                      accessibilityLabel={`Change discount for ${line.description}, currently ${linePercent}%`}
+                      accessibilityLabel={`${line.description} has ${linePercent}% off. Tap to change, hold to remove`}
                     >
-                      <Text
-                        style={[
-                          styles.chip,
-                          {
-                            color: isOverridden ? colors.primaryText : colors.mutedForeground,
-                            borderColor: isOverridden ? colors.primaryText : colors.border,
-                          },
-                        ]}
-                      >
-                        {Math.round((linePercent ?? 0) * 100) / 100}%
+                      <Text style={[styles.chip, { color: colors.primaryText, borderColor: colors.primaryText }]}>
+                        {Math.round(linePercent * 100) / 100}%
                       </Text>
                     </TouchableOpacity>
                   )
                 ) : null}
                 <View style={styles.prices}>
-                  {on ? (
+                  {linePercent !== undefined ? (
                     <Text style={[styles.was, { color: colors.mutedForeground }]}>{formatMoney(base, currency)}</Text>
                   ) : null}
                   <Text style={[styles.now, { color: colors.foreground }]}>{formatMoney(result.total, currency)}</Text>
@@ -255,8 +302,10 @@ export function DiscountSheet({
       </ScrollView>
 
       <View style={[styles.summary, { borderTopColor: colors.border }]}>
-        <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-          {rates.size === 0 ? "No discount" : `Off ${rates.size} of ${lines.length}`}
+        <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {groups.length === 0
+            ? "No discount"
+            : groups.map(([percent, count]) => `${Math.round(percent * 100) / 100}% off ${count}`).join("  ·  ")}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.foreground }]}>
           −{formatMoney(preview.off, currency)}
@@ -265,7 +314,7 @@ export function DiscountSheet({
 
       <PressableScale onPress={handleSave} style={[styles.save, { backgroundColor: colors.primary }]}>
         <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-          {rates.size === 0 ? "Remove discount" : `Apply · ${formatMoney(preview.after, currency)}`}
+          {rates.size === 0 ? "Remove discount" : `Done · ${formatMoney(preview.after, currency)}`}
         </Text>
       </PressableScale>
     </BottomSheet>
@@ -280,6 +329,8 @@ const styles = StyleSheet.create({
   rateSuffix: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold", marginLeft: SPACING.xs },
   listHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: SPACING.sm },
   selectAll: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  apply: { borderRadius: RADIUS.md, paddingVertical: SPACING.md, alignItems: "center", marginBottom: SPACING.lg },
+  applyText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
   list: { maxHeight: 320 },
   item: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: SPACING.md, borderBottomWidth: StyleSheet.hairlineWidth },
   itemMain: { flexDirection: "row", alignItems: "center", flex: 1, gap: SPACING.md },
