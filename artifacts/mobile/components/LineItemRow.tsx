@@ -113,8 +113,12 @@ export function LineItemRow({
   const [editTotal, setEditTotal] = useState(String(isDiscounted ? originalTotal : total));
   const [editQty, setEditQty] = useState(String(quantity));
   const [editDiscount, setEditDiscount] = useState(
-    isDiscounted ? String(Math.round((Number(originalTotal) - Number(total)) * 100) / 100) : "",
+    isDiscounted && Number(originalTotal) > 0
+      ? String(Math.round(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 1000) / 10)
+      : "",
   );
+  /** Untouched, the amount read off the receipt is kept to the agora. */
+  const [discountEdited, setDiscountEdited] = useState(false);
 
   const isFullyAssigned = billUsers.length > 0 && billUsers.every((u) => assignedUserIds.includes(u.id));
   const hasAnyAssigned = assignedUserIds.length > 0;
@@ -123,7 +127,12 @@ export function LineItemRow({
     setEditDesc(description);
     setEditTotal(String(isDiscounted ? originalTotal : total));
     setEditQty(String(quantity));
-    setEditDiscount(isDiscounted ? String(Math.round((Number(originalTotal) - Number(total)) * 100) / 100) : "");
+    setEditDiscount(
+      isDiscounted && Number(originalTotal) > 0
+        ? String(Math.round(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 1000) / 10)
+        : "",
+    );
+    setDiscountEdited(false);
     setEditing(true);
   };
 
@@ -132,10 +141,29 @@ export function LineItemRow({
     const newQty = Math.max(1, parseInt(editQty) || 1);
     // Never more off than the line costs — a negative line is not something the
     // split, the tax or the tip can do anything sensible with.
-    const newDiscount = Math.min(Math.max(0, parseFloat(editDiscount) || 0), newTotal);
+    const newDiscount = Math.min(Math.max(0, editDiscountMoney), newTotal);
     onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal, discountAmount: newDiscount });
     setEditing(false);
   };
+
+  /**
+   * Money off, worked out from the rate typed. Left exactly as it was when the
+   * rate has not been touched, so a discount read off a receipt keeps the
+   * amount the receipt printed rather than drifting by a rounding.
+   */
+  const editDiscountMoney = (() => {
+    const price = parseFloat(editTotal) || 0;
+    const percent = parseFloat(editDiscount) || 0;
+    if (percent <= 0 || price <= 0) return 0;
+    if (!discountEdited && isDiscounted) return Math.round((Number(originalTotal) - Number(total)) * 100) / 100;
+    return Math.round(price * (percent / 100) * 100) / 100;
+  })();
+
+  const editCharged = (() => {
+    const price = parseFloat(editTotal) || 0;
+    if (editDiscountMoney <= 0 || editDiscountMoney > price) return null;
+    return Math.round((price - editDiscountMoney) * 100) / 100;
+  })();
 
   const handleDelete = () => {
     Alert.alert("Remove item?", `"${description}" will be removed from the bill.`, [
@@ -191,20 +219,7 @@ export function LineItemRow({
               placeholder="0.00"
               placeholderTextColor={colors.mutedForeground}
             />
-            {/* Always offered, so a discount can be corrected here rather than
-                being lost by the edit it survived until now. */}
-            <View style={styles.editQtyWrap}>
-              <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Off</Text>
-              <TextInput
-                style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-                value={editDiscount}
-                onChangeText={setEditDiscount}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor={colors.mutedForeground}
-                accessibilityLabel={`Discount on ${description}`}
-              />
-            </View>
+
             {quantity > 1 && (
               <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primaryText }]} accessibilityLabel="Split item quantity">
                 <Feather name="scissors" size={13} color={colors.primaryText} />
@@ -213,6 +228,28 @@ export function LineItemRow({
             <TouchableOpacity onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
               <Text style={styles.saveBtnText}>Save</Text>
             </TouchableOpacity>
+          </View>
+          {/* On its own row rather than crowded in beside the price: a person
+              paying wants the price fixed in one tap, and a discount is the
+              rarer job. Typed as a percentage because that is what a receipt
+              says and what a person can check in their head. */}
+          <View style={styles.editRow}>
+            <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>Discount</Text>
+            <TextInput
+              style={[styles.editInputQty, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+              value={editDiscount}
+              onChangeText={(v) => { setEditDiscount(v); setDiscountEdited(true); }}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              placeholderTextColor={colors.mutedForeground}
+              accessibilityLabel={`Discount percent on ${description}`}
+            />
+            <Text style={[styles.editQtyLabel, { color: colors.mutedForeground }]}>%</Text>
+            {editCharged !== null ? (
+              <Text style={[styles.editCharged, { color: colors.primaryText }]} numberOfLines={1}>
+                you pay {editCharged.toFixed(2)}
+              </Text>
+            ) : null}
           </View>
         </View>
       ) : (
@@ -338,6 +375,7 @@ const styles = StyleSheet.create({
   peopleRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm, paddingLeft: 2 },
   editBlock: { gap: SPACING.sm },
   editRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  editCharged: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", textAlign: "right" },
   editInput: { flex: 1, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, fontFamily: "Inter_400Regular" }, // TODO: one-off
   editQtyWrap: { flexDirection: "row", alignItems: "center", gap: SPACING.xs },
   editQtyLabel: { fontSize: 12, fontFamily: "Inter_500Medium" }, // TODO: one-off
