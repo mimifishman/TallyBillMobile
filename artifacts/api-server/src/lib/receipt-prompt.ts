@@ -40,17 +40,17 @@ Rules:
 - currency is the 3-letter ISO code (e.g. "USD", "ILS", "EUR"). Use null only if you genuinely cannot infer it from currency symbols, language, or store name.
 - Preserve the order of items as they appear on the receipt, top to bottom.
 - A line item description is text — never put a number or price into the description field.
-- "printedTotal" is the receipt's own total for the ITEMS: what the line items come to after any discount, and BEFORE tax, service and tip. It is read off the receipt, never added up by you — its whole purpose is to be an independent check on the items you returned.
-  On a Hebrew receipt it is usually the line marked "סה\"כ הזמנה" or "סה\"כ לתשלום"; where a receipt prints an items subtotal, then a discount, then a final figure, "printedTotal" is the FINAL figure.
-  Use null if the receipt genuinely does not print one. Never guess it, and never copy a card-payment or change-due amount into it.
-
-DISCOUNTS — receipts print these in several different ways, and missing one overcharges the person paying. Never skip one.
+- "printedTotal" is the figure that the line items you are returning should add up to. It is read off the receipt, never added up by you — its whole purpose is to be an independent check on what you returned, and it stops being one the moment you derive it from the items.
+  Look for the receipt's own subtotal for the items, usually marked "סה\"כ פריטים", "סה\"כ הזמנה" or "סה\"כ לתשלום". Pick the figure that matches the state of the item totals you are returning: if you have already folded a discount into the items, pick the line that is also after that discount; if a discount still applies to the whole bill and you have put it in "billDiscount", pick the line after it.
+  NEVER use a figure that includes tax, VAT ("מע\"מ"), a service charge or a tip, and never use a card-payment, amount-received or change-due line. Beware a receipt for one person's share of a split table — the payable amount there covers only part of the items, so it is not the figure to use.
+  Use null if the receipt genuinely does not print one. Never guess it.
 - A discount is any line with a negative amount, or any line labelled as a discount, promotion, happy hour, loyalty, member price, or a percentage off. In Hebrew it is usually "הנחה".
 - CASE 1 — a discount printed directly BELOW a purchased item, usually with nothing in the quantity column, belongs to that item. Fold it in: "total" becomes the amount actually charged, "originalTotal" is the amount before the discount, and "discountLabel" is the discount's printed wording.
   Example: "1  Caesar Salad  57.00" followed by "25% Happy Hour  -14.00" is ONE item — total 43.00, originalTotal 57.00, discountLabel "25% Happy Hour".
 - CASE 2 — some receipts print TWO amounts on the same item line: a full price and, in another column, the lower amount actually charged. Use the LOWER, already-charged amount as "total" and the higher one as "originalTotal". The discount is already applied, so do NOT subtract anything again, even if a discount is also named on an indented line below.
   Example: "TROPICAL BUSH   1   59.00   30.00" with "HH 29" indented below is ONE item — total 30.00, originalTotal 59.00, discountLabel "HH".
 - CASE 3 — a discount printed AFTER the items subtotal, at the foot of the receipt, applies to the whole bill and not to any single item. Put its size as a POSITIVE number in "billDiscount" and leave every item unchanged.
+  But FIRST check whether that footer discount is merely restating one you have already taken off the items. A receipt that prices each line twice, full and discounted, often also totals the saving at the foot — that figure is a summary, not a second discount. Taking it again would undercharge the bill. If the discount is already inside the item totals you are returning, leave "billDiscount" null.
 - Never return a discount as an item of its own, and never return an item whose total is negative.
 - An item discounted down to nothing is still an item. Return it with a total of 0.00, its full price in "originalTotal", and the discount's wording — do not drop the item, and do not drop its discount to keep the total above zero.
   Example: "1  שיק פאי  36.00" followed by "הנחה 100.00%  -36.00" is ONE item — total 0.00, originalTotal 36.00, discountLabel "הנחה 100.00%".
