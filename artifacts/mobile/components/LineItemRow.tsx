@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -133,6 +133,17 @@ export function LineItemRow({
   const [discountEdited, setDiscountEdited] = useState(false);
   const [priceEdited, setPriceEdited] = useState(false);
 
+  /**
+   * The latest typed values, mirrored into refs.
+   *
+   * A save reads these rather than the state its render closed over. Tapping
+   * Save in the same breath as the last keystroke could otherwise commit the
+   * value from before that keystroke — on money, for a saving, that is not a
+   * risk worth carrying for the sake of one line.
+   */
+  const draftRef = useRef({ desc: description, qty: String(quantity), total: "", discount: "" });
+  draftRef.current = { desc: editDesc, qty: editQty, total: editTotal, discount: editDiscount };
+
   const isFullyAssigned = billUsers.length > 0 && billUsers.every((u) => assignedUserIds.includes(u.id));
   const hasAnyAssigned = assignedUserIds.length > 0;
 
@@ -156,10 +167,19 @@ export function LineItemRow({
     // nobody entered — leaving the bill short with nothing on screen to say so.
     if (discountPercentError) return;
 
-    const newTotal = parseFloat(editTotal) || 0;
-    const newQty = Math.max(1, parseInt(editQty) || 1);
-    const newDiscount = Math.max(0, Math.min(editDiscountMoney, newTotal));
-    onUpdate(id, { description: editDesc, quantity: newQty, total: newTotal, discountAmount: newDiscount });
+    const draft = draftRef.current;
+    const newTotal = parseFloat(draft.total) || 0;
+    const newQty = Math.max(1, parseInt(draft.qty) || 1);
+    const percent = parseFloat(draft.discount) || 0;
+    // Recomputed here from the latest draft rather than taken from the render,
+    // for the same reason the drafts are held in a ref.
+    const money = percent > 0 && newTotal > 0
+      ? (!discountEdited && !priceEdited && isDiscounted
+          ? Math.round((Number(originalTotal) - Number(total)) * 100) / 100
+          : Math.round(newTotal * (percent / 100) * 100) / 100)
+      : 0;
+    const newDiscount = Math.max(0, Math.min(money, newTotal));
+    onUpdate(id, { description: draft.desc, quantity: newQty, total: newTotal, discountAmount: newDiscount });
     setEditing(false);
   };
 
