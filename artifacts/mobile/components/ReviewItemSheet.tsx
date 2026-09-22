@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { BottomSheet } from "@/components/BottomSheet";
 import { PressableScale } from "@/components/PressableScale";
@@ -9,7 +9,10 @@ import { useColors } from "@/hooks/useColors";
 export interface ReviewItemValues {
   name: string;
   quantity: number;
+  /** The full price, before any discount on this item. */
   total: number;
+  /** Money off this item. Zero when it is not discounted. */
+  discountAmount: number;
 }
 
 interface ReviewItemSheetProps {
@@ -31,8 +34,10 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
   const [name, setName] = useState("");
   const [quantityDraft, setQuantityDraft] = useState("1");
   const [priceDraft, setPriceDraft] = useState("");
+  const [discountDraft, setDiscountDraft] = useState("");
   const [quantityError, setQuantityError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -40,15 +45,26 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
         setName(initial.name);
         setQuantityDraft(String(initial.quantity));
         setPriceDraft(initial.total.toFixed(2));
+        setDiscountDraft(initial.discountAmount > 0 ? initial.discountAmount.toFixed(2) : "");
       } else {
         setName("");
         setQuantityDraft("1");
         setPriceDraft("");
+        setDiscountDraft("");
       }
       setQuantityError(null);
       setPriceError(null);
+      setDiscountError(null);
     }
   }, [visible, mode, initial]);
+
+  /** What the item comes to once the discount is taken off, when both parse. */
+  const charged = (() => {
+    const price = Number(priceDraft.trim().replace(",", "."));
+    const off = Number(discountDraft.trim().replace(",", ".") || "0");
+    if (!Number.isFinite(price) || !Number.isFinite(off) || off <= 0 || off > price) return null;
+    return Math.round((price - off) * 100) / 100;
+  })();
 
   const canSave = name.trim().length > 0;
 
@@ -59,6 +75,11 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
     const normalizedPrice = priceDraft.trim().replace(",", ".") || "0";
     const price = /^\d+(\.\d*)?$|^\.\d+$/.test(normalizedPrice) ? Number(normalizedPrice) : NaN;
 
+    // An empty discount is no discount, which is different from a zero one only
+    // in that neither shows anything — so both are simply nothing off.
+    const normalizedDiscount = discountDraft.trim().replace(",", ".") || "0";
+    const discount = /^\d+(\.\d*)?$|^\.\d+$/.test(normalizedDiscount) ? Number(normalizedDiscount) : NaN;
+
     let hasError = false;
     if (!Number.isInteger(quantity) || quantity < 1) {
       setQuantityError("Whole number, 1 or more");
@@ -68,12 +89,22 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
       setPriceError("Enter an amount like 12.50");
       hasError = true;
     }
+    if (!Number.isFinite(discount) || discount < 0) {
+      setDiscountError("Enter an amount like 12.50");
+      hasError = true;
+    } else if (discount > price) {
+      // Taking off more than the item costs would leave a negative line, which
+      // nothing downstream — the split, the tax, the tip — can do anything with.
+      setDiscountError("More than the price");
+      hasError = true;
+    }
     if (hasError || !canSave) return;
 
     onSave({
       name: name.trim(),
       quantity,
       total: Math.round(price * 100) / 100,
+      discountAmount: Math.round(discount * 100) / 100,
     });
   };
 
@@ -149,6 +180,39 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
           </View>
         </View>
 
+        {/* Always offered, so a discount can be corrected or added by hand and
+            is never lost by editing the item it belongs to. */}
+        <View style={styles.fieldGroup}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>DISCOUNT</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                borderColor: discountError ? colors.destructive : colors.border,
+                color: colors.foreground,
+                backgroundColor: colors.muted,
+              },
+            ]}
+            placeholder="0.00"
+            placeholderTextColor={colors.mutedForeground}
+            value={discountDraft}
+            onChangeText={(v) => {
+              setDiscountDraft(v);
+              setDiscountError(null);
+            }}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            selectTextOnFocus
+          />
+          {discountError ? (
+            <Text style={[styles.errorText, { color: colors.destructive }]}>{discountError}</Text>
+          ) : charged !== null ? (
+            <Text style={[styles.chargedHint, { color: colors.mutedForeground }]}>
+              Charged {charged.toFixed(2)}
+            </Text>
+          ) : null}
+        </View>
+
         <PressableScale
           onPress={handleSave}
           disabled={!canSave}
@@ -183,6 +247,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.body,
     fontFamily: "Inter_400Regular",
   },
+  chargedHint: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", marginTop: SPACING.xs },
   errorText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",

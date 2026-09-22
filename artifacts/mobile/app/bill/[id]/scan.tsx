@@ -400,19 +400,40 @@ export default function ScanScreen() {
     if (editor?.mode !== "edit") return null;
     const item = scan.items[editor.index];
     if (!item) return null;
+    const discount = itemDiscounts.get(editor.index);
     return {
       name: item.translatedDescription ?? item.description,
       quantity: item.quantity,
-      total: item.total,
+      total: discount ? discount.originalTotal : item.total,
+      discountAmount: discount ? discount.amount : 0,
     };
-  }, [editor, scan.items]);
+  }, [editor, scan.items, itemDiscounts]);
 
   const handleEditorSave = (values: ReviewItemValues) => {
+    // `values.total` is the full price. The item keeps that as its total and the
+    // discount is held beside it, so editing a price never quietly throws away
+    // the saving that was on it.
     const unitPrice = values.quantity > 0
       ? Math.round((values.total / values.quantity) * 100) / 100
       : values.total;
+    const applyDiscount = (index: number) => {
+      setItemDiscounts((prev) => {
+        const next = new Map(prev);
+        if (values.discountAmount > 0) {
+          next.set(index, {
+            amount: values.discountAmount,
+            originalTotal: values.total,
+            label: prev.get(index)?.label ?? "Discount",
+          });
+        } else {
+          next.delete(index);
+        }
+        return next;
+      });
+    };
     if (editor?.mode === "edit") {
       const index = editor.index;
+      applyDiscount(index);
       scan.setItems((prev) =>
         prev.map((item, i) => {
           if (i !== index) return item;
@@ -430,6 +451,7 @@ export default function ScanScreen() {
         }),
       );
     } else {
+      applyDiscount(scan.items.length);
       scan.setItems((prev) => [
         ...prev,
         {

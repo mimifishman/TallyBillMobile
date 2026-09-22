@@ -585,15 +585,21 @@ export default function BillDetailScreen() {
     deleteLineMutation.mutate({ billId, lineId });
   };
 
-  const handleUpdateLine = (lineId: number, lineData: { description: string; quantity: number; total: number }) => {
+  const handleUpdateLine = (
+    lineId: number,
+    lineData: { description: string; quantity: number; total: number; discountAmount: number },
+  ) => {
     updateLineMutation.mutate({
       billId,
       lineId,
       data: {
         description: lineData.description,
         quantity: lineData.quantity,
-        unitPrice: lineData.total / (lineData.quantity || 1),
-        total: lineData.total,
+        unitPrice: (lineData.total - lineData.discountAmount) / (lineData.quantity || 1),
+        total: Math.round((lineData.total - lineData.discountAmount) * 100) / 100,
+        // Sent every time, so an edit neither drops a discount nor leaves a
+        // stale original claiming a saving that no longer matches the price.
+        originalTotal: lineData.discountAmount > 0 ? lineData.total : null,
       },
     });
   };
@@ -627,6 +633,19 @@ export default function BillDetailScreen() {
     const remainderTotal = Math.round((lineTotal - splitTotal) * 100) / 100;
     const remainderQty = currentQty - splitQty;
 
+    // A discount belongs to the units, not to the row, so splitting the row
+    // splits it too. Without this, splitting a discounted line quietly put both
+    // halves back to full price and the bill went up.
+    const rawOriginal = (line as typeof line & { originalTotal?: string | null }).originalTotal;
+    const lineOriginal = rawOriginal != null ? parseFloat(String(rawOriginal)) : null;
+    const splitOriginal = lineOriginal != null && lineOriginal > lineTotal
+      ? Math.round((lineOriginal / currentQty) * splitQty * 100) / 100
+      : null;
+    const remainderOriginal = lineOriginal != null && splitOriginal != null
+      ? Math.round((lineOriginal - splitOriginal) * 100) / 100
+      : null;
+    const discountLabel = (line as typeof line & { discountLabel?: string | null }).discountLabel ?? null;
+
     setShowSplitModal(false);
     setSplitLineId(null);
 
@@ -640,6 +659,8 @@ export default function BillDetailScreen() {
         quantity: remainderQty,
         unitPrice: lineUnitPrice,
         total: remainderTotal,
+        originalTotal: remainderOriginal,
+        discountLabel,
       },
     });
 
@@ -651,6 +672,8 @@ export default function BillDetailScreen() {
         quantity: splitQty,
         unitPrice: lineUnitPrice,
         total: splitTotal,
+        originalTotal: splitOriginal,
+        discountLabel,
         afterLineId: splitLineId,
       },
     });
