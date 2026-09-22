@@ -57,9 +57,20 @@ check("a one-cent drift still reconciles", rounding.reconciled === true, roundin
 const smallMiss = checkAgainstPrintedTotal([item(10)], 14);
 check("a real gap on a small bill is caught", smallMiss.reconciled === false, smallMiss);
 
-// A 1% tolerance on a large bill, which is where percentage discounts drift.
-const largeOk = checkAgainstPrintedTotal([item(1000)], 1005);
-check("1% drift on a large bill reconciles", largeOk.reconciled === true, largeOk);
+// A whole shekel adrift on a 208.00 bill must be caught. This is the DejaVoo
+// receipt with one line's 30.00 read as the 29.00 from the discount sub-line
+// beneath it; an earlier 1% tolerance came to 2.08 here and let it pass.
+const oneShekelOut = checkAgainstPrintedTotal(
+  [item(29), item(31), item(51), item(45), item(51)], 208);
+check("a single shekel adrift on a 208.00 bill is caught",
+  oneShekelOut.reconciled === false && oneShekelOut.difference === -1, oneShekelOut);
+
+// The proportional part only exists so a very large bill is not flagged for a
+// receipt's own rounding — it is not a licence to miss whole items.
+const largeOk = checkAgainstPrintedTotal([item(1000)], 1000.5);
+check("half a shekel on a 1000.00 bill still reconciles", largeOk.reconciled === true, largeOk);
+const largeMiss = checkAgainstPrintedTotal([item(1000)], 1005);
+check("five shekels on a 1000.00 bill is caught", largeMiss.reconciled === false, largeMiss);
 
 check("a zero or negative printed total is treated as absent",
   normalizePrintedTotal(0) === null && normalizePrintedTotal(-5) === null && normalizePrintedTotal("177.00") === 177);

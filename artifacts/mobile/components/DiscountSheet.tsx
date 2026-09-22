@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Feather } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BottomSheet } from "@/components/BottomSheet";
 import { PressableScale } from "@/components/PressableScale";
@@ -148,6 +149,7 @@ export function DiscountSheet({
       return next;
     });
     setSelected(new Set());
+    closeEdit();
   };
 
   /** Puts an item back to full price. */
@@ -164,15 +166,31 @@ export function DiscountSheet({
     setSelected(new Set());
   };
 
-  const commitEdit = () => {
-    if (editing === null) return;
-    const value = parsePercent(editDraft);
+  /**
+   * Applies what is typed as it is typed, for the one item being edited.
+   *
+   * There is no commit step because a commit step can be missed: tapping
+   * another row does not reliably blur a text field, so a rate could be typed,
+   * left on screen, and never take effect. Applying live means what is shown is
+   * always what is in force.
+   */
+  const editRate = (id: number, text: string) => {
+    const value = parsePercent(text);
+    // Over 100 the field snaps to 100 rather than keeping what was typed. A box
+    // reading "5050" beside a row reading 100% leaves the two disagreeing, and
+    // the one that counts is not the one being looked at.
+    const raw = Number(text.replace(",", "."));
+    setEditDraft(Number.isFinite(raw) && raw > 100 ? "100" : text);
     setRates((prev) => {
       const next = new Map(prev);
-      if (value > 0) next.set(editing, value);
-      else next.delete(editing);
+      if (value > 0) next.set(id, value);
+      else next.delete(id);
       return next;
     });
+  };
+
+  /** Closes the field. Whatever was typed has already been applied. */
+  const closeEdit = () => {
     setEditing(null);
     setEditDraft("");
   };
@@ -277,35 +295,60 @@ export function DiscountSheet({
               </TouchableOpacity>
 
               <View style={styles.itemRight}>
-                {linePercent !== undefined ? (
-                  editing === line.id ? (
-                    <View style={[styles.overrideBox, { borderColor: colors.primaryText, backgroundColor: colors.card }]}>
-                      <TextInput
-                        value={editDraft}
-                        onChangeText={setEditDraft}
-                        onBlur={commitEdit}
-                        onSubmitEditing={commitEdit}
-                        keyboardType="decimal-pad"
-                        autoFocus
-                        selectTextOnFocus
-                        style={[styles.overrideInput, { color: colors.foreground }]}
-                        accessibilityLabel={`Discount percent for ${line.description}`}
-                      />
-                      <Text style={[styles.rateSuffix, { color: colors.mutedForeground }]}>%</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => { setEditing(line.id); setEditDraft(String(linePercent)); }}
-                      onLongPress={() => clearOne(line.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${line.description} has ${linePercent}% off. Tap to change, hold to remove`}
+                {/* Always shown, reading 0% when nothing is off. An empty
+                    space says nothing can be done here; a chip that looks like
+                    a control invites the tap that changes just this item. */}
+                {editing === line.id ? (
+                  <View style={[styles.overrideBox, { borderColor: colors.primaryText, backgroundColor: colors.card }]}>
+                    <TextInput
+                      value={editDraft}
+                      onChangeText={(text) => editRate(line.id, text)}
+                      onBlur={closeEdit}
+                      onSubmitEditing={closeEdit}
+                      keyboardType="decimal-pad"
+                      autoFocus
+                      selectTextOnFocus
+                      style={[styles.overrideInput, { color: colors.foreground }]}
+                      accessibilityLabel={`Discount percent for ${line.description}`}
+                    />
+                    <Text style={[styles.rateSuffix, { color: colors.mutedForeground }]}>%</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditing(line.id);
+                      setEditDraft(linePercent === undefined ? "" : String(linePercent));
+                    }}
+                    onLongPress={linePercent === undefined ? undefined : () => clearOne(line.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      linePercent === undefined
+                        ? `${line.description} has no discount. Tap to set one`
+                        : `${line.description} has ${linePercent}% off. Tap to change, hold to remove`
+                    }
+                    style={[
+                      styles.chip,
+                      linePercent === undefined
+                        ? { borderColor: colors.border, backgroundColor: colors.muted }
+                        : { borderColor: colors.primaryText, backgroundColor: colors.primarySoft },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: linePercent === undefined ? colors.mutedForeground : colors.primaryText },
+                      ]}
                     >
-                      <Text style={[styles.chip, { color: colors.primaryText, borderColor: colors.primaryText }]}>
-                        {Math.round(linePercent * 100) / 100}%
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                ) : null}
+                      {linePercent === undefined ? 0 : Math.round(linePercent * 100) / 100}%
+                    </Text>
+                    <Feather
+                      name="edit-2"
+                      size={10}
+                      color={linePercent === undefined ? colors.mutedForeground : colors.primaryText}
+                    />
+                  </TouchableOpacity>
+                )}
                 <View style={styles.prices}>
                   {linePercent !== undefined ? (
                     <Text style={[styles.was, { color: colors.mutedForeground }]}>{formatMoney(base, currency)}</Text>
@@ -320,9 +363,15 @@ export function DiscountSheet({
 
       <View style={[styles.summary, { borderTopColor: colors.border }]}>
         <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {/* Capped, because the list grows with every round and the amount
+              beside it must not be pushed off the screen — the figure is the
+              part that matters. */}
           {groups.length === 0
             ? "No discount"
-            : groups.map(([percent, count]) => `${Math.round(percent * 100) / 100}% off ${count}`).join("  ·  ")}
+            : groups
+                .slice(0, 2)
+                .map(([percent, count]) => `${Math.round(percent * 100) / 100}% off ${count}`)
+                .join("  ·  ") + (groups.length > 2 ? `  +${groups.length - 2} more` : "")}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.foreground }]}>
           −{formatMoney(preview.off, currency)}
@@ -359,15 +408,16 @@ const styles = StyleSheet.create({
   checkMark: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   itemName: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
   itemRight: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
-  chip: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 2 },
-  overrideBox: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, width: 72 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 5 },
+  chipText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
+  overrideBox: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 2, width: 76 },
   overrideInput: { flex: 1, paddingVertical: 2, fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", textAlign: "right" },
   prices: { alignItems: "flex-end", minWidth: 92 },
   was: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular", textDecorationLine: "line-through" },
   now: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
   summary: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: SPACING.md, marginTop: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth },
-  summaryLabel: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
-  summaryValue: { fontSize: FONT_SIZE.title, fontFamily: "Inter_600SemiBold" },
+  summaryLabel: { flexShrink: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
+  summaryValue: { fontSize: FONT_SIZE.title, fontFamily: "Inter_600SemiBold", marginLeft: SPACING.sm },
   save: { marginTop: SPACING.lg, borderRadius: RADIUS.lg, paddingVertical: SPACING.md, alignItems: "center" },
   saveText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
 });

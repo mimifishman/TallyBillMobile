@@ -110,6 +110,17 @@ export function normalizePrintedTotal(value: unknown): number | null {
 }
 
 /**
+ * How far a bill may sit from its receipt's own total before it is a problem.
+ *
+ * Small, because the figures are read off the paper rather than recomputed, so
+ * a genuine gap means something was misread. The proportional part only exists
+ * so a very large bill is not flagged for a receipt's own rounding.
+ */
+function reconcileTolerance(printedTotal: number): number {
+  return Math.max(0.05, printedTotal * 0.001);
+}
+
+/**
  * Decides whether a bill-level discount should be taken off, or is only the
  * receipt restating one already inside the item totals.
  *
@@ -135,7 +146,7 @@ export function shouldApplyBillDiscount(
   if (billDiscount === null || billDiscount <= 0) return false;
   if (printedTotal === null) return false;
 
-  const tolerance = Math.max(0.02, printedTotal * 0.01);
+  const tolerance = reconcileTolerance(printedTotal);
   const withDiscount = Math.abs(round2(itemsTotal - billDiscount) - printedTotal) <= tolerance;
   const withoutDiscount = Math.abs(round2(itemsTotal) - printedTotal) <= tolerance;
 
@@ -170,9 +181,12 @@ export interface ReceiptCheck {
  * A bill-level discount is subtracted first, because it is the one thing the
  * receipt applies to its own total that the line items do not carry.
  *
- * The tolerance allows two cents for rounding, or 1% on larger bills where a
- * receipt's own rounding of percentage discounts can legitimately drift further
- * than that.
+ * The tolerance is deliberately tight. Every fixture reconciles EXACTLY, because
+ * the amounts come off the receipt rather than being recomputed — so a gap is
+ * evidence of a misread, not of rounding. An earlier 1% allowance came to 2.08
+ * on a 208.00 bill and silently swallowed a whole shekel: a line whose 30.00
+ * was read as the 29.00 from the discount sub-line beneath it passed as
+ * reconciled. A few cents for a receipt's own rounding is all that is needed.
  */
 export function checkAgainstPrintedTotal(
   items: LineItem[],
@@ -187,7 +201,7 @@ export function checkAgainstPrintedTotal(
   }
 
   const difference = round2(expected - printedTotal);
-  const tolerance = Math.max(0.02, printedTotal * 0.01);
+  const tolerance = reconcileTolerance(printedTotal);
   return {
     itemsTotal,
     printedTotal,
