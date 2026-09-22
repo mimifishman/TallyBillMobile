@@ -6,6 +6,7 @@
  */
 import {
   applyPercent, applyAmount, apportion, baseTotalOf, parsePercent, totalDiscount,
+  inferDiscountSelection,
   type DiscountableLine,
 } from "../../mobile/utils/discount.ts";
 
@@ -101,6 +102,31 @@ check("rubbish reads as no discount", parsePercent("abc") === 0 && parsePercent(
 // --- Labels ---------------------------------------------------------------
 check("an unlabelled discount describes itself", applyPercent(line(1, 100), 20).discountLabel === "20% off");
 check("a receipt's own wording wins", applyPercent(line(1, 100), 25, "25% Happy Hour").discountLabel === "25% Happy Hour");
+
+// --- Working out which items a printed discount came off. -----------------
+const inferred = inferDiscountSelection(reviewLines, 94);
+check("Back Yard: the 94.00 is recognised as 20% off five of the seven lines",
+  inferred !== null && inferred.percent === 20 && inferred.lineIds.join(",") === "1,2,3,4,5", inferred);
+
+// Two answers means the receipt does not say which is right, so say nothing.
+const ambiguous = inferDiscountSelection([line(1, 100), line(2, 100)], 20);
+check("an amount that fits more than one set of items is not guessed at", ambiguous === null, ambiguous);
+
+// An amount that is not a round percentage of anything is not guessed at.
+const odd = inferDiscountSelection(reviewLines, 37.13);
+check("an amount matching no round rate is not guessed at", odd === null, odd);
+
+// A whole-bill discount resolves to every line, where nothing else fits.
+// Chosen carefully: 20.00 off lines of 50 and 150 is BOTH 10% of everything and
+// 40% of the first line, so that pair is ambiguous and correctly refused.
+const wholeBill = inferDiscountSelection([line(1, 30), line(2, 70)], 10);
+check("10% off everything resolves to every line",
+  wholeBill !== null && wholeBill.percent === 10 && wholeBill.lineIds.join(",") === "1,2", wholeBill);
+
+const twoWays = inferDiscountSelection([line(1, 50), line(2, 150)], 20);
+check("20.00 off 50 and 150 is refused — it is 10% of both or 40% of one", twoWays === null, twoWays);
+
+check("no discount, no guess", inferDiscountSelection(reviewLines, 0) === null);
 
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);
