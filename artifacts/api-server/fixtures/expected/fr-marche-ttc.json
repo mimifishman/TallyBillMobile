@@ -1,0 +1,19 @@
+{
+  "items": 10,
+  "total": 158.90,
+  "currency": "EUR",
+  "taxAmount": null,
+  "itemDescriptions": [
+    "Kir Royal",
+    "Salade de chèvre chaud",
+    "Soupe à l'oignon gratinée",
+    "Steak frites",
+    "Confit de canard",
+    "Magret de canard",
+    "Carafe vin rouge 50cl",
+    "Café expresso",
+    "Crème brûlée",
+    "Tarte Tatin"
+  ],
+  "note": "THE FIRST TAX-INCLUSIVE FIXTURE. A synthetic French restaurant ticket built for testing, so it carries no personal data.\n\nTen lines summing to 158,90, which is BOTH the printed 'Sous-total' and the printed 'TOTAL TTC'. TTC means 'toutes taxes comprises' — all taxes included. Nothing is added on top.\n\nTHE TRAP: a 'DÉTAIL TVA' block at the foot prints 'TVA 10,0 % HT 116,27  11,63', 'TVA 20,0 % HT 25,83  5,17' and 'Total HT 142,10  16,80'. That 16,80 is tax ALREADY PAID inside the prices, not a charge. The app adds taxAmount on top of the items, so returning 16,80 here bills 175,70 for a 158,90 meal. taxAmount MUST be null.\n\nContrast en-caffe-caffe, where the US receipt's 0.49 tax genuinely IS added on top and must be returned. The test that separates them is arithmetic on the receipt's own figures: here the final payable (158,90) equals the item sum, so the tax is inside; there the final payable (5.75) equals the item sum (5.26) plus the tax (0.49), so the tax is on top.\n\n'Total HT 142,10' is the pre-VAT figure. The items do NOT sum to it, so it must never be used as printedTotal.\n\n'Service compris' means service is included — tipAmount is null too.\n\nQuantities to watch: Kir Royal x2 at 17,00 for the line, Café expresso x3 at 8,40, Crème brûlée x2 at 16,00. Each printed amount is the LINE total, never a unit price."
+}
