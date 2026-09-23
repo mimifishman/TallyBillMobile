@@ -34,6 +34,15 @@ interface ScanState {
    * on the review screen or it is simply lost.
    */
   billDiscount: number | null;
+  /**
+   * Tax and tip as the receipt prints them, in money.
+   *
+   * Not carried before, so a US receipt with a plain "Tax: 0.49" line had that
+   * figure read by the scan and then dropped on the floor — the review screen
+   * offered the bill's own rate instead and the tax went missing.
+   */
+  taxAmount: number | null;
+  tipAmount: number | null;
   translating: boolean;
   translateError: string | null;
 }
@@ -94,6 +103,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     printedTotal: null,
     reconciled: null,
     billDiscount: null,
+    taxAmount: null,
+    tipAmount: null,
     translating: false,
     translateError: null,
   });
@@ -117,6 +128,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         printedTotal: null,
         reconciled: null,
         billDiscount: null,
+        taxAmount: null,
+        tipAmount: null,
         translating: false,
         translateError: null,
       });
@@ -144,6 +157,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
                   printedTotal: data.printedTotal ?? null,
                   reconciled: data.reconciled ?? null,
                   billDiscount: data.billDiscount ?? null,
+                  taxAmount: data.taxAmount ?? null,
+                  tipAmount: data.tipAmount ?? null,
                 }));
                 saveReceiptImage(uri, billId).then((objectPath) => {
                   if (myGeneration !== generationRef.current) return;
@@ -178,7 +193,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => {
     generationRef.current += 1;
-    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, printedTotal: null, reconciled: null, billDiscount: null, translating: false, translateError: null });
+    setState({ status: "idle", billId: null, capturedUri: null, items: [], errorMessage: null, receiptImagePath: null, printedTotal: null, reconciled: null, billDiscount: null, taxAmount: null, tipAmount: null, translating: false, translateError: null });
   }, []);
 
   const setItems: React.Dispatch<React.SetStateAction<ParsedItem[]>> = useCallback(

@@ -218,6 +218,35 @@ export default function ScanScreen() {
   }, [billData]);
 
   /**
+   * Seeds tax and tip from the receipt, once, and only where the bill has none.
+   *
+   * A US receipt prints tax as a plain sum — "Tax: 0.49" — and that figure was
+   * being read by the scan and then dropped, so the tax simply went missing
+   * from the bill. Seeded as an AMOUNT rather than a rate because an amount is
+   * what the receipt prints, and deriving a rate from it would put a number on
+   * screen the paper does not show.
+   *
+   * A rate already on the bill wins: someone who set 17% meant it, and a
+   * receipt arriving later should not quietly overrule them.
+   */
+  const receiptTaxSeeded = useRef(false);
+  useEffect(() => {
+    if (receiptTaxSeeded.current) return;
+    if (scan.taxAmount == null && scan.tipAmount == null) return;
+    receiptTaxSeeded.current = true;
+    const billTaxRate = parseFloat(String(billData?.bill.taxPercent ?? 0)) || 0;
+    const billTipRate = parseFloat(String(billData?.bill.tipPercent ?? 0)) || 0;
+    if (scan.taxAmount != null && scan.taxAmount > 0 && billTaxRate === 0) {
+      setTaxMode("amount");
+      setTaxInput(scan.taxAmount.toFixed(2));
+    }
+    if (scan.tipAmount != null && scan.tipAmount > 0 && billTipRate === 0) {
+      setTipMode("amount");
+      setTipInput(scan.tipAmount.toFixed(2));
+    }
+  }, [scan.taxAmount, scan.tipAmount, billData]);
+
+  /**
    * Seeds the discount from the receipt, once.
    *
    * A bill-level discount is not carried by any item, so if it is not offered
