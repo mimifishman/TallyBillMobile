@@ -28,7 +28,9 @@ Return ONLY valid JSON with this exact structure:
 
 Rules:
 - Include EVERY purchased line item. Never skip a line item, even if some characters are unclear — read it to the best of your ability and use the most likely characters.
-- Omit subtotals, totals, payment lines, store header/footer text, and order/receipt numbers.
+- Omit subtotals, totals, TAX, service charges, payment lines, card-terminal slips, store header/footer text, and order/receipt numbers.
+- A figure you put in "taxAmount" must NEVER also appear as a line item. Tax is charged on top of the items; returning it as an item as well counts it twice and makes the bill too high.
+- Read each line's OWN amount. Where a priced item is followed by its modifier and then a charge line, it is easy to shift every amount up by one row and hand each line the next one's figure. Guard against it: your line items must add up to the receipt's printed SUBTOTAL, the figure before tax. If they add up to the final total instead, you have pulled the tax in as an item.
 - Preserve the original language and script of each item description exactly as printed (Hebrew, Arabic, Latin, etc.). Do not translate or transliterate.
 - For right-to-left scripts (Hebrew, Arabic), preserve the visual character order as it appears on the receipt.
 - quantity must be a positive number — use 1 if not shown on the receipt.
@@ -39,9 +41,10 @@ Rules:
 - taxAmount and tipAmount are the receipt-level amounts (use null if absent — do NOT confuse subtotal or total with tax).
 - currency is the 3-letter ISO code (e.g. "USD", "ILS", "EUR"). Use null only if you genuinely cannot infer it from currency symbols, language, or store name.
 - Preserve the order of items as they appear on the receipt, top to bottom.
-- A line item description is text — never put a number or price into the description field.
+- A line item description is text — never put a number or price into the description field, and never put the quantity in it either. "1 MED ICED COFFEE" is quantity 1 with a description of "MED ICED COFFEE".
 - "printedTotal" is the figure that the line items you are returning should add up to. It is read off the receipt, never added up by you — its whole purpose is to be an independent check on what you returned, and it stops being one the moment you derive it from the items.
   Look for the receipt's own subtotal for the items, usually marked "סה\"כ פריטים", "סה\"כ הזמנה" or "סה\"כ לתשלום". Pick the figure that matches the state of the item totals you are returning: if you have already folded a discount into the items, pick the line that is also after that discount; if a discount still applies to the whole bill and you have put it in "billDiscount", pick the line after it.
+  A receipt often has a card-terminal slip printed below it, repeating the amount under its own headings — a cash price, an amount tendered, change, EMV codes. That is a second document. None of its figures describe the items: a lower "cash price" is not a discount, and "TIP/CHNG" is change rather than a gratuity.
   NEVER use a figure that includes tax, VAT ("מע\"מ"), a service charge or a tip, and never use a card-payment, amount-received or change-due line. Beware a receipt for one person's share of a split table — the payable amount there covers only part of the items, so it is not the figure to use.
   Use null if the receipt genuinely does not print one. Never guess it.
 - A discount is any line with a negative amount, or any line labelled as a discount, promotion, happy hour, loyalty, member price, or a percentage off. In Hebrew it is usually "הנחה".

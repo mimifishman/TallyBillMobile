@@ -1,0 +1,8 @@
+{
+  "items": 1,
+  "total": 5.26,
+  "currency": "USD",
+  "itemDescriptions": ["MED ICED COFFEE"],
+  "note": "THE FIRST ENGLISH FIXTURE, and the first with tax. Caffe! Caffe!, a US counter receipt. One purchased line: '1 MED ICED COFFEE, almond milk .10 (0.10)' at 5.05. Then 'NON CASH ADJ 0.21' — a card surcharge, not a purchased item, but it IS inside the printed Sub Total of 5.26. Then 'Tax: 0.49' and 'TOTAL: 5.75'. So 5.05 + 0.21 = 5.26 subtotal, + 0.49 tax = 5.75.\n\n'total' here is the 5.26 subtotal, which is what the item list should add up to — the printed total of 5.75 includes tax, and printedTotal must never include tax.\n\n'items' is 1 on the reading that NON CASH ADJ is a surcharge rather than a dish; if a run returns 2 items summing to 5.26 that is defensible and the total still reconciles. What is NOT acceptable is taxAmount coming back null: 0.49 is printed plainly on its own line.",
+  "footerNote": "The lower half is a card-terminal slip: TOTAL(Non-Cash) 5.75, TOTAL(Cash) 5.54, an AMT-TEND 6.61 with TIP/CHNG 0.86, and EMV details. None of those figures describe the items. The 5.54 cash price and the 0.86 tip in particular must not be mistaken for a discount or a tip that was charged — the 0.86 is change, not a gratuity."
+}
