@@ -111,17 +111,6 @@ const MIN_TRIM_AREA = 0.03;
 /** Below this a region is too small to be a readable receipt. */
 const MIN_TRIM_SIDE = 200;
 
-/**
- * Applies a photo's EXIF orientation, leaving the image otherwise untouched.
- *
- * `rotate()` with no argument is the operation that reads the tag and bakes it
- * into the pixels. Quality is kept high and chroma subsampling off: this re-
- * encodes the JPEG, and the whole point is to avoid losing detail the model
- * still has to read.
- *
- * A photo that needs no rotation is returned exactly as it arrived, so the
- * common case costs nothing and cannot lose anything to a re-encode.
- */
 /** The picture with its blank surround removed, in the rotated frame. */
 interface Region {
   left: number;
@@ -130,14 +119,31 @@ interface Region {
   height: number;
 }
 
+interface Located {
+  region: Region;
+  /**
+   * Whether a fraction of that region means anything.
+   *
+   * False when trimming DID find a receipt but one too small or too odd to
+   * believe. That is positive evidence the picture is not a framed photo, and
+   * taking a blind quarter of it is the very cut that has to be avoided — on a
+   * 150x380 receipt at the top of a 1600x4200 page it removes the receipt
+   * entirely and hands the model a blank sheet. Sending the picture whole is
+   * worse than a good crop and far better than a wrong one.
+   */
+  croppable: boolean;
+}
+
 /**
  * Where the receipt actually sits, once a flat border is discounted.
  *
- * Returns the whole frame whenever trimming finds nothing, fails, or returns
- * something too small or too drastic to believe — every one of which leaves the
- * behaviour exactly as it was before this existed.
+ * Trimming finding nothing is the ordinary case for a photograph, and is not a
+ * failure: the whole frame comes back croppable, exactly as before this
+ * existed. Trimming throwing is not evidence about the picture either, so that
+ * also falls back to the long-standing behaviour. Only a region that trimming
+ * located and that cannot be believed switches the crop off.
  */
-async function receiptRegion(input: Buffer, width: number, height: number): Promise<Region> {
+async function receiptRegion(input: Buffer, width: number, height: number): Promise<Located> {
   const whole: Region = { left: 0, top: 0, width, height };
   try {
     const { info } = await sharp(input, { failOn: "none" })
@@ -152,15 +158,30 @@ async function receiptRegion(input: Buffer, width: number, height: number): Prom
       width: info.width,
       height: info.height,
     };
-    if (region.width < MIN_TRIM_SIDE || region.height < MIN_TRIM_SIDE) return whole;
-    if ((region.width * region.height) / (width * height) < MIN_TRIM_AREA) return whole;
-    if (region.left + region.width > width || region.top + region.height > height) return whole;
-    return region;
+    const believable =
+      region.width >= MIN_TRIM_SIDE &&
+      region.height >= MIN_TRIM_SIDE &&
+      (region.width * region.height) / (width * height) >= MIN_TRIM_AREA &&
+      region.left + region.width <= width &&
+      region.top + region.height <= height;
+    if (!believable) return { region: whole, croppable: false };
+    return { region, croppable: true };
   } catch {
-    return whole;
+    return { region: whole, croppable: true };
   }
 }
 
+/**
+ * Applies a photo's EXIF orientation, leaving the image otherwise untouched.
+ *
+ * `rotate()` with no argument is the operation that reads the tag and bakes it
+ * into the pixels. Quality is kept high and chroma subsampling off: this re-
+ * encodes the JPEG, and the whole point is to avoid losing detail the model
+ * still has to read.
+ *
+ * A photo that needs no rotation is returned exactly as it arrived, so the
+ * common case costs nothing and cannot lose anything to a re-encode.
+ */
 export async function prepareReceipt(input: Buffer): Promise<PreparedReceipt> {
   const startedAt = Date.now();
   try {
@@ -173,13 +194,15 @@ export async function prepareReceipt(input: Buffer): Promise<PreparedReceipt> {
       return { buffer: input, rotated: false, croppedTop: 0, durationMs: Date.now() - startedAt };
     }
 
- // The shape that decides the crop is the receipt's, not the picture's. A
+    // The shape that decides the crop is the receipt's, not the picture's. A
     // receipt in a wide margin is squarer than it looks and would otherwise be
     // measured, and cut, as though the margin were part of it.
-    const region = await receiptRegion(input, width, height);
+    const { region, croppable } = await receiptRegion(input, width, height);
     const trimmed = region.width !== width || region.height !== height;
     const shouldCrop =
-      region.height / region.width >= MIN_RATIO_TO_CROP && region.height >= MIN_HEIGHT_TO_CROP;
+      croppable &&
+      region.height / region.width >= MIN_RATIO_TO_CROP &&
+      region.height >= MIN_HEIGHT_TO_CROP;
 
     // Nothing to do: already upright, nothing to trim, and too square or too
     // small to crop. Returned byte-for-byte so the common case cannot lose

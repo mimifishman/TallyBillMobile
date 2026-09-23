@@ -145,10 +145,8 @@ check("and keeps every item row", aloneRows === ROWS, { kept: aloneRows, drawn: 
     meta.width === aloneMeta.width && meta.height === aloneMeta.height,
     { onPage: { w: meta.width, h: meta.height }, alone: { w: aloneMeta.width, h: aloneMeta.height } },
   );
-  check("and no item row is lost to the margin", (await inkRows(prepared.buffer)) === ROWS, {
-    kept: await inkRows(prepared.buffer),
-    drawn: ROWS,
-  });
+  const keptRows = await inkRows(prepared.buffer);
+  check("and no item row is lost to the margin", keptRows === ROWS, { kept: keptRows, drawn: ROWS });
   check("and the blank page is gone", meta.width! < 1600, meta.width);
 }
 
@@ -158,6 +156,23 @@ check("and keeps every item row", aloneRows === ROWS, { kept: aloneRows, drawn: 
   const small = await receipt(400, 700, 0.32, 6);
   const prepared = await prepareReceipt(await onPage(small, 1200, 1800, 50));
   check("a short receipt is not cropped", prepared.croppedTop === 0, prepared.croppedTop);
+}
+
+// A receipt too small for the guards to believe. Trimming located something,
+// but not something worth cropping from — and a blind quarter of the PAGE would
+// then land below the whole receipt and hand the model a blank sheet. Sending it
+// whole is worse than a good crop and far better than a destroyed one.
+{
+  const tiny = await receipt(150, 380, 0.32, 6);
+  const page = await onPage(tiny, 1600, 4200, 40);
+  const prepared = await prepareReceipt(page);
+  const meta = await sharp(prepared.buffer).metadata();
+  check("a receipt too small to place is not cropped", prepared.croppedTop === 0, prepared.croppedTop);
+  check(
+    "and it is still in the picture afterwards",
+    meta.height! > 40 + tiny.height,
+    { height: meta.height, receiptEndsAt: 40 + tiny.height },
+  );
 }
 
 // Trimming must never be trusted far enough to return a sliver: a page with no
