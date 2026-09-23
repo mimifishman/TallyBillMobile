@@ -957,7 +957,16 @@ export default function BillDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}>
+      {/* Without this, the first tap while a keyboard is up is spent dismissing
+          it and never reaches what was tapped — so Save on an item being edited
+          did nothing until it was pressed a second time, and a rate that had
+          just been typed looked like it had failed to save. Every other
+          scrolling view in the app already sets it. */}
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
+        keyboardShouldPersistTaps="handled"
+      >
         {receiptImageUri ? (
           <TouchableOpacity
             onPress={() => setShowReceiptModal(true)}

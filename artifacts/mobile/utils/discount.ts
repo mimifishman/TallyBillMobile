@@ -43,9 +43,18 @@ export function parsePercent(raw: string): number {
   return Math.min(value, 100);
 }
 
-/** Money off one line at a rate, rounded to the currency's smallest unit. */
+/**
+ * Money off one line at a rate, rounded to the currency's smallest unit.
+ *
+ * Worked out in whole agorot as `base * percent`, not as `base * (percent/100)`
+ * then scaled back up. The two disagree by an agora whenever the exact answer
+ * lands on a half — 427.75 at 30% is exactly 128.325 — because a percentage
+ * divided by 100 is rarely exact in binary. inferDiscountSelection searches
+ * using the first form, so using the second here would have it announce a rate
+ * and then apply a figure an agora away from the one it matched.
+ */
 export function discountAt(base: number, percent: number): number {
-  return round2(base * (percent / 100));
+  return Math.round(base * percent) / 100;
 }
 
 /**
@@ -179,8 +188,13 @@ export function inferDiscountSelection(
 
   let found: InferredDiscount | null = null;
   for (let mask = 1; mask < 1 << bases.length; mask++) {
-    let subtotal = 0;
-    for (let i = 0; i < bases.length; i++) if (mask & (1 << i)) subtotal += bases[i]!.base;
+    // Rounded to money before comparing. Adding a handful of two-decimal values
+    // as raw floats drifts in the last bits, and that drift is enough to flip
+    // the rounding of subtotal * percent — so a subset that genuinely produces
+    // the printed amount could be missed, or one that does not could match.
+    let raw = 0;
+    for (let i = 0; i < bases.length; i++) if (mask & (1 << i)) raw += bases[i]!.base;
+    const subtotal = round2(raw);
     if (subtotal <= 0) continue;
 
     for (const percent of COMMON_RATES) {
