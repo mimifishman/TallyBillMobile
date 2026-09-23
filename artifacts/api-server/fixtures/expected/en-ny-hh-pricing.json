@@ -1,0 +1,9 @@
+{
+  "items": 7,
+  "total": 86.00,
+  "currency": "USD",
+  "taxAmount": 7.63,
+  "billDiscount": null,
+  "itemDescriptions": ["HH Draft Lager", "HH House Red", "HH Well Margarita", "Truffle Fries", "Burrata", "Fried Chicken Sando", "Brussels Sprouts"],
+  "note": "LAYOUT 1 of four — happy hour done by TIME PRICING, with no discount line anywhere. Toast, and probably the most common layout in a NYC bar. Bleecker St Taproom, synthetic, no personal data.\n\nThe 'HH' items are simply priced low. There is NO discount to find: no minus line, no originalTotal, no billDiscount. The footer's 'Happy Hour 4-7 PM Every Day' is shop text. Items sum to the printed Subtotal of 86.00, Tax 7.63, Total 93.63.\n\nTHIS IS A GUARD, not a target. It passes today and must keep passing. Any rule written to rescue layout 2 or 3 must not start INVENTING discounts here — an originalTotal on 'HH Draft Lager' would undercharge the bill, which is the one failure direction that never gets noticed.\n\n'Suggested Tip 18/20/22%' is advice: tipAmount must be null."
+}

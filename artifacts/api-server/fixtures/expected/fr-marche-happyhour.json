@@ -3,6 +3,7 @@
   "total": 143.4,
   "currency": "EUR",
   "taxAmount": null,
+  "billDiscount": null,
   "itemDescriptions": [
     "Kir Royal",
     "Salade de chèvre chaud",

@@ -72,6 +72,8 @@ interface Expected {
   currency?: string;
   /** Tax added ON TOP of the items; null where the prices already include it. */
   taxAmount?: number | null;
+  /** A discount applying to the WHOLE bill, as a positive number. */
+  billDiscount?: number | null;
   /** Item names read off the photo by eye. Scored as a set, not in order. */
   itemDescriptions?: string[];
 }
@@ -97,10 +99,12 @@ interface Row {
   currency: string | null;
   maxQuantity: number;
   taxAmount: number | null;
+  billDiscount: number | null;
   expected?: Expected;
   itemsOk: boolean | null;
   totalOk: boolean | null;
   taxOk: boolean | null;
+  discountOk: boolean | null;
   error?: string;
 }
 
@@ -155,6 +159,22 @@ function scoreTax(got: number | null, expected: Expected | undefined): boolean |
   return got != null && Math.abs(got - want) <= 0.01;
 }
 
+/**
+ * Did the scan get a WHOLE-BILL discount right?
+ *
+ * Scored the same way as tax: only when the fixture pins the key, and a pinned
+ * null is a real expectation. It needs its own column because a dropped
+ * bill-level discount does not show up anywhere else — the items are all
+ * correct and sum to the printed subtotal, so count and total both pass while
+ * the diners are overcharged by the whole discount.
+ */
+function scoreDiscount(got: number | null, expected: Expected | undefined): boolean | null {
+  if (!expected || !Object.prototype.hasOwnProperty.call(expected, "billDiscount")) return null;
+  const want = expected.billDiscount;
+  if (want == null) return got == null || got === 0;
+  return got != null && Math.abs(got - want) <= 0.01;
+}
+
 /** How many of the expected names came back, compared as a set. */
 function matchNames(got: string[], want: string[]): number {
   const pool = got.map(normalizeName);
@@ -198,6 +218,7 @@ interface ScanResult {
   items: OcrItem[];
   currency: string | null;
   taxAmount: number | null;
+  billDiscount: number | null;
 }
 
 /** The model call the route makes, with this repo's prompt and parsing. */
@@ -231,10 +252,7 @@ async function scanLocally(file: string): Promise<ScanResult> {
 
   const items = normalizeLineItems(parsed.items as never) as unknown as OcrItem[];
   const billDiscount = normalizeBillDiscount(parsed.billDiscount);
-  if (billDiscount !== null) {
-    process.stdout.write(`\n  (${file}: billDiscount ${billDiscount.toFixed(2)})`);
-  }
-  return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null };
+  return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount };
 }
 
 async function scanOnce(file: string): Promise<ScanResult> {
@@ -256,8 +274,8 @@ async function scanOnce(file: string): Promise<ScanResult> {
   const text = await res.text();
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
 
-  const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null; taxAmount?: number | null };
-  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null };
+  const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null; taxAmount?: number | null; billDiscount?: number | null };
+  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount: parsed.billDiscount ?? null };
 }
 
 async function run(): Promise<void> {
@@ -287,7 +305,7 @@ async function run(): Promise<void> {
     for (let run = 1; run <= repeat; run++) {
       const label = repeat > 1 ? `${file} #${run}` : file;
       try {
-        const { ms, items, currency, taxAmount } = await scanOnce(file);
+        const { ms, items, currency, taxAmount, billDiscount } = await scanOnce(file);
         const sum = Math.round(items.reduce((s, i) => s + (Number(i.total) || 0), 0) * 100) / 100;
         const maxQuantity = items.reduce((m, i) => Math.max(m, Number(i.quantity) || 1), 1);
 
@@ -296,11 +314,12 @@ async function run(): Promise<void> {
         const itemsOk = expected?.items == null ? null : items.length === expected.items;
         const totalOk = expected?.total == null ? null : Math.abs(sum - expected.total) <= 0.01;
         const taxOk = scoreTax(taxAmount, expected);
+        const discountOk = scoreDiscount(billDiscount, expected);
 
         const descriptions = items.map((i) => String(i.description ?? ""));
         const want = expected?.itemDescriptions;
         rows.push({
-          name: label, language, ms, items: items.length, sum, currency, maxQuantity, taxAmount, expected, itemsOk, totalOk, taxOk,
+          name: label, language, ms, items: items.length, sum, currency, maxQuantity, taxAmount, billDiscount, expected, itemsOk, totalOk, taxOk, discountOk,
           descriptions,
           namesOk: want ? matchNames(descriptions, want) : null,
           namesTotal: want ? want.length : null,
@@ -309,7 +328,7 @@ async function run(): Promise<void> {
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, expected, itemsOk: null, totalOk: null, taxOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
+        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, billDiscount: null, expected, itemsOk: null, totalOk: null, taxOk: null, discountOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
         process.stdout.write("!");
       }
     }
@@ -317,7 +336,7 @@ async function run(): Promise<void> {
   console.log("\n");
 
   // Per receipt
-  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax  names");
+  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names");
   console.log("-".repeat(95));
   for (const r of rows) {
     if (r.error) {
@@ -331,19 +350,20 @@ async function run(): Promise<void> {
       padL(r.itemsOk === null ? "-" : r.itemsOk ? "ok" : "MISS", 7) +
       padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) +
       padL(r.taxOk === null ? "-" : r.taxOk ? "ok" : "TAX", 7) +
+      padL(r.discountOk === null ? "-" : r.discountOk ? "ok" : "DISC", 7) +
       padL(r.namesTotal === null ? "-" : `${r.namesOk}/${r.namesTotal}`, 7) + flag
     );
   }
 
   // Per language — never blended, so a Hebrew regression cannot hide behind English.
-  console.log("\n" + pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) + padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) + padL("errors", 8));
+  console.log("\n" + pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) + padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) + padL("disc ok", 9) + padL("errors", 8));
   console.log("-".repeat(70));
   const languages = [...new Set(rows.map((r) => r.language))].sort();
   for (const language of languages) {
     const group = rows.filter((r) => r.language === language);
     const good = group.filter((r) => !r.error);
     const times = good.map((r) => r.ms);
-    const scored = (key: "itemsOk" | "totalOk" | "taxOk") => {
+    const scored = (key: "itemsOk" | "totalOk" | "taxOk" | "discountOk") => {
       const judged = good.filter((r) => r[key] !== null);
       if (judged.length === 0) return "-";
       return `${judged.filter((r) => r[key]).length}/${judged.length}`;
@@ -351,7 +371,7 @@ async function run(): Promise<void> {
     console.log(
       pad(language, 10) + padL(group.length, 6) + padL(percentile(times, 0.5), 8) + padL(percentile(times, 0.95), 8) +
       padL(good.filter((r) => r.ms > BUDGET_MS).length, 10) + padL(scored("itemsOk"), 10) + padL(scored("totalOk"), 10) +
-      padL(scored("taxOk"), 9) + padL(group.filter((r) => r.error).length, 8)
+      padL(scored("taxOk"), 9) + padL(scored("discountOk"), 9) + padL(group.filter((r) => r.error).length, 8)
     );
   }
 

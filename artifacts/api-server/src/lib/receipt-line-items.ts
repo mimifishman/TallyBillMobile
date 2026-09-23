@@ -55,12 +55,43 @@ function nonNegativeNumber(value: unknown): number | null {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * A quantity Square prints as a suffix on the name.
+ *
+ * Square writes "Pork Dumplings x 2   $18.00" rather than putting the 2 in a
+ * column of its own, and the scan comes back with quantity 1 and the "x 2"
+ * still sitting in the description. The money is right either way — 18.00 is
+ * the line total — but two portions that look like one cannot be handed to two
+ * different people, and the name reads wrong on screen.
+ *
+ * Only a trailing count is taken, and only when nothing better is known: if the
+ * scan already reported a quantity above 1 it has read a real column and that
+ * wins. "Beef Chow Fun" keeps its name; so does anything where the x is part of
+ * a word rather than a separate token.
+ */
+const QUANTITY_SUFFIX = /\s*[x×]\s*(\d{1,3})\s*$/i;
+
+function splitQuantitySuffix(description: string, quantity: number): { description: string; quantity: number } {
+  if (quantity > 1) return { description, quantity };
+  const match = QUANTITY_SUFFIX.exec(description);
+  if (!match) return { description, quantity };
+  const found = Number(match[1]);
+  if (!Number.isFinite(found) || found < 2) return { description, quantity };
+  const stripped = description.slice(0, match.index).trim();
+  // A line that is nothing but a count is not an item name; leave it alone.
+  if (!stripped) return { description, quantity };
+  return { description: stripped, quantity: found };
+}
+
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {
   return (items ?? []).reduce<LineItem[]>((acc, item) => {
-    const description = typeof item.description === "string" ? item.description.trim() : "";
-    if (!description) return acc;
+    const rawDescription = typeof item.description === "string" ? item.description.trim() : "";
+    if (!rawDescription) return acc;
 
-    const quantity = positiveNumber(item.quantity) ?? 1;
+    const { description, quantity } = splitQuantitySuffix(
+      rawDescription,
+      positiveNumber(item.quantity) ?? 1,
+    );
 
     const originalTotal = positiveNumber(item.originalTotal);
 

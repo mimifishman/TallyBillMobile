@@ -100,5 +100,54 @@ const okSum = Math.abs(sum - 36.5) < 0.005;
 if (!okSum) failed++;
 console.log(`${okSum ? "PASS" : "FAIL"}  receipt sums to printed 36.50 (got ${sum.toFixed(2)})`);
 
+
+/** A plain assertion, for the checks that are not about the four money fields. */
+function check(name: string, ok: boolean, got?: unknown): void {
+  if (!ok) failed++;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}`);
+  if (!ok && got !== undefined) console.log(`      got  ${JSON.stringify(got)}`);
+}
+
+// Square prints the quantity as a suffix on the name — "Pork Dumplings x 2
+// $18.00" — and the scan hands it back with quantity 1 and the count still in
+// the description. The money is already right; what is wrong is that two
+// portions look like one and cannot be split between two people.
+{
+  const [dumplings] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 1, total: 18 }]);
+  check("a trailing x 2 becomes a quantity",
+    dumplings?.description === "Pork Dumplings" && dumplings?.quantity === 2, dumplings);
+  check("and the line total is untouched by it",
+    dumplings?.total === 18 && dumplings?.unitPrice === 9, dumplings);
+
+  const [tsingtao] = normalizeLineItems([{ description: "Tsingtao x 2", quantity: 1, total: 14 }]);
+  check("the same for a drink", tsingtao?.description === "Tsingtao" && tsingtao?.quantity === 2, tsingtao);
+
+  const [times] = normalizeLineItems([{ description: "Tsingtao × 2", quantity: 1, total: 14 }]);
+  check("a real multiplication sign works too", times?.description === "Tsingtao" && times?.quantity === 2, times);
+}
+
+// What it must NOT touch.
+{
+  const [real] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 3, total: 27 }]);
+  check("a quantity the scan actually read wins",
+    real?.quantity === 3 && real?.description === "Pork Dumplings x 2", real);
+
+  const [word] = normalizeLineItems([{ description: "Beef Chow Fun", quantity: 1, total: 19 }]);
+  check("an ordinary name is left alone", word?.description === "Beef Chow Fun" && word?.quantity === 1, word);
+
+  const [inside] = normalizeLineItems([{ description: "Xiao Long Bao", quantity: 1, total: 16 }]);
+  check("an x inside a word is not a count", inside?.description === "Xiao Long Bao" && inside?.quantity === 1, inside);
+
+  const [one] = normalizeLineItems([{ description: "Jasmine Tea x 1", quantity: 1, total: 11 }]);
+  check("x 1 is not worth splitting off", one?.description === "Jasmine Tea x 1" && one?.quantity === 1, one);
+
+  const [bare] = normalizeLineItems([{ description: "x 2", quantity: 1, total: 8 }]);
+  check("a line that is only a count keeps its name", bare?.description === "x 2" && bare?.quantity === 1, bare);
+
+  const [size] = normalizeLineItems([{ description: "Pinot Noir 6x175ml", quantity: 1, total: 30 }]);
+  check("a pack size mid-name is not a count",
+    size?.description === "Pinot Noir 6x175ml" && size?.quantity === 1, size);
+}
+
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);
