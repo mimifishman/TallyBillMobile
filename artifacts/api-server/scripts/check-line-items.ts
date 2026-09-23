@@ -1,6 +1,6 @@
 // Pins how multi-quantity receipt lines are normalized, so the doubling bug
 // cannot come back. Run: pnpm run check:line-items
-import { normalizeLineItems } from "../src/lib/receipt-line-items.ts";
+import { normalizeLineItems, normalizeReceiptAmount } from "../src/lib/receipt-line-items.ts";
 
 const cases = [
   // name, input, expected {quantity, unitPrice, total}
@@ -99,6 +99,35 @@ const sum = receipt.reduce((s, i) => s + i.total, 0);
 const okSum = Math.abs(sum - 36.5) < 0.005;
 if (!okSum) failed++;
 console.log(`${okSum ? "PASS" : "FAIL"}  receipt sums to printed 36.50 (got ${sum.toFixed(2)})`);
+
+// Tax and tip. The app ADDS these to the bill and calls .toFixed(2) on them, so
+// anything that is not a real, non-negative number has to come back as null: a
+// string throws on the review screen, and a negative quietly takes money off
+// someone's share. Zero stays — a receipt that printed "TAX 0.00" said so.
+const amountCases = [
+  ["a numeric string becomes a number", "3.50", 3.5],
+  ["a string with a currency sign is not a number", "$3.50", null],
+  ["a word is not a number", "N/A", null],
+  ["an empty string is not zero", "", null],
+  ["a negative is refused", -5, null],
+  ["NaN is refused", NaN, null],
+  ["null stays null", null, null],
+  ["absent stays null", undefined, null],
+  ["a true zero is kept", 0, 0],
+  ["a plain amount is kept", 8.25, 8.25],
+  ["extra decimals are rounded to cents", 8.256, 8.26],
+  ["a boolean is not an amount", true, null],
+  ["an object is not an amount", {}, null],
+];
+for (const [name, input, want] of amountCases) {
+  const got = normalizeReceiptAmount(input);
+  // typeof matters as much as the value: a string here is what throws on the
+  // review screen, and `"3.50" == 3.5` would hide exactly that.
+  const ok = got === want && (got === null || typeof got === "number");
+  if (!ok) { failed++; }
+  console.log(`${ok ? "PASS" : "FAIL"}  tax/tip: ${name}`);
+  if (!ok) console.log(`      want ${JSON.stringify(want)}\n      got  ${JSON.stringify(got)} (${typeof got})`);
+}
 
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);
