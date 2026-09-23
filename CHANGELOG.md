@@ -31,6 +31,13 @@ On two real receipts that was 33.00 and 36.00 too much.
 - A discount the receipt has already taken off is not applied a second time. **(server)**
 - An item a discount takes down to nothing is kept on the bill. **(server)**
 
+### Tax filled in from the receipt
+
+- The tax printed on a receipt is now filled in for you on the review screen.
+  The scan had been reading it all along and the app was dropping it. It is
+  entered as an **amount**, because that is what the receipt prints; a rate
+  already set on the bill still wins.
+
 ### Scanning accuracy — all **(server)**, already live for 1.0.1
 
 - **Multi-quantity lines are no longer multiplied twice.** A printed line
@@ -43,6 +50,11 @@ On two real receipts that was 33.00 and 36.00 too much.
 - The scan is checked against the receipt's own printed total, and a bill that
   is out by a shekel is caught.
 - A discount is no longer misread as a price.
+- Tax is no longer read as an item. On a US receipt every amount had shifted up
+  a row, the tax landed on the last dish, and adding tax on top would have
+  **charged it twice**. The printed-total check caught it and warned.
+- The card-terminal slip printed under many receipts is ignored: its lower
+  "cash price" is not a discount, and `TIP/CHNG` is change, not a gratuity.
 
 ### Fixes
 
