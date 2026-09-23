@@ -20,12 +20,12 @@ export const billLinesTable = pgTable("bill_lines", {
    * the printed receipt disagrees with.
    */
   discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"),
-  // NOTE: the database still has a nullable `discount_label` column from
-  // migration 0013. It is deliberately not mapped here and nothing writes it.
-  // How a discount reads to a person is worked out from originalTotal and
-  // total where it is shown, so a stored wording could only go stale when a
+  // NOTE: there was a `discount_label` column here, holding how the receipt
+  // worded the discount. It was written and never read, and migration 0014
+  // drops it. How a discount reads to a person is worked out from originalTotal
+  // and total where it is shown, so a stored wording could only go stale when a
   // price is edited or be lost by a write that forgot to send it — which is
-  // exactly how editing an item used to drop a discount. Do not map it again.
+  // exactly how editing an item used to drop a discount. Do not add it back.
   position: doublePrecision("position"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
