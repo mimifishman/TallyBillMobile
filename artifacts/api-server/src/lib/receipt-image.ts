@@ -38,6 +38,22 @@ import sharp from "sharp";
  * receipt, so a crop at the top can never remove the evidence that the crop
  * went wrong.
  *
+ * The fraction is taken of the RECEIPT, not of the picture. Those are the same
+ * thing only when the receipt fills the frame, which is what every fixture
+ * happened to do. Give the same code a receipt sitting in a wide blank margin —
+ * a scan of a page, a screenshot, a photo taken from too far back — and a
+ * quarter of the picture is far more than a quarter of the receipt. On a
+ * French A4 test page the old cut landed four lines into the items and threw
+ * away three of them along with a discount, and the model never saw them.
+ *
+ * So the blank border is trimmed off first and the fraction is measured from
+ * what is left. Trimming costs nothing on a real photo: on all eight fixtures
+ * `trim` finds no uniform border at all and returns the picture whole, so the
+ * cut lands exactly where it did before and the measurements above still hold.
+ * It only moves on the pictures that were broken. Cropping to the receipt also
+ * stops the model spending its fixed resolution budget on blank paper — on that
+ * A4 page the receipt is 18% of the pixels.
+ *
  * Deliberately nothing else. Resizing, a contrast stretch and sharpening were
  * all measured the same way and none of them earned a place:
  *
@@ -76,6 +92,26 @@ const MIN_RATIO_TO_CROP = 1.2;
 const MIN_HEIGHT_TO_CROP = 900;
 
 /**
+ * How far off the border colour a pixel has to be to count as content.
+ *
+ * Low, because the border being looked for is the flat white of a page scan or
+ * a screenshot. A photograph's background is never this even, which is why
+ * trimming leaves all eight fixtures untouched.
+ */
+const TRIM_THRESHOLD = 10;
+/**
+ * A trim this drastic is not believed.
+ *
+ * Trimming is only ever meant to remove blank surround. If it claims almost the
+ * whole picture was surround, the picture is more likely to be something this
+ * code has not anticipated than a receipt in a very large margin, and cropping
+ * an already-wrong region is worse than not cropping at all.
+ */
+const MIN_TRIM_AREA = 0.03;
+/** Below this a region is too small to be a readable receipt. */
+const MIN_TRIM_SIDE = 200;
+
+/**
  * Applies a photo's EXIF orientation, leaving the image otherwise untouched.
  *
  * `rotate()` with no argument is the operation that reads the tag and bakes it
@@ -86,6 +122,45 @@ const MIN_HEIGHT_TO_CROP = 900;
  * A photo that needs no rotation is returned exactly as it arrived, so the
  * common case costs nothing and cannot lose anything to a re-encode.
  */
+/** The picture with its blank surround removed, in the rotated frame. */
+interface Region {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Where the receipt actually sits, once a flat border is discounted.
+ *
+ * Returns the whole frame whenever trimming finds nothing, fails, or returns
+ * something too small or too drastic to believe — every one of which leaves the
+ * behaviour exactly as it was before this existed.
+ */
+async function receiptRegion(input: Buffer, width: number, height: number): Promise<Region> {
+  const whole: Region = { left: 0, top: 0, width, height };
+  try {
+    const { info } = await sharp(input, { failOn: "none" })
+      .rotate()
+      .trim({ threshold: TRIM_THRESHOLD })
+      .toBuffer({ resolveWithObject: true });
+
+    // sharp reports the offsets as negative — how far the content was moved.
+    const region: Region = {
+      left: Math.abs(info.trimOffsetLeft ?? 0),
+      top: Math.abs(info.trimOffsetTop ?? 0),
+      width: info.width,
+      height: info.height,
+    };
+    if (region.width < MIN_TRIM_SIDE || region.height < MIN_TRIM_SIDE) return whole;
+    if ((region.width * region.height) / (width * height) < MIN_TRIM_AREA) return whole;
+    if (region.left + region.width > width || region.top + region.height > height) return whole;
+    return region;
+  } catch {
+    return whole;
+  }
+}
+
 export async function prepareReceipt(input: Buffer): Promise<PreparedReceipt> {
   const startedAt = Date.now();
   try {
@@ -98,19 +173,30 @@ export async function prepareReceipt(input: Buffer): Promise<PreparedReceipt> {
       return { buffer: input, rotated: false, croppedTop: 0, durationMs: Date.now() - startedAt };
     }
 
-    const shouldCrop = height / width >= MIN_RATIO_TO_CROP && height >= MIN_HEIGHT_TO_CROP;
+ // The shape that decides the crop is the receipt's, not the picture's. A
+    // receipt in a wide margin is squarer than it looks and would otherwise be
+    // measured, and cut, as though the margin were part of it.
+    const region = await receiptRegion(input, width, height);
+    const trimmed = region.width !== width || region.height !== height;
+    const shouldCrop =
+      region.height / region.width >= MIN_RATIO_TO_CROP && region.height >= MIN_HEIGHT_TO_CROP;
 
-    // Nothing to do: already upright, and too square or too small to crop.
-    // Returned byte-for-byte so the common case cannot lose anything to a
-    // re-encode it did not need.
-    if (orientation === 1 && !shouldCrop) {
+    // Nothing to do: already upright, nothing to trim, and too square or too
+    // small to crop. Returned byte-for-byte so the common case cannot lose
+    // anything to a re-encode it did not need.
+    if (orientation === 1 && !trimmed && !shouldCrop) {
       return { buffer: input, rotated: false, croppedTop: 0, durationMs: Date.now() - startedAt };
     }
 
     let pipeline = sharp(input, { failOn: "none" }).rotate();
-    if (shouldCrop) {
-      const top = Math.round(height * HEADER_FRACTION);
-      pipeline = pipeline.extract({ left: 0, top, width, height: height - top });
+    if (shouldCrop || trimmed) {
+      const off = shouldCrop ? Math.round(region.height * HEADER_FRACTION) : 0;
+      pipeline = pipeline.extract({
+        left: region.left,
+        top: region.top + off,
+        width: region.width,
+        height: region.height - off,
+      });
     }
 
     const buffer = await pipeline

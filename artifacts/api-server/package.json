@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:line-items": "node --experimental-strip-types scripts/check-line-items.ts",
     "check:reconcile": "node --experimental-strip-types scripts/check-reconcile.ts",
+    "check:receipt-image": "node --experimental-strip-types scripts/check-receipt-image.ts",
     "stress:discount": "node --experimental-strip-types scripts/stress-discount.ts",
     "check:discount": "node --experimental-strip-types scripts/check-discount.ts",
     "eval:ocr": "node --experimental-strip-types scripts/ocr-eval.ts",
