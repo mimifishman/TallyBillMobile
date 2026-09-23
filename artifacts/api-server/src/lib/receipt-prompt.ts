@@ -56,6 +56,10 @@ Rules:
 - A discount is any line with a negative amount, or any line labelled as a discount, promotion, happy hour, loyalty, member price, or a percentage off. In Hebrew it is usually "הנחה".
 - CASE 1 — a discount printed directly BELOW a purchased item, usually with nothing in the quantity column, belongs to that item. Fold it in: "total" becomes the amount actually charged, "originalTotal" is the amount before the discount, and "discountLabel" is the discount's printed wording.
   Example: "1  Caesar Salad  57.00" followed by "25% Happy Hour  -14.00" is ONE item — total 43.00, originalTotal 57.00, discountLabel "25% Happy Hour".
+  The discount line is normally INDENTED under its item. That indent does not make it a modifier and does not make it ignorable — see MODIFIERS below.
+  Get the direction right. The amount on the ITEM's own line is the price BEFORE the discount, so it is "originalTotal", and "total" is that amount MINUS the discount. NEVER add the discount to the printed amount.
+  Example of the mistake to avoid: "2  Apéritif  20.00" with "Happy Hour -30%  -6.00" indented below is total 14.00, originalTotal 20.00. It is NOT total 20.00 with originalTotal 26.00, and it is NOT an item of 20.00 with the discount dropped.
+  If the wording carries a percentage, check yourself with it: the discount must be that percentage of "originalTotal". A "-30%" beside a 6.00 discount means originalTotal 20.00.
 - CASE 2 — some receipts print TWO amounts on the same item line: a full price in one column and, in another, the lower amount actually charged. Use the already-charged amount as "total" and the full price as "originalTotal". The discount is already applied, so do NOT subtract anything again.
   These receipts also print the saving on an INDENTED line under the item, usually marked "HH" or similar. That figure is the DISCOUNT. It is never the item's price, it is never its total, and it must never become an item of its own — it is there only to explain the gap between the two columns on the line above it.
   Example: "TROPICAL BLUSH   1   59.00   30.00" with "HH 29" indented below is ONE item — total 30.00, originalTotal 59.00, discountLabel "HH". Returning 29.00 as the total would be wrong: 29.00 is what came off, and 59.00 minus 29.00 is the 30.00 that is charged.
@@ -72,6 +76,7 @@ MODIFIERS
 - ONLY a figure in the receipt's amount column — the column its line totals are printed in, usually the far edge — is money. A figure written inside the description text is not a charge; it is the receipt telling you what an option costs, and the line's own total already includes it.
   Example: "1 MED ICED COFFEE," / "   almond milk .10 (0.10)     5.05" is ONE item of 5.05. The .10 and the (0.10) are inside the description. Returning almond milk as a 0.10 item makes the bill 0.10 too high, and the subtotal printed below proves it: 5.05 plus the next line's 0.21 is the 5.26 shown.
   Example: a modifier printed on its own line with 8.00 in the amount column IS a charge — add it to the item above rather than listing it separately.
+- A line is NOT a modifier if its amount is NEGATIVE, or if its wording names a discount — "Happy Hour", "promotion", "remise", "loyalty", "member", "הנחה", or any percentage off. Those are discounts however deeply they are indented, and they belong to the item above under CASE 1. Dropping one as though it were a modifier overcharges the diners.
 - Ignore a modifier priced 0.00, and never return a modifier as an item of its own.
 
 - Return ONLY the JSON object, no markdown fences, no commentary.`;
