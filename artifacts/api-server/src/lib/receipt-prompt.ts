@@ -62,6 +62,10 @@ Rules:
 - "originalTotal" and "discountLabel" must be null unless that specific item really was discounted.
 
 MODIFIERS
-- Lines marked ">>" or "<<", or indented under an item, are options chosen for the item above, such as "no spicy" or "extra beef". Add a priced modifier to the total of the item above it rather than listing it separately, and ignore one priced 0.00.
+- Lines marked ">>" or "<<", or indented under an item, are options chosen for the item above, such as "no spicy", "extra beef" or "almond milk".
+- ONLY a figure in the receipt's amount column — the column its line totals are printed in, usually the far edge — is money. A figure written inside the description text is not a charge; it is the receipt telling you what an option costs, and the line's own total already includes it.
+  Example: "1 MED ICED COFFEE," / "   almond milk .10 (0.10)     5.05" is ONE item of 5.05. The .10 and the (0.10) are inside the description. Returning almond milk as a 0.10 item makes the bill 0.10 too high, and the subtotal printed below proves it: 5.05 plus the next line's 0.21 is the 5.26 shown.
+  Example: a modifier printed on its own line with 8.00 in the amount column IS a charge — add it to the item above rather than listing it separately.
+- Ignore a modifier priced 0.00, and never return a modifier as an item of its own.
 
 - Return ONLY the JSON object, no markdown fences, no commentary.`;
