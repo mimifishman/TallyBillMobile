@@ -119,34 +119,62 @@ function check(name: string, ok: boolean, got?: unknown): void {
   check("and the line total is untouched by it",
     dumplings?.total === 18 && dumplings?.unitPrice === 9, dumplings);
 
-  const [tsingtao] = normalizeLineItems([{ description: "Tsingtao x 2", quantity: 1, total: 14 }]);
-  check("the same for a drink", tsingtao?.description === "Tsingtao" && tsingtao?.quantity === 2, tsingtao);
+  const [tight] = normalizeLineItems([{ description: "Tsingtao x2", quantity: 1, total: 14 }]);
+  check("with or without a space", tight?.description === "Tsingtao" && tight?.quantity === 2, tight);
 
   const [times] = normalizeLineItems([{ description: "Tsingtao × 2", quantity: 1, total: 14 }]);
   check("a real multiplication sign works too", times?.description === "Tsingtao" && times?.quantity === 2, times);
+
+  const [glued] = normalizeLineItems([{ description: "Tsingtao×2", quantity: 1, total: 14 }]);
+  check("a × needs no space, since no word contains one",
+    glued?.description === "Tsingtao" && glued?.quantity === 2, glued);
 }
 
-// What it must NOT touch.
+// THE NAME ALWAYS LOSES THE COUNT; THE QUANTITY IS ONLY FILLED IN.
+// A count is never part of what was ordered, so it comes off the name either
+// way. But a quantity the scan read from a real column beats one guessed from
+// the end of a string, even where the two disagree.
 {
-  const [real] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 3, total: 27 }]);
-  check("a quantity the scan actually read wins",
-    real?.quantity === 3 && real?.description === "Pork Dumplings x 2", real);
+  const [agree] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 2, total: 18 }]);
+  check("a correctly read quantity still gets a clean name",
+    agree?.description === "Pork Dumplings" && agree?.quantity === 2, agree);
 
-  const [word] = normalizeLineItems([{ description: "Beef Chow Fun", quantity: 1, total: 19 }]);
-  check("an ordinary name is left alone", word?.description === "Beef Chow Fun" && word?.quantity === 1, word);
-
-  const [inside] = normalizeLineItems([{ description: "Xiao Long Bao", quantity: 1, total: 16 }]);
-  check("an x inside a word is not a count", inside?.description === "Xiao Long Bao" && inside?.quantity === 1, inside);
+  const [disagree] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 3, total: 27 }]);
+  check("and wins when the two disagree",
+    disagree?.description === "Pork Dumplings" && disagree?.quantity === 3, disagree);
 
   const [one] = normalizeLineItems([{ description: "Jasmine Tea x 1", quantity: 1, total: 11 }]);
-  check("x 1 is not worth splitting off", one?.description === "Jasmine Tea x 1" && one?.quantity === 1, one);
+  check("x 1 leaves the name clean and the quantity at 1",
+    one?.description === "Jasmine Tea" && one?.quantity === 1, one);
+}
 
-  const [bare] = normalizeLineItems([{ description: "x 2", quantity: 1, total: 8 }]);
-  check("a line that is only a count keeps its name", bare?.description === "x 2" && bare?.quantity === 1, bare);
+// THE CASE THAT WAS BROKEN: an "x" that is simply the last letter of a word,
+// with digits after it. Every one of these mangled the name and invented a
+// quantity until the x was required to be a token of its own. The earlier guard
+// here used "Xiao Long Bao", which has no trailing digits, so it never reached
+// the comparison at all and passed against the broken version.
+{
+  for (const [name, total] of [["Lunch Box 2", 18], ["Bento Box 2", 22], ["Phoenix 5", 30], ["Chateau Margaux 2", 90], ["Bordeaux 201", 60]] as [string, number][]) {
+    const [got] = normalizeLineItems([{ description: name, quantity: 1, total }]);
+    check(`"${name}" keeps its name and its quantity of 1`,
+      got?.description === name && got?.quantity === 1, got);
+  }
+}
+
+// Other names that must survive untouched.
+{
+  const [word] = normalizeLineItems([{ description: "Beef Chow Fun", quantity: 1, total: 19 }]);
+  check("an ordinary name is left alone", word?.description === "Beef Chow Fun" && word?.quantity === 1, word);
 
   const [size] = normalizeLineItems([{ description: "Pinot Noir 6x175ml", quantity: 1, total: 30 }]);
   check("a pack size mid-name is not a count",
     size?.description === "Pinot Noir 6x175ml" && size?.quantity === 1, size);
+
+  const [bare] = normalizeLineItems([{ description: "x 2", quantity: 1, total: 8 }]);
+  check("a line that is only a count keeps its name", bare?.description === "x 2" && bare?.quantity === 1, bare);
+
+  const [year] = normalizeLineItems([{ description: "Bordeaux 2019", quantity: 1, total: 60 }]);
+  check("a four-digit year is not a count", year?.description === "Bordeaux 2019" && year?.quantity === 1, year);
 }
 
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);

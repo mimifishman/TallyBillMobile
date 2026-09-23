@@ -64,23 +64,32 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * the line total — but two portions that look like one cannot be handed to two
  * different people, and the name reads wrong on screen.
  *
- * Only a trailing count is taken, and only when nothing better is known: if the
- * scan already reported a quantity above 1 it has read a real column and that
- * wins. "Beef Chow Fun" keeps its name; so does anything where the x is part of
- * a word rather than a separate token.
+ * The "x" has to be a token of its own. Letting it float meant the x of an
+ * ordinary word was read as a multiplication sign whenever digits happened to
+ * follow: "Lunch Box 2" came out as "Lunch Bo" with a quantity of 2, and
+ * "Bordeaux 201" as "Bordeau" with a quantity of 201. The line total survives
+ * that, which is why nothing else would have caught it — but the name loses a
+ * letter, and quantity decides how many shares of a line can be claimed, so one
+ * ordered dish could be split between two people paying half each. So the
+ * character before an "x" must not be a letter or a digit. A "×" needs no such
+ * guard, since it never appears inside a word.
+ *
+ * The NAME always loses a trailing count, because it is never part of what was
+ * ordered. The QUANTITY is only filled in from it when the scan read no real
+ * column of its own — a quantity the scan actually read always wins, even where
+ * the two disagree.
  */
-const QUANTITY_SUFFIX = /\s*[x×]\s*(\d{1,3})\s*$/i;
+const QUANTITY_SUFFIX = /(?:(?<![\p{L}\p{N}])x|×)\s*(\d{1,3})\s*$/iu;
 
 function splitQuantitySuffix(description: string, quantity: number): { description: string; quantity: number } {
-  if (quantity > 1) return { description, quantity };
   const match = QUANTITY_SUFFIX.exec(description);
   if (!match) return { description, quantity };
-  const found = Number(match[1]);
-  if (!Number.isFinite(found) || found < 2) return { description, quantity };
   const stripped = description.slice(0, match.index).trim();
   // A line that is nothing but a count is not an item name; leave it alone.
   if (!stripped) return { description, quantity };
-  return { description: stripped, quantity: found };
+  const found = Number(match[1]);
+  const counted = quantity === 1 && Number.isFinite(found) && found >= 2 ? found : quantity;
+  return { description: stripped, quantity: counted };
 }
 
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {

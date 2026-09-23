@@ -336,8 +336,12 @@ async function run(): Promise<void> {
   console.log("\n");
 
   // Per receipt
-  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names");
-  console.log("-".repeat(95));
+  // Measured from the header rather than written down, so a new column cannot
+  // leave the rule short of the very column that was just added.
+  const receiptHeader = pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) +
+    padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names";
+  console.log(receiptHeader);
+  console.log("-".repeat(receiptHeader.length));
   for (const r of rows) {
     if (r.error) {
       console.log(pad(r.name, 30) + "  ERROR  " + r.error.slice(0, 48));
@@ -356,8 +360,11 @@ async function run(): Promise<void> {
   }
 
   // Per language — never blended, so a Hebrew regression cannot hide behind English.
-  console.log("\n" + pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) + padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) + padL("disc ok", 9) + padL("errors", 8));
-  console.log("-".repeat(70));
+  const languageHeader = pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) +
+    padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) +
+    padL("disc ok", 9) + padL("errors", 8);
+  console.log("\n" + languageHeader);
+  console.log("-".repeat(languageHeader.length));
   const languages = [...new Set(rows.map((r) => r.language))].sort();
   for (const language of languages) {
     const group = rows.filter((r) => r.language === language);
