@@ -20,6 +20,13 @@ until now TallyBill dropped them, so a scanned bill always came out **too high**
 On two real receipts that was 33.00 and 36.00 too much.
 
 - Discounts printed on a receipt are read instead of silently dropped. **(server)**
+
+  **Not working yet (2026-09-23), and 1.1.0 is held until it is.** Two common
+  US layouts are still missed, on production as well as dev: a minus line
+  printed under the item at full price (`HAPPY HOUR 50%  -8.00`), and one
+  discount for the whole check above the tax. Both overcharge. A `COMP` line
+  and happy-hour prices printed with no discount line are read correctly.
+  Fixtures: `en-ny-item-discount`, `en-ny-bottom-discount`, `fr-marche-happyhour`.
 - The review screen offers the receipt's discount and lets you pick which items
   it comes off.
 - A discount is entered as a percentage, with room to read it.
@@ -38,7 +45,7 @@ On two real receipts that was 33.00 and 36.00 too much.
   entered as an **amount**, because that is what the receipt prints; a rate
   already set on the bill still wins.
 
-### Scanning accuracy — all **(server)**, already live for 1.0.1
+### Scanning accuracy — all **(server)**, on production since 2026-09-23
 
 - **Multi-quantity lines are no longer multiplied twice.** A printed line
   `2  Beer  12.00` is a 12.00 charge; it was being read as 24.00. This was the
