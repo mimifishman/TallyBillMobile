@@ -597,14 +597,9 @@ export default function BillDetailScreen() {
         quantity: lineData.quantity,
         unitPrice: (lineData.total - lineData.discountAmount) / (lineData.quantity || 1),
         total: Math.round((lineData.total - lineData.discountAmount) * 100) / 100,
-        // Both sent every time, so an edit neither drops a discount nor leaves
-        // a stale original claiming a saving that no longer matches the price.
-        // The label is rebuilt from the numbers rather than carried over: after
-        // an edit the old wording may describe a rate that no longer applies.
+        // Sent every time, so an edit neither drops a discount nor leaves a
+        // stale original claiming a saving that no longer matches the price.
         originalTotal: lineData.discountAmount > 0 ? lineData.total : null,
-        discountLabel: lineData.discountAmount > 0 && lineData.total > 0
-          ? `${Math.round((lineData.discountAmount / lineData.total) * 1000) / 10}% off`
-          : null,
       },
     });
   };
@@ -649,7 +644,6 @@ export default function BillDetailScreen() {
     const remainderOriginal = lineOriginal != null && splitOriginal != null
       ? Math.round((lineOriginal - splitOriginal) * 100) / 100
       : null;
-    const discountLabel = (line as typeof line & { discountLabel?: string | null }).discountLabel ?? null;
 
     setShowSplitModal(false);
     setSplitLineId(null);
@@ -665,7 +659,6 @@ export default function BillDetailScreen() {
         unitPrice: lineUnitPrice,
         total: remainderTotal,
         originalTotal: remainderOriginal,
-        discountLabel,
       },
     });
 
@@ -678,7 +671,6 @@ export default function BillDetailScreen() {
         unitPrice: lineUnitPrice,
         total: splitTotal,
         originalTotal: splitOriginal,
-        discountLabel,
         afterLineId: splitLineId,
       },
     });
@@ -791,7 +783,6 @@ export default function BillDetailScreen() {
           unitPrice: Math.round((result.total / quantity) * 100) / 100,
           total: result.total,
           originalTotal: result.originalTotal,
-          discountLabel: result.discountLabel,
         },
       });
     }

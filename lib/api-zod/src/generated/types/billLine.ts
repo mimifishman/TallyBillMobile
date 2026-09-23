@@ -20,8 +20,6 @@ export interface BillLine {
   originalTotal?: number | null;
   /** Money off this line. Zero when it was not discounted. */
   discountAmount?: number;
-  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
-  discountLabel?: string | null;
   position?: number | null;
   assignedUserIds: number[];
   createdAt: Date;

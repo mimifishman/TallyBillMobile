@@ -356,12 +356,6 @@ export const GetBillByCodeResponse = zod.object({
         .number()
         .optional()
         .describe("Money off this line. Zero when it was not discounted."),
-      discountLabel: zod
-        .string()
-        .nullish()
-        .describe(
-          'How the receipt worded the discount, e.g. \"25% Happy Hour\".',
-        ),
       position: zod.number().nullish(),
       assignedUserIds: zod.array(zod.number()),
       createdAt: zod.coerce.date(),
@@ -476,12 +470,6 @@ export const GetBillResponse = zod.object({
         .number()
         .optional()
         .describe("Money off this line. Zero when it was not discounted."),
-      discountLabel: zod
-        .string()
-        .nullish()
-        .describe(
-          'How the receipt worded the discount, e.g. \"25% Happy Hour\".',
-        ),
       position: zod.number().nullish(),
       assignedUserIds: zod.array(zod.number()),
       createdAt: zod.coerce.date(),
@@ -697,10 +685,6 @@ export const GetBillLinesResponseItem = zod.object({
     .number()
     .optional()
     .describe("Money off this line. Zero when it was not discounted."),
-  discountLabel: zod
-    .string()
-    .nullish()
-    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   position: zod.number().nullish(),
   assignedUserIds: zod.array(zod.number()),
   createdAt: zod.coerce.date(),
@@ -739,10 +723,6 @@ export const CreateBillLineBody = zod.object({
     .number()
     .optional()
     .describe("Money off this line. Zero or absent means no discount."),
-  discountLabel: zod
-    .string()
-    .nullish()
-    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   afterLineId: zod.number().nullish(),
 });
 
@@ -780,12 +760,6 @@ export const BulkCreateBillLinesBody = zod.object({
         .number()
         .optional()
         .describe("Money off this line. Zero or absent means no discount."),
-      discountLabel: zod
-        .string()
-        .nullish()
-        .describe(
-          'How the receipt worded the discount, e.g. \"25% Happy Hour\".',
-        ),
       afterLineId: zod.number().nullish(),
     }),
   ),
@@ -824,10 +798,6 @@ export const UpdateBillLineBody = zod.object({
     .number()
     .optional()
     .describe("Money off this line. Zero or absent means no discount."),
-  discountLabel: zod
-    .string()
-    .nullish()
-    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   afterLineId: zod.number().nullish(),
 });
 
@@ -858,10 +828,6 @@ export const UpdateBillLineResponse = zod.object({
     .number()
     .optional()
     .describe("Money off this line. Zero when it was not discounted."),
-  discountLabel: zod
-    .string()
-    .nullish()
-    .describe('How the receipt worded the discount, e.g. \"25% Happy Hour\".'),
   position: zod.number().nullish(),
   assignedUserIds: zod.array(zod.number()),
   createdAt: zod.coerce.date(),
@@ -1118,7 +1084,7 @@ export const OcrReceiptResponse = zod.object({
         .string()
         .nullish()
         .describe(
-          'Printed wording of the line\'s discount, e.g. \"25% Happy Hour\".',
+          'Printed wording of the line\'s discount, e.g. \"25% Happy Hour\". Reported, never stored: what the app shows is worked out from originalTotal and total. See receipt-line-items.ts.',
         ),
     }),
   ),

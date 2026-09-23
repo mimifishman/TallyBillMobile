@@ -17,26 +17,27 @@ function parseBillId(req: { params: Record<string, unknown> }): number {
  * actually charged. Anything else — a missing originalTotal, one that is not
  * higher than the total — clears the discount rather than storing a half of
  * one, so a line can never claim a saving it did not have.
+ *
+ * No wording for the discount is stored. How it reads to a person — "20% off" —
+ * is worked out from originalTotal and total where it is shown, so it cannot go
+ * stale when a price is edited and cannot be lost by a write that omits it.
  */
 function discountColumns(body: {
   total?: unknown;
   originalTotal?: unknown;
   discountAmount?: unknown;
-  discountLabel?: unknown;
-}): { originalTotal: string | null; discountAmount: string; discountLabel: string | null } {
+}): { originalTotal: string | null; discountAmount: string } {
   const total = Number(body.total ?? 0);
   const originalTotal = Number(body.originalTotal);
   const discounted = Number.isFinite(originalTotal) && originalTotal > total;
   if (!discounted) {
-    return { originalTotal: null, discountAmount: "0", discountLabel: null };
+    return { originalTotal: null, discountAmount: "0" };
   }
   // Trust the difference over a supplied amount: total and originalTotal are
   // what the rest of the app adds up, so the amount has to agree with them.
-  const label = typeof body.discountLabel === "string" ? body.discountLabel.trim() : "";
   return {
     originalTotal: String(Math.round(originalTotal * 100) / 100),
     discountAmount: String(Math.round((originalTotal - total) * 100) / 100),
-    discountLabel: label === "" ? null : label,
   };
 }
 
@@ -122,7 +123,6 @@ router.post("/bulk", async (req, res) => {
       unitPrice: number;
       total: number;
       originalTotal?: number | null;
-      discountLabel?: string | null;
     }) => ({
       billId,
       description: l.description,

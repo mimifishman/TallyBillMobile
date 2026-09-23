@@ -131,8 +131,6 @@ export interface BillLine {
   originalTotal?: number | null;
   /** Money off this line. Zero when it was not discounted. */
   discountAmount?: number;
-  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
-  discountLabel?: string | null;
   position?: number | null;
   assignedUserIds: number[];
   createdAt: string;
@@ -228,8 +226,6 @@ export interface CreateBillLineRequest {
   originalTotal?: number | null;
   /** Money off this line. Zero or absent means no discount. */
   discountAmount?: number;
-  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
-  discountLabel?: string | null;
   afterLineId?: number | null;
 }
 
@@ -298,7 +294,7 @@ export interface OcrLineItem {
   total: number;
   /** Amount before the line's discount, null when it was not discounted. */
   originalTotal?: number | null;
-  /** Printed wording of the line's discount, e.g. "25% Happy Hour". */
+  /** Printed wording of the line's discount, e.g. "25% Happy Hour". Reported, never stored: what the app shows is worked out from originalTotal and total. See receipt-line-items.ts. */
   discountLabel?: string | null;
 }
 

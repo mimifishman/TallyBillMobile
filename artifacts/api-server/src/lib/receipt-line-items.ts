@@ -14,7 +14,9 @@
  *    that line. The prompt is what applies the discount, so that exactly one
  *    number counts and nothing can be subtracted twice. `originalTotal` carries
  *    the pre-discount amount purely so the app can show where the number came
- *    from, and is kept only when it really is higher than what was charged.
+ *    from, and is kept only when it really is higher than what was charged. How
+ *    the discount READS to a person is worked out from those two numbers where
+ *    it is shown; no wording for it is ever stored.
  */
 
 export interface RawLineItem {
@@ -32,6 +34,16 @@ export interface LineItem {
   unitPrice: number;
   total: number;
   originalTotal: number | null;
+  /**
+   * The discount's printed wording, straight from the model.
+   *
+   * Reported, never stored. The scan prompt asks for it because naming the
+   * discount is what makes the model commit to reading a "-14.00" line as a
+   * discount on the item above rather than as an item of its own, and that
+   * reading is what keeps a discounted bill from being overcharged. What the
+   * app puts on screen is worked out from originalTotal and total instead, so
+   * it cannot go stale when a price is edited. Do not persist this.
+   */
   discountLabel: string | null;
 }
 

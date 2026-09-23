@@ -12,6 +12,11 @@
  * by the people on it, and tax and tip still follow from those shares. Tipping
  * therefore happens on the discounted total, which is the number printed on the
  * receipt.
+ *
+ * Nothing here carries a label for the discount, and nothing stores one. How a
+ * discount reads to a person is worked out from `originalTotal` and `total`
+ * where it is shown, so it cannot go stale when a price is edited and cannot be
+ * lost by a write that forgets to send it.
  */
 
 export interface DiscountableLine {
@@ -63,10 +68,10 @@ export function discountAt(base: number, percent: number): number {
  *
  * A rate of 0 clears the discount and puts the line back to its full price.
  */
-export function applyPercent(line: DiscountableLine, percent: number, label?: string | null): LineDiscount & { discountLabel: string | null } {
+export function applyPercent(line: DiscountableLine, percent: number): LineDiscount {
   const base = baseTotalOf(line);
   if (percent <= 0) {
-    return { id: line.id, originalTotal: null, discountAmount: 0, total: round2(base), discountLabel: null };
+    return { id: line.id, originalTotal: null, discountAmount: 0, total: round2(base) };
   }
   const discountAmount = discountAt(base, percent);
   return {
@@ -74,7 +79,6 @@ export function applyPercent(line: DiscountableLine, percent: number, label?: st
     originalTotal: round2(base),
     discountAmount,
     total: round2(base - discountAmount),
-    discountLabel: label?.trim() ? label.trim() : `${round2(percent)}% off`,
   };
 }
 
@@ -125,20 +129,19 @@ export function apportion(amount: number, lines: DiscountableLine[]): Map<number
 }
 
 /** Applies one discount amount across lines, splitting it by price. */
-export function applyAmount(amount: number, lines: DiscountableLine[], label?: string | null): Array<LineDiscount & { discountLabel: string | null }> {
+export function applyAmount(amount: number, lines: DiscountableLine[]): LineDiscount[] {
   const shares = apportion(amount, lines);
   return lines.map((line) => {
     const base = baseTotalOf(line);
     const discountAmount = shares.get(line.id) ?? 0;
     if (discountAmount <= 0) {
-      return { id: line.id, originalTotal: null, discountAmount: 0, total: round2(base), discountLabel: null };
+      return { id: line.id, originalTotal: null, discountAmount: 0, total: round2(base) };
     }
     return {
       id: line.id,
       originalTotal: round2(base),
       discountAmount,
       total: round2(base - discountAmount),
-      discountLabel: label?.trim() ? label.trim() : "Discount",
     };
   });
 }

@@ -18,7 +18,5 @@ export interface CreateBillLineRequest {
   originalTotal?: number | null;
   /** Money off this line. Zero or absent means no discount. */
   discountAmount?: number;
-  /** How the receipt worded the discount, e.g. "25% Happy Hour". */
-  discountLabel?: string | null;
   afterLineId?: number | null;
 }

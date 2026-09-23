@@ -1852,10 +1852,6 @@ components:
         discountAmount:
           type: number
           description: Money off this line. Zero when it was not discounted.
-        discountLabel:
-          type: string
-          nullable: true
-          description: How the receipt worded the discount, e.g. "25% Happy Hour".
         position:
           type: number
           nullable: true
@@ -1899,10 +1895,6 @@ components:
         discountAmount:
           type: number
           description: Money off this line. Zero or absent means no discount.
-        discountLabel:
-          type: string
-          nullable: true
-          description: How the receipt worded the discount, e.g. "25% Happy Hour".
         afterLineId:
           type: integer
           nullable: true
@@ -2074,7 +2066,10 @@ components:
         discountLabel:
           type: string
           nullable: true
-          description: Printed wording of the line's discount, e.g. "25% Happy Hour".
+          description: >-
+            Printed wording of the line's discount, e.g. "25% Happy Hour".
+            Reported, never stored: what the app shows is worked out from
+            originalTotal and total. See receipt-line-items.ts.
       required:
         - description
         - quantity
