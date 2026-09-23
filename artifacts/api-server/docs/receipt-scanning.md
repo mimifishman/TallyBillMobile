@@ -203,13 +203,56 @@ Rounding each share on its own turns 10.00 into 9.99.
 
 ---
 
+## 13. A rule that is true of US receipts is not a rule
+
+The prompt said, as a plain fact, "Tax is charged on top of the items." That is
+true in the United States and false in most of the rest of the world.
+
+A French restaurant ticket prints `TOTAL TTC 158,90` — *toutes taxes comprises*,
+all taxes included — and below it a `DÉTAIL TVA` block showing 16,80 of VAT
+**already paid inside those prices**. Production read the ten items perfectly
+and returned `taxAmount: 16.80`. The app adds `taxAmount` on top of the items,
+so a 158,90 meal was billed as **175,70**.
+
+The same holds for every Israeli receipt: prices there include מע"מ by law. The
+primary market was exposed to this the whole time.
+
+Two things let it through.
+
+**The rule was written from one example.** US sales tax is added at the till, so
+"tax is on top" looked like a definition. It is a property of a jurisdiction.
+What is actually universal is arithmetic the receipt prints for you: if the
+final payable equals the item sum **plus** the tax line, the tax is on top; if
+it equals the item sum **on its own**, the tax is already inside. The model can
+check that itself. Findings 6 and 11 again — let the receipt settle it, and
+derive what can be derived.
+
+**The eval did not score tax.** Nine fixtures, none of them pinning a tax value.
+A number that nothing checks is a number that is wrong sooner or later. All nine
+now pin it, and a pinned `null` is a real expectation rather than "unscored" —
+`0.49` for the US receipt where the tax genuinely is added, `null` for the
+French and Hebrew ones where it is not.
+
+There was a second casualty, found only because the French fixture existed.
+`printedTotal` said never to use a figure that includes VAT. On a TTC receipt
+*every* total includes VAT, so the model returned no printed total at all, and
+the reconciliation check of finding 7 was silently switched off on exactly the
+receipts most likely to be misread. A guard that quietly does nothing is worse
+than no guard, because the bill still looks confident.
+
+**How to apply:** before writing a prompt rule about money, ask which country it
+is true in. If the answer is one country, the rule is a case, not a rule — give
+the model the arithmetic test that distinguishes the cases instead. And pin the
+field in the fixtures the same day.
+
 ## Where it stands
 
 **Reliable receipts: 2 of 6 → 6 of 6** on totals and item counts. Scans run
 6–9 seconds against a 20-second budget.
 
-**Still open:** item names on Hebrew receipts, and the dead `discountLabel`
-column.
+**Still open:** item names on Hebrew receipts, the dead `discountLabel` column,
+and `taxAmount` reaching the app unvalidated — the route passes the model's value
+straight through, so a string or a negative would land in the bill.
 
 ## How to run any of this
 
