@@ -28,10 +28,16 @@
  * Hand-checked truth is optional but is what turns timing into accuracy. Put it
  * in fixtures/expected/<same basename>.json:
  *
- *   { "items": 12, "total": 431.25, "currency": "ILS" }
+ *   { "items": 12, "total": 431.25, "currency": "ILS", "taxAmount": null }
  *
  * where `items` counts line items as a person reads them (a quantity-3 line is
  * ONE item) and `total` is the printed sum of those items, before tax and tip.
+ *
+ * `taxAmount` is scored only when the key is present, and null is a real
+ * expectation rather than "do not score". It is the tax the receipt ADDS ON TOP
+ * of the items. Where the prices already include the tax — a French "TOTAL TTC"
+ * ticket, any Israeli receipt — the right answer is null, because the app adds
+ * taxAmount to the items and would otherwise bill the tax a second time.
  *
  * Raw model output for each run lands in fixtures/out/, to diff after a change.
  */
@@ -64,6 +70,8 @@ interface Expected {
   items?: number;
   total?: number;
   currency?: string;
+  /** Tax added ON TOP of the items; null where the prices already include it. */
+  taxAmount?: number | null;
   /** Item names read off the photo by eye. Scored as a set, not in order. */
   itemDescriptions?: string[];
 }
@@ -88,9 +96,11 @@ interface Row {
   sum: number;
   currency: string | null;
   maxQuantity: number;
+  taxAmount: number | null;
   expected?: Expected;
   itemsOk: boolean | null;
   totalOk: boolean | null;
+  taxOk: boolean | null;
   error?: string;
 }
 
@@ -128,6 +138,21 @@ function normalizeName(value: string): string {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+/**
+ * Did the scan get the tax right?
+ *
+ * null means the fixture does not pin tax, so nothing is scored. A pinned null
+ * is a real expectation: the receipt's prices already include its tax, and the
+ * app adds taxAmount on top of the items, so returning a figure there bills the
+ * tax twice. Treat 0 and null alike — neither adds anything to the bill.
+ */
+function scoreTax(got: number | null, expected: Expected | undefined): boolean | null {
+  if (!expected || !Object.prototype.hasOwnProperty.call(expected, "taxAmount")) return null;
+  const want = expected.taxAmount;
+  if (want == null) return got == null || got === 0;
+  return got != null && Math.abs(got - want) <= 0.01;
 }
 
 /** How many of the expected names came back, compared as a set. */
@@ -168,8 +193,15 @@ function openaiClient(): OpenAI {
   return _openai;
 }
 
+interface ScanResult {
+  ms: number;
+  items: OcrItem[];
+  currency: string | null;
+  taxAmount: number | null;
+}
+
 /** The model call the route makes, with this repo's prompt and parsing. */
-async function scanLocally(file: string): Promise<{ ms: number; items: OcrItem[]; currency: string | null }> {
+async function scanLocally(file: string): Promise<ScanResult> {
   const bytes = readFileSync(join(RECEIPTS, file));
   const dataUrl = `data:${mimeOf(file)};base64,${bytes.toString("base64")}`;
 
@@ -195,17 +227,17 @@ async function scanLocally(file: string): Promise<{ ms: number; items: OcrItem[]
   const raw = completion.choices[0]?.message?.content ?? "";
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("no JSON in model response");
-  const parsed = JSON.parse(match[0]) as { items?: unknown[]; currency?: string | null; billDiscount?: unknown };
+  const parsed = JSON.parse(match[0]) as { items?: unknown[]; currency?: string | null; billDiscount?: unknown; taxAmount?: number | null };
 
   const items = normalizeLineItems(parsed.items as never) as unknown as OcrItem[];
   const billDiscount = normalizeBillDiscount(parsed.billDiscount);
   if (billDiscount !== null) {
     process.stdout.write(`\n  (${file}: billDiscount ${billDiscount.toFixed(2)})`);
   }
-  return { ms, items, currency: parsed.currency ?? null };
+  return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null };
 }
 
-async function scanOnce(file: string): Promise<{ ms: number; items: OcrItem[]; currency: string | null }> {
+async function scanOnce(file: string): Promise<ScanResult> {
   if (local) return scanLocally(file);
   const bytes = readFileSync(join(RECEIPTS, file));
   const body = JSON.stringify({
@@ -224,8 +256,8 @@ async function scanOnce(file: string): Promise<{ ms: number; items: OcrItem[]; c
   const text = await res.text();
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
 
-  const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null };
-  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null };
+  const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null; taxAmount?: number | null };
+  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null };
 }
 
 async function run(): Promise<void> {
@@ -255,7 +287,7 @@ async function run(): Promise<void> {
     for (let run = 1; run <= repeat; run++) {
       const label = repeat > 1 ? `${file} #${run}` : file;
       try {
-        const { ms, items, currency } = await scanOnce(file);
+        const { ms, items, currency, taxAmount } = await scanOnce(file);
         const sum = Math.round(items.reduce((s, i) => s + (Number(i.total) || 0), 0) * 100) / 100;
         const maxQuantity = items.reduce((m, i) => Math.max(m, Number(i.quantity) || 1), 1);
 
@@ -263,11 +295,12 @@ async function run(): Promise<void> {
         // rounding gap and nothing more.
         const itemsOk = expected?.items == null ? null : items.length === expected.items;
         const totalOk = expected?.total == null ? null : Math.abs(sum - expected.total) <= 0.01;
+        const taxOk = scoreTax(taxAmount, expected);
 
         const descriptions = items.map((i) => String(i.description ?? ""));
         const want = expected?.itemDescriptions;
         rows.push({
-          name: label, language, ms, items: items.length, sum, currency, maxQuantity, expected, itemsOk, totalOk,
+          name: label, language, ms, items: items.length, sum, currency, maxQuantity, taxAmount, expected, itemsOk, totalOk, taxOk,
           descriptions,
           namesOk: want ? matchNames(descriptions, want) : null,
           namesTotal: want ? want.length : null,
@@ -276,7 +309,7 @@ async function run(): Promise<void> {
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, expected, itemsOk: null, totalOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
+        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, expected, itemsOk: null, totalOk: null, taxOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
         process.stdout.write("!");
       }
     }
@@ -284,7 +317,7 @@ async function run(): Promise<void> {
   console.log("\n");
 
   // Per receipt
-  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total  names");
+  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax  names");
   console.log("-".repeat(95));
   for (const r of rows) {
     if (r.error) {
@@ -297,19 +330,20 @@ async function run(): Promise<void> {
       padL(r.currency ?? "-", 5) + padL(`x${r.maxQuantity}`, 6) +
       padL(r.itemsOk === null ? "-" : r.itemsOk ? "ok" : "MISS", 7) +
       padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) +
+      padL(r.taxOk === null ? "-" : r.taxOk ? "ok" : "TAX", 7) +
       padL(r.namesTotal === null ? "-" : `${r.namesOk}/${r.namesTotal}`, 7) + flag
     );
   }
 
   // Per language — never blended, so a Hebrew regression cannot hide behind English.
-  console.log("\n" + pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) + padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("errors", 8));
+  console.log("\n" + pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) + padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) + padL("errors", 8));
   console.log("-".repeat(70));
   const languages = [...new Set(rows.map((r) => r.language))].sort();
   for (const language of languages) {
     const group = rows.filter((r) => r.language === language);
     const good = group.filter((r) => !r.error);
     const times = good.map((r) => r.ms);
-    const scored = (key: "itemsOk" | "totalOk") => {
+    const scored = (key: "itemsOk" | "totalOk" | "taxOk") => {
       const judged = good.filter((r) => r[key] !== null);
       if (judged.length === 0) return "-";
       return `${judged.filter((r) => r[key]).length}/${judged.length}`;
@@ -317,7 +351,7 @@ async function run(): Promise<void> {
     console.log(
       pad(language, 10) + padL(group.length, 6) + padL(percentile(times, 0.5), 8) + padL(percentile(times, 0.95), 8) +
       padL(good.filter((r) => r.ms > BUDGET_MS).length, 10) + padL(scored("itemsOk"), 10) + padL(scored("totalOk"), 10) +
-      padL(group.filter((r) => r.error).length, 8)
+      padL(scored("taxOk"), 9) + padL(group.filter((r) => r.error).length, 8)
     );
   }
 

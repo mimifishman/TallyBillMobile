@@ -29,7 +29,13 @@ Return ONLY valid JSON with this exact structure:
 Rules:
 - Include EVERY purchased line item. Never skip a line item, even if some characters are unclear — read it to the best of your ability and use the most likely characters.
 - Omit subtotals, totals, TAX, service charges, payment lines, card-terminal slips, store header/footer text, and order/receipt numbers.
-- A figure you put in "taxAmount" must NEVER also appear as a line item. Tax is charged on top of the items; returning it as an item as well counts it twice and makes the bill too high.
+- "taxAmount" is ONLY for tax the receipt ADDS ON TOP of the items. On many receipts the tax is already inside the prices, and there the tax line is a breakdown of what was paid, not a charge. Returning it would bill the diners for their tax twice.
+  Decide which it is by arithmetic on figures the receipt prints, never by the presence of a tax line:
+  - Final amount payable = your item sum PLUS the tax line -> the tax is added on top. Put it in "taxAmount".
+  - Final amount payable = your item sum on its own -> the tax is already inside the prices. Return "taxAmount": null.
+  Prices that already include tax are usually marked "TOTAL TTC" or "TTC" (France), "מע\\"מ כלול" (Israel), or "VAT included" / "inc. VAT". A "DÉTAIL TVA" or "Total HT" block at the foot is a breakdown of tax already paid inside the prices — never a charge to add.
+  Example: ten lines summing to 158,90 under "Sous-total 158,90" and "TOTAL TTC 158,90", with "TVA 10,0 % ... 11,63" and "Total HT 142,10 16,80" printed below, is "taxAmount": null. The 16,80 is inside the 158,90; adding it would make the bill 16,80 too high. "Total HT 142,10" is the pre-tax figure and the items do not sum to it, so it is not a total to use either.
+- A figure you put in "taxAmount" must NEVER also appear as a line item. Returning it as an item as well counts it twice and makes the bill too high.
 - Read each line's OWN amount. Where a priced item is followed by its modifier and then a charge line, it is easy to shift every amount up by one row and hand each line the next one's figure. Guard against it: your line items must add up to the receipt's printed SUBTOTAL, the figure before tax. If they add up to the final total instead, you have pulled the tax in as an item.
 - Preserve the original language and script of each item description exactly as printed (Hebrew, Arabic, Latin, etc.). Do not translate or transliterate.
 - For right-to-left scripts (Hebrew, Arabic), preserve the visual character order as it appears on the receipt.
@@ -45,7 +51,7 @@ Rules:
 - "printedTotal" is the figure that the line items you are returning should add up to. It is read off the receipt, never added up by you — its whole purpose is to be an independent check on what you returned, and it stops being one the moment you derive it from the items.
   Look for the receipt's own subtotal for the items, usually marked "סה\"כ פריטים", "סה\"כ הזמנה" or "סה\"כ לתשלום". Pick the figure that matches the state of the item totals you are returning: if you have already folded a discount into the items, pick the line that is also after that discount; if a discount still applies to the whole bill and you have put it in "billDiscount", pick the line after it.
   A receipt often has a card-terminal slip printed below it, repeating the amount under its own headings — a cash price, an amount tendered, change, EMV codes. That is a second document. None of its figures describe the items: a lower "cash price" is not a discount, and "TIP/CHNG" is change rather than a gratuity.
-  NEVER use a figure that includes tax, VAT ("מע\"מ"), a service charge or a tip, and never use a card-payment, amount-received or change-due line. Beware a receipt for one person's share of a split table — the payable amount there covers only part of the items, so it is not the figure to use.
+  NEVER use a figure that has tax, a service charge or a tip ADDED ON TOP of the items — on a US receipt that is the "TOTAL" line, and the subtotal printed above it is the one to use. This does NOT apply where the prices already include the tax: on a French "TOTAL TTC" or an Israeli VAT-inclusive receipt nothing was added on top, so that total IS the item sum and IS the figure to use. Never use a card-payment, amount-received or change-due line. Beware a receipt for one person's share of a split table — the payable amount there covers only part of the items, so it is not the figure to use.
   Use null if the receipt genuinely does not print one. Never guess it.
 - A discount is any line with a negative amount, or any line labelled as a discount, promotion, happy hour, loyalty, member price, or a percentage off. In Hebrew it is usually "הנחה".
 - CASE 1 — a discount printed directly BELOW a purchased item, usually with nothing in the quantity column, belongs to that item. Fold it in: "total" becomes the amount actually charged, "originalTotal" is the amount before the discount, and "discountLabel" is the discount's printed wording.
@@ -62,6 +68,10 @@ Rules:
 - "originalTotal" and "discountLabel" must be null unless that specific item really was discounted.
 
 MODIFIERS
-- Lines marked ">>" or "<<", or indented under an item, are options chosen for the item above, such as "no spicy" or "extra beef". Add a priced modifier to the total of the item above it rather than listing it separately, and ignore one priced 0.00.
+- Lines marked ">>" or "<<", or indented under an item, are options chosen for the item above, such as "no spicy", "extra beef" or "almond milk".
+- ONLY a figure in the receipt's amount column — the column its line totals are printed in, usually the far edge — is money. A figure written inside the description text is not a charge; it is the receipt telling you what an option costs, and the line's own total already includes it.
+  Example: "1 MED ICED COFFEE," / "   almond milk .10 (0.10)     5.05" is ONE item of 5.05. The .10 and the (0.10) are inside the description. Returning almond milk as a 0.10 item makes the bill 0.10 too high, and the subtotal printed below proves it: 5.05 plus the next line's 0.21 is the 5.26 shown.
+  Example: a modifier printed on its own line with 8.00 in the amount column IS a charge — add it to the item above rather than listing it separately.
+- Ignore a modifier priced 0.00, and never return a modifier as an item of its own.
 
 - Return ONLY the JSON object, no markdown fences, no commentary.`;

@@ -2,6 +2,7 @@
   "items": 5,
   "total": 208.00,
   "currency": "ILS",
+  "taxAmount": null,
   "itemDescriptions": ["TROPICAL BLUSH", "HONEY POT", "טורטליני קאצ'ו א פפה", "סלט שורשים", "מקלות פולנטה"],
   "note": "The same meal as he-dejavoo-twocolumn (table 306, order 65602) but photographed showing ONLY the itemised bill, without the card payment slip. Two price columns per line: מחיר is the full price and סה\"כ is the amount actually charged, with the discount named on an indented sub-line. Rows: TROPICAL BLUSH 59 -> 30 (HH 29), HONEY POT 62 -> 31 (HH 31), טורטליני קאצ'ו א פפה 68 -> 51 (HH 17), סלט שורשים 61 -> 45 (HH 16), מקלות פולנטה 68 -> 51 (HH 17). Full prices sum to 318.00, the HH lines sum to 110.00, the charged column sums to 208.00.",
   "footerNote": "Unambiguous here: סה\"כ פריטים לתשלום ₪208.0, הנחת Happy Hour ₪-110.0, then סה\"כ לחיוב ₪208, סה\"כ שולם ₪0, נותר לשלם ₪208. The -110.0 is a SUMMARY of the happy hour already taken off each line (318-110=208), not a further discount — subtracting it again would undercharge by 110.00. So printedTotal is 208.00 and billDiscount must be null."

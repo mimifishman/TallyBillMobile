@@ -1,6 +1,7 @@
 {
   "total": 128.0,
   "currency": "ILS",
+  "taxAmount": null,
   "note": "DISCOUNTS. Printed lines: 15.00, 15.00, 57.00, -14.00 (25% Happy Hour), 74.00, -19.00 (25% Happy Hour). Four purchased items, two negative discount lines, netting the printed total of 128.00. 'items' is deliberately unset: how a discount should be represented is an open design question, so only the total is scored here. A run that returns items summing to 161.00 has dropped both discounts. Photo rotated 90 degrees.",
   "itemDescriptions": [
     "קולה",

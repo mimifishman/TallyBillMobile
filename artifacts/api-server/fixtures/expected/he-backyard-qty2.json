@@ -2,5 +2,6 @@
   "items": 7,
   "total": 572.00,
   "currency": "ILS",
+  "taxAmount": null,
   "note": "THE MULTI-QUANTITY CASE. Back Yard 51. The first line is quantity 2 at 124.00, and 124.00 is the LINE TOTAL for both units (62.00 each) — it is counted once in the printed 572.00, which is what proves it. Remaining lines are all quantity 1: 80.00, 69.00, 113.00, 84.00, 51.00, 51.00. Seven lines summing to the printed 'סה\"כ פריטים 572.00'. The receipt then shows a -94.00 discount and a final 'סה\"כ הזמנה 478.00'; 'total' here is the 572.00 item subtotal, not the 478.00 after discount. Photo rotated 90 degrees, creased and shadowed across the item block."
 }
