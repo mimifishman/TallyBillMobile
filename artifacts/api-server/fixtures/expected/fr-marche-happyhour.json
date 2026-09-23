@@ -1,0 +1,19 @@
+{
+  "items": 10,
+  "total": 143.40,
+  "currency": "EUR",
+  "taxAmount": null,
+  "itemDescriptions": [
+    "Kir Royal",
+    "Salade de chèvre chaud",
+    "Soupe à l'oignon gratinée",
+    "Steak frites",
+    "Confit de canard",
+    "Magret de canard",
+    "Carafe vin rouge 50cl",
+    "Café expresso",
+    "Crème brûlée",
+    "Tarte Tatin"
+  ],
+  "note": "THE FIRST FIXTURE THAT IS A PAGE RATHER THAN A PHOTO, and it broke the header crop. Synthetic, so no personal data.\n\nSame restaurant as fr-marche-ttc, with two CASE 1 happy-hour discounts. Ten items priced 158,90 before discounts; 'Happy Hour -50%' takes 8,50 off the Kir Royal (17,00 -> 8,50) and 7,00 off the Carafe (14,00 -> 7,00), giving the printed Sous-total and TOTAL TTC of 143,40. 'total' is 143,40, the sum AFTER the discounts.\n\nTRAP 1 — THE CROP. The receipt sits in a wide blank A4 margin, so a quarter of the PICTURE was far more than a quarter of the RECEIPT. The cut landed four lines into the items and threw away Kir Royal, Salade and Soupe together with the first Happy Hour line, and the model never saw them: production returned 7 items summing to 121,30. Fixed by trimming the blank border before measuring the fraction. Verified locally: all eight photo fixtures come out byte-identical, only page-shaped images move.\n\nTRAP 2 — THE DISCOUNTS. A 'Happy Hour -50%' line is INDENTED under its item, and the MODIFIERS rules said indented lines are modifiers to ignore. Three runs in three at full resolution returned all ten items at full price, summing to 158,90 against a printed 143,40 — an overcharge of 15,50. A negative amount or discount wording now beats the indent.\n\nTRAP 3 — THE DIRECTION. On a tighter crop the model saw the discount and applied it backwards: Kir Royal came back as total 17,00 with an invented originalTotal of 25,50, having ADDED the 8,50 instead of subtracting it. The printed amount on the item's own line is the price BEFORE the discount.\n\nTax is TTC, so taxAmount is null — see fr-marche-ttc for the full reasoning.\n\nQuantities: Kir Royal x2, Café expresso x3, Crème brûlée x2. Each printed amount is the LINE total."
+}
