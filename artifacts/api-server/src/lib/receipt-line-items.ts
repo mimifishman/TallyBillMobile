@@ -110,6 +110,35 @@ export function normalizeBillDiscount(value: unknown): number | null {
 }
 
 /**
+ * A tax or tip figure read off the receipt, for the app to ADD to the bill.
+ *
+ * Every other money field on the scan response is normalized; these two were
+ * passed straight through from the model, and both ways that can go wrong end
+ * at a person paying:
+ *
+ * - A string breaks the review screen outright. The scan screen calls
+ *   .toFixed(2) on this value, and a string has no such method, so the whole
+ *   screen throws instead of showing the bill. A string that IS a number is
+ *   just the model quoting a figure, so it is read as one; anything else is
+ *   not an amount and is refused.
+ * - A negative silently reduces someone's share, because the app adds this to
+ *   the total. Nothing on screen says where the missing money went, so it is
+ *   refused rather than flipped: tax and tip are added on top or they are not
+ *   there at all.
+ *
+ * Zero is kept, and is not the same as absent. A receipt that printed "TAX
+ * 0.00" told us something; a receipt that printed no tax line did not.
+ */
+export function normalizeReceiptAmount(value: unknown): number | null {
+  // Only a number or a quoted number is an amount. Without this, Number(true)
+  // is 1 and Number([]) is 0, so junk would arrive as a plausible-looking
+  // figure rather than as nothing.
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const n = nonNegativeNumber(value);
+  return n === null ? null : round2(n);
+}
+
+/**
  * The receipt's own total for the items, if it printed one.
  *
  * Kept separate from anything computed here on purpose: it is only useful as an
