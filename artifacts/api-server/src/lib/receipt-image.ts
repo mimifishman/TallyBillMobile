@@ -182,7 +182,11 @@ async function receiptRegion(input: Buffer, width: number, height: number): Prom
  * A photo that needs no rotation is returned exactly as it arrived, so the
  * common case costs nothing and cannot lose anything to a re-encode.
  */
-export async function prepareReceipt(input: Buffer): Promise<PreparedReceipt> {
+/**
+ * `crop: false` keeps the photo whole — still turned upright and trimmed of blank
+ * surround, but with no header cut. See receiptDataUrl for when that is asked for.
+ */
+export async function prepareReceipt(input: Buffer, opts: { crop?: boolean } = {}): Promise<PreparedReceipt> {
   const startedAt = Date.now();
   try {
     const meta = await sharp(input, { failOn: "none" }).metadata();
@@ -200,6 +204,7 @@ export async function prepareReceipt(input: Buffer): Promise<PreparedReceipt> {
     const { region, croppable } = await receiptRegion(input, width, height);
     const trimmed = region.width !== width || region.height !== height;
     const shouldCrop =
+      opts.crop !== false &&
       croppable &&
       region.height / region.width >= MIN_RATIO_TO_CROP &&
       region.height >= MIN_HEIGHT_TO_CROP;
@@ -270,8 +275,11 @@ export function imageMimeType(buffer: Buffer): string {
  * on their side — and the rotation is the single largest accuracy fix this
  * scanner has had. A comparison run that way measures nothing.
  */
-export async function receiptDataUrl(input: Buffer): Promise<{ dataUrl: string; prepared: PreparedReceipt }> {
-  const prepared = await prepareReceipt(input);
+export async function receiptDataUrl(
+  input: Buffer,
+  opts: { crop?: boolean } = {},
+): Promise<{ dataUrl: string; prepared: PreparedReceipt }> {
+  const prepared = await prepareReceipt(input, opts);
   const dataUrl = `data:${imageMimeType(prepared.buffer)};base64,${prepared.buffer.toString("base64")}`;
   return { dataUrl, prepared };
 }

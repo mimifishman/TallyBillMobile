@@ -386,7 +386,10 @@ async function scanOnce(file: string, model: string | null): Promise<ScanResult>
   return {
     ms, items: parsed.items ?? [], currency: parsed.currency ?? null,
     taxAmount: parsed.taxAmount ?? null, billDiscount: parsed.billDiscount ?? null,
-    secondOpinion: res.headers.get("x-ocr-second-opinion"),
+    secondOpinion: [
+      res.headers.get("x-ocr-uncropped") ? `whole:${res.headers.get("x-ocr-uncropped")}` : null,
+      res.headers.get("x-ocr-second-opinion") ? `2nd:${res.headers.get("x-ocr-second-opinion")}` : null,
+    ].filter(Boolean).join(" ") || null,
   };
 }
 
@@ -465,7 +468,7 @@ async function run(): Promise<void> {
       console.log(pad(r.name, 44) + "  ERROR  " + r.error.slice(0, 48));
       continue;
     }
-    const flag = (r.ms > BUDGET_MS ? " OVER" : "") + (r.secondOpinion ? `  2nd:${r.secondOpinion}` : "");
+    const flag = (r.ms > BUDGET_MS ? " OVER" : "") + (r.secondOpinion ? `  ${r.secondOpinion}` : "");
     console.log(
       pad(r.name, 44) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
       padL(r.currency ?? "-", 5) + padL(`x${r.maxQuantity}`, 6) +
