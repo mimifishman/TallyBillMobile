@@ -39,7 +39,7 @@ function arg(flag: string): string | undefined {
 }
 
 const listOnly = process.argv.includes("--list");
-const models = (arg("--try") ?? "gpt-5.4")
+const models = (arg("--try") ?? "gpt-4o")
   .split(",")
   .map((m) => m.trim())
   .filter(Boolean);

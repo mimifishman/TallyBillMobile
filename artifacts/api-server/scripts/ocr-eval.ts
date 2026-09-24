@@ -329,7 +329,7 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
   const startedAt = Date.now();
   const completion = await chatCompletion(openaiClient(), {
     // Keep in step with the route's default, or --local scores a different reader.
-    model: model ?? process.env["OCR_MODEL"] ?? "gpt-5.4",
+    model: model ?? process.env["OCR_MODEL"] ?? "gpt-4o",
     temperature: 0,
     max_completion_tokens: RECEIPT_TOKEN_CEILING,
     response_format: { type: "json_object" },

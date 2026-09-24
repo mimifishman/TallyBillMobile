@@ -27,23 +27,22 @@ import {
  * intended. Without that a sweep can silently score the same model twice.
  */
 /**
- * gpt-5.4 reads every receipt, since 2026-09-24 (it was gpt-4o).
+ * gpt-4o reads every receipt. gpt-5.4 was tried as the reader (PR #89) and
+ * reverted the same day. Do not switch it back without solving this:
  *
- * Measured through this route on dev, all 19 fixtures, three runs each, with the
- * second opinion and the uncropped re-read both on:
- *                              gpt-4o      gpt-5.4
- *   Hebrew totals               36/36       36/36
- *   Hebrew tax                  36/36       36/36
- *   Hebrew names recognisable  ~115/165     142/165   (exact ~90 -> 109)
- *   English totals              15/15       15/15
- *   English names recognisable  ~78/87       85/87
- * Most users are in Israel, and item names are the Hebrew weakness; money was
- * already right. gpt-4o is also older than gpt-4.1, which Replit is retiring.
- * Known costs: the French happy-hour ticket errs a few euros low instead of
- * high (still flagged as not matching), and one creased Hebrew receipt that
- * needed the uncropped re-read took 22.7s end to end from the Mac.
+ * On a tight-framed photo of the real Hebrew 306 receipt — the framing users
+ * actually shoot — gpt-5.4 lost the first priced line (45.00) and then reported
+ * a PRINTED TOTAL OF 285.00, a figure that is not on the paper (it says 330.00).
+ * Its invented total matched its own items, so reconciliation passed, no
+ * warning was shown, and the uncropped re-read never ran: a silent 45.00
+ * undercharge, 3 scans in 6. gpt-4o read the same photo right 4 of 4.
+ *
+ * printedTotal is the independent check everything else stands on. A reader
+ * that derives it from its own items instead of reading it off the receipt
+ * switches every safety net off at once, however good its item names are
+ * (gpt-5.4's were far better: 142 vs ~115 of 165 recognisable Hebrew names).
  */
-const OCR_MODEL = process.env["OCR_MODEL"] ?? "gpt-5.4";
+const OCR_MODEL = process.env["OCR_MODEL"] ?? "gpt-4o";
 const OCR_TRANSLATE_MODEL = process.env["OCR_TRANSLATE_MODEL"] ?? "gpt-4o";
 
 /**
