@@ -4,11 +4,29 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The commit being built, so a running server can say what it is.
+ *
+ * See src/lib/build-info.ts. Never fails the build: a checkout with no git —
+ * some deploy builders — is stamped "nogit" rather than refused.
+ */
+function buildCommit() {
+  const git = (...args) =>
+    execFileSync("git", args, { cwd: artifactDir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  try {
+    const sha = git("rev-parse", "--short=12", "HEAD");
+    return git("status", "--porcelain", "--untracked-files=no") ? `${sha}-dirty` : sha;
+  } catch {
+    return "nogit";
+  }
+}
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
@@ -102,6 +120,7 @@ async function buildAll() {
       "electron",
     ],
     sourcemap: "linked",
+    define: { __BUILD_COMMIT__: JSON.stringify(buildCommit()) },
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
