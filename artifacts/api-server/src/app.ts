@@ -5,6 +5,7 @@ import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { assertClerkKeysForProduction } from "./lib/clerkKeyValidation";
+import { BUILD_COMMIT } from "./lib/build-info.js";
 
 // ── Clerk key preflight ──────────────────────────────────────────────────────
 // In production, both keys must have the correct shape. If either is wrong the
@@ -123,6 +124,11 @@ app.get(
   },
 );
 
+// Every /api response says which commit it was built from. See build-info.ts.
+app.use("/api", (_req, res, next) => {
+  res.setHeader("X-Build-Commit", BUILD_COMMIT);
+  next();
+});
 app.use("/api", router);
 
 export default app;
