@@ -21,11 +21,14 @@ On two real receipts that was 33.00 and 36.00 too much.
 
 - Discounts printed on a receipt are read instead of silently dropped. **(server)**
 
-  **Not working yet (2026-09-23), and 1.1.0 is held until it is.** Two common
-  US layouts are still missed, on production as well as dev: a minus line
-  printed under the item at full price (`HAPPY HOUR 50%  -8.00`), and one
-  discount for the whole check above the tax. Both overcharge. A `COMP` line
-  and happy-hour prices printed with no discount line are read correctly.
+  **Fixed on 2026-09-24; the 1.1.0 hold is lifted.** The two US layouts that
+  were missed now read correctly: a minus line printed under the item at full
+  price (`HAPPY HOUR 50%  -8.00` — 11/12 as a phone photo, the 12th keeps the
+  warning), and one discount for the whole check above the tax (3/3). A `COMP`
+  line and happy-hour prices printed with no discount line still read correctly.
+  The French happy-hour ticket is still wrong and shows the "doesn't match"
+  warning; released without it by choice. Details, and why each fix works, in
+  `docs/publish-2026-09-24.md`.
   Fixtures: `en-ny-item-discount`, `en-ny-bottom-discount`, `fr-marche-happyhour`.
 - The review screen offers the receipt's discount and lets you pick which items
   it comes off.
