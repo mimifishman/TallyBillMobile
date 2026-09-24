@@ -272,8 +272,13 @@ export default function ScanScreen() {
     // cheap drinks and the bill showed no discount at all. Here, as everywhere
     // on this screen, the item holds its full price and the discount sits
     // beside it.
+    //
+    // Only when the reading agrees with the receipt's printed total. A reading
+    // that does not can carry a full price the model made up — a happy hour
+    // applied backwards, 16.00 "was" 24.00 — and a "33% off" beside the
+    // mismatch warning would be a discount that is not on the paper.
     const fullPrice = new Map<number, number>();
-    scan.items.forEach((item, index) => {
+    if (scan.reconciled !== false) scan.items.forEach((item, index) => {
       const was = item.originalTotal;
       if (was == null || !Number.isFinite(was) || !(was > item.total)) return;
       next.set(index, { amount: Math.round((was - item.total) * 100) / 100, originalTotal: was });
@@ -316,7 +321,7 @@ export default function ScanScreen() {
       }
     }
     if (next.size > 0) setItemDiscounts(next);
-  }, [scan.billDiscount, scan.items]);
+  }, [scan.billDiscount, scan.items, scan.reconciled]);
 
   /**
    * How far the selected items sit from the receipt's own total.
