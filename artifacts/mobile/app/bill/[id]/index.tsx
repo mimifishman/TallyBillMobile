@@ -840,7 +840,13 @@ export default function BillDetailScreen() {
       </>
     );
     if (!canEditHeader || lines.length === 0) {
-      return <View key="discount" style={styles.summaryRow}>{body}</View>;
+      // Inside the tinted panel it keeps the tappable rows' padding, or it
+      // sits flush against the panel's top edge.
+      return (
+        <View key="discount" style={[styles.summaryRow, canEditHeader && styles.editableRow]}>
+          {body}
+        </View>
+      );
     }
     return (
       <TouchableOpacity
@@ -1082,7 +1088,8 @@ export default function BillDetailScreen() {
               inside a card where every other row is static. */}
           {canEditHeader ? (
             <View style={[styles.editableRows, { backgroundColor: colors.muted }]}>
-              {renderDiscountRow()}
+              {/* A bill with no items has nothing to take a discount off. */}
+              {lines.length > 0 || discountTotal > 0 ? renderDiscountRow() : null}
               {taxTipRows.map(renderTaxTipRow)}
             </View>
           ) : (
