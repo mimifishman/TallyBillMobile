@@ -179,7 +179,7 @@ export function normalizePrintedTotal(value: unknown): number | null {
  * a genuine gap means something was misread. The proportional part only exists
  * so a very large bill is not flagged for a receipt's own rounding.
  */
-function reconcileTolerance(printedTotal: number): number {
+export function reconcileTolerance(printedTotal: number): number {
   return Math.max(0.05, printedTotal * 0.001);
 }
 

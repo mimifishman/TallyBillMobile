@@ -41,17 +41,26 @@ function isTemperatureRefusal(err: unknown): boolean {
   return /temperature/i.test(message) && /unsupported|not support/i.test(message);
 }
 
-export async function chatCompletion(openai: OpenAI, params: Params): Promise<Completion> {
+/**
+ * `options` passes straight to the client — a deadline and a retry count, for a
+ * call that must not outlive the scan's time budget. Left out, the client's own
+ * defaults apply, which is what every call before the second opinion used.
+ */
+export async function chatCompletion(
+  openai: OpenAI,
+  params: Params,
+  options?: OpenAI.RequestOptions,
+): Promise<Completion> {
   const { temperature, ...rest } = params;
   if (temperature === undefined || refusesTemperature.has(params.model)) {
-    return openai.chat.completions.create(rest as Params);
+    return openai.chat.completions.create(rest as Params, options);
   }
   try {
-    return await openai.chat.completions.create(params);
+    return await openai.chat.completions.create(params, options);
   } catch (err) {
     if (!isTemperatureRefusal(err)) throw err;
     refusesTemperature.add(params.model);
-    return openai.chat.completions.create(rest as Params);
+    return openai.chat.completions.create(rest as Params, options);
   }
 }
 
