@@ -111,6 +111,8 @@ interface Row {
   language: string;
   /** The model that read it, in a --models sweep; null for a single-model run. */
   model: string | null;
+  /** Set when the route asked a second model; says whether its answer was used. */
+  secondOpinion: string | null;
   /** Item names as returned, so runs can be compared against each other. */
   descriptions: string[];
   /** Names matched against the hand-read truth, when there is any. */
@@ -314,6 +316,8 @@ interface ScanResult {
   currency: string | null;
   taxAmount: number | null;
   billDiscount: number | null;
+  /** The route's X-OCR-Second-Opinion header: whether a second model was asked, and how it went. */
+  secondOpinion?: string | null;
 }
 
 /** The model call the route makes, with this repo's prompt and parsing. */
@@ -371,7 +375,11 @@ async function scanOnce(file: string, model: string | null): Promise<ScanResult>
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
 
   const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null; taxAmount?: number | null; billDiscount?: number | null };
-  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount: parsed.billDiscount ?? null };
+  return {
+    ms, items: parsed.items ?? [], currency: parsed.currency ?? null,
+    taxAmount: parsed.taxAmount ?? null, billDiscount: parsed.billDiscount ?? null,
+    secondOpinion: res.headers.get("x-ocr-second-opinion"),
+  };
 }
 
 async function run(): Promise<void> {
@@ -402,7 +410,7 @@ async function run(): Promise<void> {
     for (let run = 1; run <= repeat; run++) {
       const label = (model ? `${file} [${model}]` : file) + (repeat > 1 ? ` #${run}` : "");
       try {
-        const { ms, items, currency, taxAmount, billDiscount } = await scanOnce(file, model);
+        const { ms, items, currency, taxAmount, billDiscount, secondOpinion } = await scanOnce(file, model);
         const sum = Math.round(items.reduce((s, i) => s + (Number(i.total) || 0), 0) * 100) / 100;
         const maxQuantity = items.reduce((m, i) => Math.max(m, Number(i.quantity) || 1), 1);
 
@@ -416,7 +424,7 @@ async function run(): Promise<void> {
         const descriptions = items.map((i) => String(i.description ?? ""));
         const want = expected?.itemDescriptions;
         rows.push({
-          name: label, language, model, ms, items: items.length, sum, currency, maxQuantity, taxAmount, billDiscount, expected, itemsOk, totalOk, taxOk, discountOk,
+          name: label, language, model, secondOpinion: secondOpinion ?? null, ms, items: items.length, sum, currency, maxQuantity, taxAmount, billDiscount, expected, itemsOk, totalOk, taxOk, discountOk,
           descriptions,
           namesOk: want ? matchNames(descriptions, want) : null,
           namesClose: want ? closeNames(descriptions, want) : null,
@@ -429,7 +437,7 @@ async function run(): Promise<void> {
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        rows.push({ name: label, language, model, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, billDiscount: null, expected, itemsOk: null, totalOk: null, taxOk: null, discountOk: null, descriptions: [], namesOk: null, namesClose: null, namesTotal: null, error: message });
+        rows.push({ name: label, language, model, secondOpinion: null, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, billDiscount: null, expected, itemsOk: null, totalOk: null, taxOk: null, discountOk: null, descriptions: [], namesOk: null, namesClose: null, namesTotal: null, error: message });
         process.stdout.write("!");
       }
     }
@@ -449,7 +457,7 @@ async function run(): Promise<void> {
       console.log(pad(r.name, 44) + "  ERROR  " + r.error.slice(0, 48));
       continue;
     }
-    const flag = r.ms > BUDGET_MS ? " OVER" : "";
+    const flag = (r.ms > BUDGET_MS ? " OVER" : "") + (r.secondOpinion ? `  2nd:${r.secondOpinion}` : "");
     console.log(
       pad(r.name, 44) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
       padL(r.currency ?? "-", 5) + padL(`x${r.maxQuantity}`, 6) +
