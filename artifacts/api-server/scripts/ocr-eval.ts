@@ -55,7 +55,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { basename, extname, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
-import { chatCompletion } from "../src/lib/model-call.ts";
+import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
 import { OCR_PROMPT } from "../src/lib/receipt-prompt.ts";
 import { normalizeLineItems, normalizeBillDiscount } from "../src/lib/receipt-line-items.ts";
 
@@ -250,7 +250,7 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
   const completion = await chatCompletion(openaiClient(), {
     model: model ?? process.env["OCR_MODEL"] ?? "gpt-4o",
     temperature: 0,
-    max_completion_tokens: 2048,
+    max_completion_tokens: RECEIPT_TOKEN_CEILING,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: OCR_PROMPT },

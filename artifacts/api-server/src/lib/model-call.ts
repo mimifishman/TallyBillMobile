@@ -55,6 +55,21 @@ export async function chatCompletion(openai: OpenAI, params: Params): Promise<Co
   }
 }
 
+/**
+ * The most a receipt read may spend, thinking included.
+ *
+ * The reasoning models (gpt-5, gpt-5-mini, o3, o4-mini) think before they
+ * answer, and that thinking is billed against max_completion_tokens. With too
+ * small a ceiling they spend all of it thinking and return an EMPTY reply — which
+ * a probe run reported as "NO JSON" for gpt-5, gpt-5-mini and o3 after 3-4
+ * seconds each, looking exactly like a model that cannot follow instructions.
+ *
+ * It is a ceiling, not a target. A model that is not reasoning stops when its
+ * JSON is finished, so for gpt-4o nothing changes: a receipt's JSON is a few
+ * hundred to two thousand tokens and never gets near this.
+ */
+export const RECEIPT_TOKEN_CEILING = 16_000;
+
 /** For tests: forget what has been learned about models. */
 export function resetTemperatureCache(): void {
   refusesTemperature.clear();
