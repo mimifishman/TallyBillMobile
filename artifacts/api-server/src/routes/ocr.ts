@@ -10,7 +10,7 @@ import {
   type RawLineItem,
 } from "../lib/receipt-line-items.js";
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
-import { prepareReceipt } from "../lib/receipt-image.js";
+import { receiptDataUrl } from "../lib/receipt-image.js";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../lib/model-call.js";
 
 /**
@@ -116,7 +116,7 @@ router.post("/translate", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { imageBase64, fileName } = req.body;
+  const { imageBase64 } = req.body;
   if (!imageBase64) {
     res.status(400).json({ error: "imageBase64 is required" });
     return;
@@ -128,11 +128,7 @@ router.post("/", async (req, res) => {
     // Turn the photo the right way up before the model sees it. Phones record
     // rotation in an EXIF tag rather than in the pixels, and the model does not
     // honour it, so a receipt shot sideways is read sideways.
-    const prepared = await prepareReceipt(Buffer.from(imageBase64, "base64"));
-    const mimeType = prepared.rotated || !fileName?.toLowerCase().endsWith(".png")
-      ? "image/jpeg"
-      : "image/png";
-    const dataUrl = `data:${mimeType};base64,${prepared.buffer.toString("base64")}`;
+    const { dataUrl } = await receiptDataUrl(Buffer.from(imageBase64, "base64"));
 
     res.setHeader("X-OCR-Model", OCR_MODEL);
     const completion = await chatCompletion(openai, {

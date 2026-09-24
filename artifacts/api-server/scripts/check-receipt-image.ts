@@ -22,7 +22,7 @@
  * justified on intact.
  */
 import sharp from "sharp";
-import { prepareReceipt } from "../src/lib/receipt-image.ts";
+import { prepareReceipt, receiptDataUrl, imageMimeType } from "../src/lib/receipt-image.ts";
 
 let failed = 0;
 function check(name: string, ok: boolean, got?: unknown) {
@@ -184,6 +184,40 @@ check("and keeps every item row", aloneRows === ROWS, { kept: aloneRows, drawn: 
     .toBuffer();
   const meta = await sharp((await prepareReceipt(blank)).buffer).metadata();
   check("a blank page is not trimmed to nothing", meta.width! >= 200 && meta.height! >= 200, meta);
+}
+
+// ONE image path for the route and the eval, labelled by its bytes.
+{
+  const jpeg = await sharp({ create: { width: 40, height: 40, channels: 3, background: { r: 200, g: 200, b: 200 } } }).jpeg().toBuffer();
+  const png = await sharp({ create: { width: 40, height: 40, channels: 3, background: { r: 200, g: 200, b: 200 } } }).png().toBuffer();
+  check("JPEG bytes are recognised as JPEG", imageMimeType(jpeg) === "image/jpeg", imageMimeType(jpeg));
+  check("PNG bytes are recognised as PNG", imageMimeType(png) === "image/png", imageMimeType(png));
+
+  // The bug this replaced: a PNG that preparation re-encodes was still labelled
+  // image/png by filename. A receipt page trimmed and cropped is exactly that.
+  const page = await onPage(r, 1600, 3600, 60);
+  const { dataUrl: pageUrl, prepared: pagePrep } = await receiptDataUrl(page);
+  check("a PNG that preparation re-encodes goes out labelled JPEG",
+    pageUrl.startsWith("data:image/jpeg;base64,") && imageMimeType(pagePrep.buffer) === "image/jpeg",
+    pageUrl.slice(0, 30));
+
+  // A small square PNG is left byte-for-byte alone, so it stays PNG.
+  const untouched = await receiptDataUrl(png);
+  check("an untouched PNG is still sent as PNG, byte for byte",
+    untouched.dataUrl.startsWith("data:image/png;base64,") && untouched.prepared.buffer === png,
+    untouched.dataUrl.slice(0, 30));
+
+  // A sideways phone photo: EXIF orientation 6 must be applied on this path,
+  // or the eval compares models on receipts lying on their side.
+  const sideways = await sharp({ create: { width: 1600, height: 1200, channels: 3, background: { r: 240, g: 240, b: 240 } } })
+    .jpeg().withMetadata({ orientation: 6 }).toBuffer();
+  const turned = await receiptDataUrl(sideways);
+  const turnedMeta = await sharp(turned.prepared.buffer).metadata();
+  // Stored 1600 wide lying down; upright it is 1200 wide. (Its height then loses
+  // the header quarter to the crop, so the width is the thing to check.)
+  check("an EXIF-rotated photo is turned upright on the shared path",
+    turned.prepared.rotated && turnedMeta.width === 1200,
+    { rotated: turned.prepared.rotated, w: turnedMeta.width, h: turnedMeta.height });
 }
 
 console.log(failed === 0 ? "\nall good" : `\n${failed} failing`);
