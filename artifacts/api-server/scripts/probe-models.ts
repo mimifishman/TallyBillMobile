@@ -26,6 +26,7 @@
  * means "worth evaluating", never "good" — that is what eval:ocr is for.
  */
 import OpenAI from "openai";
+import { chatCompletion, modelsRefusingTemperature } from "../src/lib/model-call.ts";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -84,7 +85,7 @@ type Verdict = "ok" | "NO VISION" | "NO JSON" | "ERROR";
 async function probe(openai: OpenAI, model: string, dataUrl: string): Promise<{ verdict: Verdict; detail: string; ms: number }> {
   const startedAt = Date.now();
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await chatCompletion(openai, {
       model,
       temperature: 0,
       max_completion_tokens: 300,
@@ -155,6 +156,12 @@ for (const model of models) {
   console.log(model.padEnd(30) + verdict.padEnd(11) + String(ms).padStart(7) + "  " + detail);
 }
 
+const noTemperature = modelsRefusingTemperature();
+if (noTemperature.length > 0) {
+  // Worth saying out loud: this is the difference that made four working models
+  // look like missing ones in the first probe run.
+  console.log(`\nRefused an explicit temperature and were retried without it: ${noTemperature.join(", ")}`);
+}
 console.log(
   worth.length === 0
     ? "\nNothing worth evaluating."
