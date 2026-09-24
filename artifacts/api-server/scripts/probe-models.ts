@@ -26,7 +26,7 @@
  * means "worth evaluating", never "good" — that is what eval:ocr is for.
  */
 import OpenAI from "openai";
-import { chatCompletion, modelsRefusingTemperature } from "../src/lib/model-call.ts";
+import { chatCompletion, modelsRefusingTemperature, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,7 +80,7 @@ async function tinyReceipt(): Promise<string> {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
-type Verdict = "ok" | "NO VISION" | "NO JSON" | "ERROR";
+type Verdict = "ok" | "NO VISION" | "NO JSON" | "OUT OF TOKENS" | "ERROR";
 
 async function probe(openai: OpenAI, model: string, dataUrl: string): Promise<{ verdict: Verdict; detail: string; ms: number }> {
   const startedAt = Date.now();
@@ -88,7 +88,7 @@ async function probe(openai: OpenAI, model: string, dataUrl: string): Promise<{ 
     const completion = await chatCompletion(openai, {
       model,
       temperature: 0,
-      max_completion_tokens: 300,
+      max_completion_tokens: RECEIPT_TOKEN_CEILING,
       messages: [
         {
           role: "system",
@@ -104,9 +104,19 @@ async function probe(openai: OpenAI, model: string, dataUrl: string): Promise<{ 
       ],
     });
     const ms = Date.now() - startedAt;
-    const raw = completion.choices[0]?.message?.content ?? "";
+    const choice = completion.choices[0];
+    const raw = choice?.message?.content ?? "";
+    // An empty reply that stopped on "length" ran out of room — usually a
+    // reasoning model that spent its whole budget thinking. That is a setting
+    // to raise, not a model that cannot follow instructions, so say which.
+    if (!raw.trim() && choice?.finish_reason === "length") {
+      return { verdict: "OUT OF TOKENS", detail: `stopped at the ${RECEIPT_TOKEN_CEILING}-token ceiling with nothing written`, ms };
+    }
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return { verdict: "NO JSON", detail: raw.slice(0, 60).replace(/\s+/g, " "), ms };
+    if (!match) {
+      const why = raw.trim() ? raw.slice(0, 50).replace(/\s+/g, " ") : `empty reply, finish_reason ${choice?.finish_reason ?? "none"}`;
+      return { verdict: "NO JSON", detail: why, ms };
+    }
 
     const parsed = JSON.parse(match[0]) as { items?: { description?: string; total?: number }[] };
     const items = parsed.items ?? [];
@@ -146,14 +156,14 @@ if (listOnly) {
 
 const dataUrl = await tinyReceipt();
 console.log(`probing ${models.length} model(s) with one ${Math.round(dataUrl.length / 1.37 / 1024)}kB image each\n`);
-console.log("model".padEnd(30) + "verdict".padEnd(11) + "ms".padStart(7) + "  detail");
+console.log("model".padEnd(30) + "verdict".padEnd(15) + "ms".padStart(7) + "  detail");
 console.log("-".repeat(78));
 
 const worth: string[] = [];
 for (const model of models) {
   const { verdict, detail, ms } = await probe(openai, model, dataUrl);
   if (verdict === "ok") worth.push(model);
-  console.log(model.padEnd(30) + verdict.padEnd(11) + String(ms).padStart(7) + "  " + detail);
+  console.log(model.padEnd(30) + verdict.padEnd(15) + String(ms).padStart(7) + "  " + detail);
 }
 
 const noTemperature = modelsRefusingTemperature();

@@ -11,7 +11,7 @@ import {
 } from "../lib/receipt-line-items.js";
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
 import { prepareReceipt } from "../lib/receipt-image.js";
-import { chatCompletion } from "../lib/model-call.js";
+import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../lib/model-call.js";
 
 /**
  * Which vision model reads the receipts.
@@ -138,7 +138,7 @@ router.post("/", async (req, res) => {
     const completion = await chatCompletion(openai, {
       model: OCR_MODEL,
       temperature: 0,
-      max_completion_tokens: 2048,
+      max_completion_tokens: RECEIPT_TOKEN_CEILING,
       response_format: { type: "json_object" },
       messages: [
         {
