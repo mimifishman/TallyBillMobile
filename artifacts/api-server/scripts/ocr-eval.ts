@@ -7,6 +7,9 @@
  *   OCR_BASE=http://localhost:5000 pnpm run eval:ocr
  *   OCR_FIXTURES=/path/to/other/photos pnpm run eval:ocr
  *   pnpm run eval:ocr -- --local        call the model directly, no server
+ *   pnpm run eval:ocr -- --local --models gpt-4o,gemini-3-pro-preview
+ *                                       score several models over the same
+ *                                       fixtures, reported side by side
  *
  * Posts each photo to the running server's /api/ocr, so what it measures is the
  * real path the app takes — the same prompt, the same model, the same network.
@@ -39,6 +42,13 @@
  * ticket, any Israeli receipt — the right answer is null, because the app adds
  * taxAmount to the items and would otherwise bill the tax a second time.
  *
+ * `--models` scores each model over every fixture and labels the rows with it,
+ * so candidates are compared on identical bytes in one command. It only works
+ * with `--local`, on purpose: a deployed route takes its model from the server
+ * environment, so that a public endpoint cannot be told by its caller which
+ * model to spend money on. Probe ids with `pnpm run probe:models` first — a
+ * model that cannot see an image should not cost fourteen receipts to find out.
+ *
  * Raw model output for each run lands in fixtures/out/, to diff after a change.
  */
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -65,6 +75,15 @@ function arg(flag: string): string | undefined {
 const only = arg("--only");
 const local = process.argv.includes("--local");
 const repeat = Number(arg("--repeat") ?? 1);
+/** Candidate models to compare; `--local` only. One entry means the default. */
+const models = (arg("--models") ?? process.env["OCR_MODEL"] ?? "")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+if (models.length > 0 && !local) {
+  console.error("--models needs --local: the deployed route takes its model from the server environment.");
+  process.exit(1);
+}
+/** What a run is labelled with when nothing was chosen. */
+const sweep = models.length > 0 ? models : [null];
 
 interface Expected {
   items?: number;
@@ -72,6 +91,8 @@ interface Expected {
   currency?: string;
   /** Tax added ON TOP of the items; null where the prices already include it. */
   taxAmount?: number | null;
+  /** A discount applying to the WHOLE bill, as a positive number. */
+  billDiscount?: number | null;
   /** Item names read off the photo by eye. Scored as a set, not in order. */
   itemDescriptions?: string[];
 }
@@ -97,10 +118,12 @@ interface Row {
   currency: string | null;
   maxQuantity: number;
   taxAmount: number | null;
+  billDiscount: number | null;
   expected?: Expected;
   itemsOk: boolean | null;
   totalOk: boolean | null;
   taxOk: boolean | null;
+  discountOk: boolean | null;
   error?: string;
 }
 
@@ -155,6 +178,22 @@ function scoreTax(got: number | null, expected: Expected | undefined): boolean |
   return got != null && Math.abs(got - want) <= 0.01;
 }
 
+/**
+ * Did the scan get a WHOLE-BILL discount right?
+ *
+ * Scored the same way as tax: only when the fixture pins the key, and a pinned
+ * null is a real expectation. It needs its own column because a dropped
+ * bill-level discount does not show up anywhere else — the items are all
+ * correct and sum to the printed subtotal, so count and total both pass while
+ * the diners are overcharged by the whole discount.
+ */
+function scoreDiscount(got: number | null, expected: Expected | undefined): boolean | null {
+  if (!expected || !Object.prototype.hasOwnProperty.call(expected, "billDiscount")) return null;
+  const want = expected.billDiscount;
+  if (want == null) return got == null || got === 0;
+  return got != null && Math.abs(got - want) <= 0.01;
+}
+
 /** How many of the expected names came back, compared as a set. */
 function matchNames(got: string[], want: string[]): number {
   const pool = got.map(normalizeName);
@@ -198,16 +237,17 @@ interface ScanResult {
   items: OcrItem[];
   currency: string | null;
   taxAmount: number | null;
+  billDiscount: number | null;
 }
 
 /** The model call the route makes, with this repo's prompt and parsing. */
-async function scanLocally(file: string): Promise<ScanResult> {
+async function scanLocally(file: string, model: string | null): Promise<ScanResult> {
   const bytes = readFileSync(join(RECEIPTS, file));
   const dataUrl = `data:${mimeOf(file)};base64,${bytes.toString("base64")}`;
 
   const startedAt = Date.now();
   const completion = await openaiClient().chat.completions.create({
-    model: process.env["OCR_MODEL"] ?? "gpt-4o",
+    model: model ?? process.env["OCR_MODEL"] ?? "gpt-4o",
     temperature: 0,
     max_completion_tokens: 2048,
     response_format: { type: "json_object" },
@@ -231,14 +271,11 @@ async function scanLocally(file: string): Promise<ScanResult> {
 
   const items = normalizeLineItems(parsed.items as never) as unknown as OcrItem[];
   const billDiscount = normalizeBillDiscount(parsed.billDiscount);
-  if (billDiscount !== null) {
-    process.stdout.write(`\n  (${file}: billDiscount ${billDiscount.toFixed(2)})`);
-  }
-  return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null };
+  return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount };
 }
 
-async function scanOnce(file: string): Promise<ScanResult> {
-  if (local) return scanLocally(file);
+async function scanOnce(file: string, model: string | null): Promise<ScanResult> {
+  if (local) return scanLocally(file, model);
   const bytes = readFileSync(join(RECEIPTS, file));
   const body = JSON.stringify({
     imageBase64: bytes.toString("base64"),
@@ -256,8 +293,8 @@ async function scanOnce(file: string): Promise<ScanResult> {
   const text = await res.text();
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
 
-  const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null; taxAmount?: number | null };
-  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null };
+  const parsed = JSON.parse(text) as { items?: OcrItem[]; currency?: string | null; taxAmount?: number | null; billDiscount?: number | null };
+  return { ms, items: parsed.items ?? [], currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount: parsed.billDiscount ?? null };
 }
 
 async function run(): Promise<void> {
@@ -284,10 +321,11 @@ async function run(): Promise<void> {
     const language = languageOf(file);
     const expected = loadExpected(file);
 
+    for (const model of sweep) {
     for (let run = 1; run <= repeat; run++) {
-      const label = repeat > 1 ? `${file} #${run}` : file;
+      const label = (model ? `${file} [${model}]` : file) + (repeat > 1 ? ` #${run}` : "");
       try {
-        const { ms, items, currency, taxAmount } = await scanOnce(file);
+        const { ms, items, currency, taxAmount, billDiscount } = await scanOnce(file, model);
         const sum = Math.round(items.reduce((s, i) => s + (Number(i.total) || 0), 0) * 100) / 100;
         const maxQuantity = items.reduce((m, i) => Math.max(m, Number(i.quantity) || 1), 1);
 
@@ -296,11 +334,12 @@ async function run(): Promise<void> {
         const itemsOk = expected?.items == null ? null : items.length === expected.items;
         const totalOk = expected?.total == null ? null : Math.abs(sum - expected.total) <= 0.01;
         const taxOk = scoreTax(taxAmount, expected);
+        const discountOk = scoreDiscount(billDiscount, expected);
 
         const descriptions = items.map((i) => String(i.description ?? ""));
         const want = expected?.itemDescriptions;
         rows.push({
-          name: label, language, ms, items: items.length, sum, currency, maxQuantity, taxAmount, expected, itemsOk, totalOk, taxOk,
+          name: label, language, ms, items: items.length, sum, currency, maxQuantity, taxAmount, billDiscount, expected, itemsOk, totalOk, taxOk, discountOk,
           descriptions,
           namesOk: want ? matchNames(descriptions, want) : null,
           namesTotal: want ? want.length : null,
@@ -309,41 +348,50 @@ async function run(): Promise<void> {
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, expected, itemsOk: null, totalOk: null, taxOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
+        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, billDiscount: null, expected, itemsOk: null, totalOk: null, taxOk: null, discountOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
         process.stdout.write("!");
       }
+    }
     }
   }
   console.log("\n");
 
   // Per receipt
-  console.log(pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) + padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax  names");
-  console.log("-".repeat(95));
+  // Measured from the header rather than written down, so a new column cannot
+  // leave the rule short of the very column that was just added.
+  const receiptHeader = pad("receipt", 44) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) +
+    padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names";
+  console.log(receiptHeader);
+  console.log("-".repeat(receiptHeader.length));
   for (const r of rows) {
     if (r.error) {
-      console.log(pad(r.name, 30) + "  ERROR  " + r.error.slice(0, 48));
+      console.log(pad(r.name, 44) + "  ERROR  " + r.error.slice(0, 48));
       continue;
     }
     const flag = r.ms > BUDGET_MS ? " OVER" : "";
     console.log(
-      pad(r.name, 30) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
+      pad(r.name, 44) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
       padL(r.currency ?? "-", 5) + padL(`x${r.maxQuantity}`, 6) +
       padL(r.itemsOk === null ? "-" : r.itemsOk ? "ok" : "MISS", 7) +
       padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) +
       padL(r.taxOk === null ? "-" : r.taxOk ? "ok" : "TAX", 7) +
+      padL(r.discountOk === null ? "-" : r.discountOk ? "ok" : "DISC", 7) +
       padL(r.namesTotal === null ? "-" : `${r.namesOk}/${r.namesTotal}`, 7) + flag
     );
   }
 
   // Per language — never blended, so a Hebrew regression cannot hide behind English.
-  console.log("\n" + pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) + padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) + padL("errors", 8));
-  console.log("-".repeat(70));
+  const languageHeader = pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) +
+    padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) +
+    padL("disc ok", 9) + padL("errors", 8);
+  console.log("\n" + languageHeader);
+  console.log("-".repeat(languageHeader.length));
   const languages = [...new Set(rows.map((r) => r.language))].sort();
   for (const language of languages) {
     const group = rows.filter((r) => r.language === language);
     const good = group.filter((r) => !r.error);
     const times = good.map((r) => r.ms);
-    const scored = (key: "itemsOk" | "totalOk" | "taxOk") => {
+    const scored = (key: "itemsOk" | "totalOk" | "taxOk" | "discountOk") => {
       const judged = good.filter((r) => r[key] !== null);
       if (judged.length === 0) return "-";
       return `${judged.filter((r) => r[key]).length}/${judged.length}`;
@@ -351,7 +399,7 @@ async function run(): Promise<void> {
     console.log(
       pad(language, 10) + padL(group.length, 6) + padL(percentile(times, 0.5), 8) + padL(percentile(times, 0.95), 8) +
       padL(good.filter((r) => r.ms > BUDGET_MS).length, 10) + padL(scored("itemsOk"), 10) + padL(scored("totalOk"), 10) +
-      padL(scored("taxOk"), 9) + padL(group.filter((r) => r.error).length, 8)
+      padL(scored("taxOk"), 9) + padL(scored("discountOk"), 9) + padL(group.filter((r) => r.error).length, 8)
     );
   }
 
@@ -362,7 +410,7 @@ async function run(): Promise<void> {
   // all. A name that is wrong the same way every time is at least a misreading
   // of something that is there.
   if (repeat > 1) {
-    console.log("\n" + pad("receipt", 30) + padL("name agreement", 16) + "  names that moved");
+    console.log("\n" + pad("receipt", 44) + padL("name agreement", 16) + "  names that moved");
     console.log("-".repeat(80));
     for (const file of [...new Set(rows.map((r) => r.name.replace(/ #\d+$/, "")))]) {
       const runs = rows.filter((r) => !r.error && r.name.replace(/ #\d+$/, "") === file);
@@ -371,7 +419,7 @@ async function run(): Promise<void> {
       const stable = first.filter((name) => runs.every((r) => r.descriptions.map(normalizeName).includes(name)));
       const moved = [...new Set(runs.flatMap((r) => r.descriptions).filter((d) => !stable.includes(normalizeName(d))))];
       console.log(
-        pad(file, 30) + padL(`${stable.length}/${first.length}`, 16) +
+        pad(file, 44) + padL(`${stable.length}/${first.length}`, 16) +
         "  " + (moved.length === 0 ? "-" : moved.slice(0, 4).join(" | ")),
       );
     }

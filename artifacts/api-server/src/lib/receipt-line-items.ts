@@ -67,6 +67,28 @@ function nonNegativeNumber(value: unknown): number | null {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * NO QUANTITY IS TAKEN FROM AN ITEM'S NAME. Do not add it back.
+ *
+ * Square prints its quantity as a suffix — "Pork Dumplings x 2   $18.00" — and
+ * the scan returns quantity 1 with the count still in the description, so two
+ * portions look like one and cannot be handed to two people. Splitting that
+ * suffix off looks obviously right and is not, because a menu name carries the
+ * same shape for a completely different reason:
+ *
+ *   "Pork Dumplings x 2"   Square's quantity. Two orders of dumplings.
+ *   "Chicken Wings x 10"   the dish. ONE order, ten wings in it.
+ *   "Oysters x6"           the dish. "Coke Zero ×330" is millilitres.
+ *
+ * The two are the same string. Nothing in the text distinguishes them, and
+ * guessing wrong is silent: the line total stays correct, so no check fires,
+ * while a 15.00 plate of wings becomes ten claimable portions at 1.50 and
+ * whoever takes one pays a tenth of a dish they ate. A wrong split is the one
+ * failure this app cannot afford, and it is worse than the problem being fixed.
+ *
+ * The quantity has to come from the receipt's own column, which means the scan
+ * reading it — see the item-name and model work rather than a pattern here.
+ */
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {
   return (items ?? []).reduce<LineItem[]>((acc, item) => {
     const description = typeof item.description === "string" ? item.description.trim() : "";

@@ -1,0 +1,9 @@
+{
+  "items": 8,
+  "total": 111.00,
+  "currency": "USD",
+  "taxAmount": 9.85,
+  "billDiscount": null,
+  "itemDescriptions": ["DRAFT IPA", "APEROL SPRITZ", "BUFFALO WINGS", "CAESAR SALAD", "CHEESEBURGER", "FISH TACOS", "FRENCH FRIES", "NY CHEESECAKE"],
+  "note": "LAYOUT 2 of four US POS discount layouts — a minus line under the item. Square with 'Itemized Discounts' ON, and Toast item discounts. The Corner Tavern, synthetic, no personal data.\n\nCASE 1: '2 DRAFT IPA 16.00' then indented 'HAPPY HOUR 50% -8.00'. The IPA nets to 8.00 with originalTotal 16.00. Items then sum to the printed SUBTOTAL of 111.00; SALES TAX 8.875% adds 9.85 for a TOTAL of 120.85. NY charges tax AFTER the restaurant's own discount (NY TB-ST-140), so 111.00 is the taxed base.\n\nKNOWN FAILURE, same as fr-marche-happyhour: the IPA comes back at 16.00 with the discount ignored, so itemsTotal is 119.00 against a printed 111.00 and the bill is 8.00 too high. One run also invented an originalTotal of 24.00, which is the add-instead-of-subtract error.\n\nTIP MUST BE NULL. 'SUGGESTED GRATUITY 18/20/22%' is advice, not a charge, and the merchant copy's blank TIP and TOTAL lines are for the customer to write on.\n\nTax IS added on top here, unlike the French TTC fixtures — contrast fr-marche-ttc."
+}

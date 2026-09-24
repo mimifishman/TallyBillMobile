@@ -100,6 +100,49 @@ const okSum = Math.abs(sum - 36.5) < 0.005;
 if (!okSum) failed++;
 console.log(`${okSum ? "PASS" : "FAIL"}  receipt sums to printed 36.50 (got ${sum.toFixed(2)})`);
 
+
+/** A plain assertion, for the checks that are not about the four money fields. */
+function check(name: string, ok: boolean, got?: unknown): void {
+  if (!ok) failed++;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}`);
+  if (!ok && got !== undefined) console.log(`      got  ${JSON.stringify(got)}`);
+}
+
+// A COUNT IN AN ITEM'S NAME IS LEFT ALONE. This pins a decision, not a feature.
+//
+// Square prints its quantity as a suffix — "Pork Dumplings x 2  $18.00" — and
+// it is tempting to split that off so two portions can go to two people. It
+// cannot be done safely: a menu name carries the same shape for a different
+// reason, and nothing in the text tells them apart.
+//
+//   "Pork Dumplings x 2"   Square's quantity: two orders.
+//   "Chicken Wings x 10"   the dish itself: one order, ten wings.
+//
+// Guessing wrong is SILENT — the line total stays correct, so no check fires —
+// and it turns a 15.00 plate into ten claimable portions at 1.50. The quantity
+// has to come from the receipt's own column, read by the scan.
+{
+  for (const name of [
+    "Pork Dumplings x 2",
+    "Chicken Wings x 10",
+    "Oysters x6",
+    "Gyoza x 5",
+    "Coke Zero ×330",
+    "Pizza 12 x 16",
+    "Lunch Box 2",
+    "Bordeaux 201",
+  ]) {
+    const [got] = normalizeLineItems([{ description: name, quantity: 1, total: 18 }]);
+    check(`"${name}" keeps its name and its quantity of 1`,
+      got?.description === name && got?.quantity === 1, got);
+  }
+
+  // A quantity the scan read from a real column is used, as it always was.
+  const [column] = normalizeLineItems([{ description: "Pork Dumplings", quantity: 2, total: 18 }]);
+  check("a quantity from the receipt's own column is kept",
+    column?.quantity === 2 && column?.unitPrice === 9, column);
+}
+
 // Tax and tip. The app ADDS these to the bill and calls .toFixed(2) on them, so
 // anything that is not a real, non-negative number has to come back as null: a
 // string throws on the review screen, and a negative quietly takes money off

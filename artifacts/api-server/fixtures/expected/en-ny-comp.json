@@ -1,0 +1,15 @@
+{
+  "items": 5,
+  "total": 110.0,
+  "currency": "USD",
+  "taxAmount": 9.76,
+  "billDiscount": null,
+  "itemDescriptions": [
+    "OLD FASHIONED",
+    "STEAK FRITES",
+    "SEARED SALMON",
+    "KALE SALAD",
+    "CHOC LAVA CAKE"
+  ],
+  "note": "LAYOUT 4 of four — a comp line under the item, as Aloha prints it. Hudson & Vine, synthetic, no personal data.\n\n'1 CHOC LAVA CAKE 12.00' then indented 'COMP BIRTHDAY -12.00'. The cake is total 0.00 with originalTotal 12.00 and discountLabel 'COMP BIRTHDAY'. It is still an item. Items sum to the printed SUBTOTAL of 110.00, TAX 9.76, TOTAL DUE 119.76.\n\nTHIS ONE PASSES, which is why it is worth keeping. It has the SAME SHAPE as en-ny-item-discount, which fails. Two differences to study before writing any rule: the minus equals the whole line so the item nets to zero, and the label carries no percentage. Whatever fixes layout 2 has to explain why this already works.\n\nTHE CROP DECIDES THIS ONE, measured 2026-09-24. Nine runs against production, same prompt, same server, same receipt — only the image preparation differed:\n  old crop (a blind quarter of the PICTURE): 0 of 5 passed. The COMP BIRTHDAY line is ignored, the cake comes back at 12.00 and the bill is 122.00 — 12.00 too high.\n  new crop (blank trimmed off first, PR #70): 4 of 4 passed, cake 0.00 with originalTotal 12.00.\nSo a discount can be lost to the IMAGE rather than to the prompt or the model, and a receipt that looks like it reads fine may only be reading fine because of how it was prepared. Always say which preparation a score was taken with. A report of this fixture being 'flaky' came from mixing the two."
+}

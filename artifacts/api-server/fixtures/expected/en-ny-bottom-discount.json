@@ -1,0 +1,9 @@
+{
+  "items": 7,
+  "total": 104.00,
+  "currency": "USD",
+  "taxAmount": 7.85,
+  "billDiscount": 15.60,
+  "itemDescriptions": ["Pork Dumplings", "Scallion Pancake", "Dan Dan Noodles", "Beef Chow Fun", "Mapo Tofu", "Tsingtao", "Jasmine Tea"],
+  "note": "LAYOUT 3 of four — ONE check-level discount at the foot. Square with itemizing OFF, and Toast check discounts. Mott St. Noodle Bar, synthetic, no personal data.\n\nCASE 3: every item stays at full price and sums to the printed Subtotal of 104.00. 'Industry Night (15%) -$15.60' applies to the whole bill, so it belongs in billDiscount as a POSITIVE 15.60, NOT folded into any item. Net 88.40, Sales Tax 8.875% of that is 7.85, Total 96.25.\n\nKNOWN FAILURE: billDiscount comes back null and the discount line is dropped entirely, leaving itemsTotal at 104.00 and the bill 15.60 too high.\n\nSIDE BUG: Square prints the quantity as a SUFFIX — 'Pork Dumplings x 2  $18.00', 'Tsingtao x 2  $14.00'. The scan returns quantity 1 with 'x 2' left inside the name. The money is right, but two units cannot be split between two people, and the name is wrong on screen. itemDescriptions here has the 'x 2' stripped, which is what a correct read looks like.\n\nThe 96.25 printed large at the very top is the final total, not an item."
+}
