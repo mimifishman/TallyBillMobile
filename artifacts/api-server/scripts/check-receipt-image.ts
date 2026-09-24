@@ -220,5 +220,17 @@ check("and keeps every item row", aloneRows === ROWS, { kept: aloneRows, drawn: 
     { rotated: turned.prepared.rotated, w: turnedMeta.width, h: turnedMeta.height });
 }
 
+// crop:false — for the re-read of a photo that the crop cut short.
+{
+  const cut = await prepareReceipt(r.png);
+  const whole = await prepareReceipt(r.png, { crop: false });
+  const cutRows = await inkRows(cut.buffer);
+  const wholeMeta = await sharp(whole.buffer).metadata();
+  const cutMeta = await sharp(cut.buffer).metadata();
+  check("crop:false does not cut the top", whole.croppedTop === 0 && wholeMeta.height! > cutMeta.height!,
+    { whole: wholeMeta.height, cut: cutMeta.height });
+  check("and loses no rows the cropped version kept", (await inkRows(whole.buffer)) >= cutRows);
+}
+
 console.log(failed === 0 ? "\nall good" : `\n${failed} failing`);
 process.exit(failed === 0 ? 0 : 1);

@@ -110,6 +110,39 @@ export function wantsSecondOpinion(first: Reading): boolean {
  */
 const MAX_DISCOUNT_GAP = 0.5;
 
+/**
+ * Whether the header crop may have cut real items off.
+ *
+ * The crop drops the top quarter of the photo on the assumption that the shop's
+ * name and address are there. A photo framed tight on the items has no header,
+ * so the quarter it drops IS items: a US receipt photographed from the first
+ * line down came back with 2 of its 8 items, every time.
+ *
+ * The receipt says when that has happened — the items come to LESS than its
+ * printed total — and only then is it worth reading the photo again, whole.
+ * A reading that matches, or one whose items are too HIGH (a missed discount),
+ * is not a cut-off problem and is left alone.
+ */
+export function looksCutOff(reading: Reading): boolean {
+  const { reconciled, difference } = reading.check;
+  return reconciled === false && difference !== null && difference < 0;
+}
+
+/**
+ * The better of a cropped and an uncropped reading of the same photo.
+ *
+ * Both come from the same model with the same instructions; the only thing
+ * that differs is whether the top quarter was shown. So the receipt can judge
+ * them directly: the one whose items land closer to its printed total wins,
+ * and a tie keeps the cropped reading, which is what was measured to read
+ * normal photos best.
+ */
+export function closerToReceipt(cropped: Reading, whole: Reading): Reading {
+  const gap = (r: Reading) => (r.check.difference === null ? Infinity : Math.abs(r.check.difference));
+  if (whole.check.reconciled === true && cropped.check.reconciled !== true) return whole;
+  return gap(whole) < gap(cropped) ? whole : cropped;
+}
+
 export type Verdict =
   | {
       use: "first";

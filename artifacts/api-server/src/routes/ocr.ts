@@ -4,9 +4,11 @@ import { OCR_PROMPT } from "../lib/receipt-prompt.js";
 import { receiptDataUrl } from "../lib/receipt-image.js";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../lib/model-call.js";
 import {
+  closerToReceipt,
   combineReadings,
   interpretReceipt,
   judgeReadings,
+  looksCutOff,
   parseModelJson,
   wantsSecondOpinion,
   type Reading,
@@ -220,7 +222,8 @@ router.post("/", async (req, res) => {
     // Turn the photo the right way up before the model sees it. Phones record
     // rotation in an EXIF tag rather than in the pixels, and the model does not
     // honour it, so a receipt shot sideways is read sideways.
-    const { dataUrl } = await receiptDataUrl(Buffer.from(imageBase64, "base64"));
+    const photo = Buffer.from(imageBase64, "base64");
+    const { dataUrl, prepared } = await receiptDataUrl(photo);
 
     res.setHeader("X-OCR-Model", OCR_MODEL);
     const firstRaw = await askForReceipt(openai, OCR_MODEL, dataUrl);
@@ -233,7 +236,36 @@ router.post("/", async (req, res) => {
       res.status(500).json({ error: "Could not parse receipt: the model did not return valid JSON." });
       return;
     }
-    const first = interpretReceipt(firstParsed);
+    let first = interpretReceipt(firstParsed);
+
+    // The header crop assumes the top quarter is the shop's name and address.
+    // On a photo framed tight on the items it is items, and they are simply
+    // gone. When the receipt says items are missing AND a crop happened, read
+    // the photo again whole, with the same model, and keep whichever reading
+    // the printed total agrees with more. See looksCutOff.
+    if (prepared.croppedTop > 0 && looksCutOff(first)) {
+      const left = OCR_BUDGET_MS - (Date.now() - startedAt);
+      let outcome = "skipped-no-time";
+      if (left >= MIN_SECOND_OPINION_MS) {
+        try {
+          const whole = await receiptDataUrl(photo, { crop: false });
+          const raw = await askForReceipt(openai, OCR_MODEL, whole.dataUrl, { deadlineMs: left });
+          const parsed = raw ? parseModelJson(raw) : null;
+          if (!parsed) {
+            outcome = "no-answer";
+          } else {
+            const uncropped = interpretReceipt(parsed);
+            const better = closerToReceipt(first, uncropped);
+            outcome = better === uncropped ? "used" : "not-closer";
+            first = better;
+          }
+        } catch (err) {
+          outcome = err instanceof Error && /timed? ?out|abort/i.test(err.message) ? "timeout" : "error";
+          req.log?.warn({ err }, "uncropped re-read failed; keeping the cropped reading");
+        }
+      }
+      res.setHeader("X-OCR-Uncropped", outcome);
+    }
 
     // A second opinion, only when the receipt says the first reading is wrong
     // and only inside the time budget. Any failure here leaves the first

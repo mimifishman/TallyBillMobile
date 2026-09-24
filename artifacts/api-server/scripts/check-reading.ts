@@ -12,6 +12,8 @@ import {
   combineReadings,
   wantsSecondOpinion,
   parseModelJson,
+  looksCutOff,
+  closerToReceipt,
 } from "../src/lib/receipt-reading.ts";
 
 let failed = 0;
@@ -181,6 +183,33 @@ check("o4-mini's reading reconciles", o4mini.check.reconciled === true, o4mini.c
   check("gpt-4o's backwards reading asks for a second opinion", wantsSecondOpinion(backwards), backwards.check);
   const v = judgeReadings(backwards, o4mini);
   check("and o4-mini's correct reading is used despite the invented original", v.use === "second", v);
+}
+
+
+// A photo framed tight on the items: the header crop took the top quarter,
+// which was items. On dev it came back with 2 of the 8 lines, every time.
+{
+  const cropped = interpretReceipt({
+    items: [{ description: "FRENCH FRIES", quantity: 2, total: 12 }, { description: "NY CHEESECAKE", quantity: 1, total: 11 }],
+    printedTotal: 111, taxAmount: 9.85, currency: "USD",
+  });
+  check("items far BELOW the printed total look cut off", looksCutOff(cropped), cropped.check);
+  check("and are not mistaken for a missed discount", !wantsSecondOpinion(cropped));
+
+  const whole = interpretReceipt({
+    items: [{ description: "DRAFT IPA", quantity: 2, total: 16 }, ...rest],
+    printedTotal: 111, taxAmount: 9.85, currency: "USD",
+  });
+  check("the whole photo's reading is kept, being closer to the receipt",
+    closerToReceipt(cropped, whole) === whole, whole.check);
+  check("and it then goes on to ask about the missed happy hour", wantsSecondOpinion(whole));
+
+  check("items HIGHER than the total (a missed discount) are not a cut-off", !looksCutOff(gpt4o));
+  check("a reading that matches is not a cut-off", !looksCutOff(o4mini));
+
+  const worse = interpretReceipt({ items: [{ description: "FRIES", quantity: 1, total: 5 }], printedTotal: 111, currency: "USD" });
+  check("a whole-photo reading further from the receipt is not taken", closerToReceipt(cropped, worse) === cropped);
+  check("a tie keeps the cropped reading", closerToReceipt(cropped, cropped) === cropped);
 }
 
 // Parsing a model reply.
