@@ -88,6 +88,15 @@ function budgetFromEnv(value: string | undefined): number {
   return Number.isFinite(n) && n >= 1_000 && n <= 60_000 ? n : 17_000;
 }
 
+/**
+ * Whether to drop the top quarter of the photo as a header.
+ *
+ * On by default — it was measured to help. "off" is for measuring whether it
+ * still does: a photo framed tight on the items has no header, and the cut then
+ * takes items instead (the uncropped re-read below exists because of that).
+ */
+const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
+
 /** Below this there is no point starting a second read; it cannot finish. */
 const MIN_SECOND_OPINION_MS = 5_000;
 
@@ -223,10 +232,14 @@ router.post("/", async (req, res) => {
     // rotation in an EXIF tag rather than in the pixels, and the model does not
     // honour it, so a receipt shot sideways is read sideways.
     const photo = Buffer.from(imageBase64, "base64");
-    const { dataUrl, prepared } = await receiptDataUrl(photo);
+    const { dataUrl: croppedUrl, prepared } = await receiptDataUrl(photo, { crop: HEADER_CROP });
+    // The image the reading on the bill came from. The second opinion must look
+    // at the SAME picture: after an uncropped re-read wins, the cropped one is
+    // missing the very lines being judged.
+    let dataUrl = croppedUrl;
 
     res.setHeader("X-OCR-Model", OCR_MODEL);
-    const firstRaw = await askForReceipt(openai, OCR_MODEL, dataUrl);
+    const firstRaw = await askForReceipt(openai, OCR_MODEL, croppedUrl);
     if (!firstRaw) {
       res.status(500).json({ error: "AI model returned an empty response." });
       return;
@@ -257,6 +270,7 @@ router.post("/", async (req, res) => {
             const uncropped = interpretReceipt(parsed);
             const better = closerToReceipt(first, uncropped);
             outcome = better === uncropped ? "used" : "not-closer";
+            if (better === uncropped) dataUrl = whole.dataUrl;
             first = better;
           }
         } catch (err) {
