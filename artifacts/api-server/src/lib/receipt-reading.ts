@@ -168,10 +168,17 @@ function fullPrice(reading: Reading): number {
  * pass every other check here and undercharge the table.
  */
 function sameFullPrices(first: Reading, second: Reading): boolean {
-  const a = fullPrice(first);
   const b = fullPrice(second);
-  if (a <= 0) return false;
-  return Math.abs(a - b) / a <= SAME_ITEMS_TOLERANCE;
+  const close = (a: number) => a > 0 && Math.abs(a - b) / a <= SAME_ITEMS_TOLERANCE;
+  // Either description of the first reading will do. Its charged total is what
+  // it believed the items cost; its full price adds the originalTotals it
+  // claimed. Those can disagree because the FIRST reading is the one in doubt:
+  // on US layout 2 as a JPEG, gpt-4o sometimes applies the happy hour
+  // backwards and invents an original of 24.00 for a 16.00 beer. Measured
+  // against that invention, o4-mini's correct reading looked 6% off and was
+  // thrown away — 2 scans in 6 on dev. A reading that shrinks items to fit a
+  // wrong total matches neither description.
+  return close(first.check.itemsTotal) || close(fullPrice(first));
 }
 
 /**

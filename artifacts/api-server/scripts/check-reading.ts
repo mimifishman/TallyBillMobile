@@ -168,6 +168,21 @@ check("o4-mini's reading reconciles", o4mini.check.reconciled === true, o4mini.c
     judgeReadings(gpt4o, o4mini).use === "second");
 }
 
+
+// US layout 2 as a JPEG, 2 scans in 6 on dev: gpt-4o applied the happy hour
+// BACKWARDS — IPA 16.00 with an invented originalTotal of 24.00. o4-mini read
+// it right, and the same-items check, measuring against the invented 24.00,
+// threw the right answer away.
+{
+  const backwards = interpretReceipt({
+    items: [{ description: "DRAFT IPA", quantity: 2, total: 16, originalTotal: 24, discountLabel: "HAPPY HOUR 50%" }, ...rest],
+    printedTotal: 111, taxAmount: 9.85, currency: "USD",
+  });
+  check("gpt-4o's backwards reading asks for a second opinion", wantsSecondOpinion(backwards), backwards.check);
+  const v = judgeReadings(backwards, o4mini);
+  check("and o4-mini's correct reading is used despite the invented original", v.use === "second", v);
+}
+
 // Parsing a model reply.
 check("JSON inside prose is found", parseModelJson('here: {"items":[]} done')?.items?.length === 0);
 check("no JSON is null, not a throw", parseModelJson("sorry, I cannot read that") === null);
