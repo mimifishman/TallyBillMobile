@@ -98,7 +98,7 @@ check("o4-mini's reading reconciles", o4mini.check.reconciled === true, o4mini.c
     printedTotal: 100, taxAmount: null, tipAmount: null, currency: "ILS",
   });
   const secondWithVat = interpretReceipt({
-    items: [{ description: "טורטליני", quantity: 1, total: 55 }, { description: "סלט", quantity: 1, total: 45 }],
+    items: [{ description: "טורטליני", quantity: 1, total: 55, originalTotal: 60, discountLabel: "הנחה" }, { description: "סלט", quantity: 1, total: 45 }],
     printedTotal: 100, taxAmount: 14.53, tipAmount: 10, currency: "USD",
   });
   const v = judgeReadings(hebrewFirst, secondWithVat);
@@ -107,6 +107,65 @@ check("o4-mini's reading reconciles", o4mini.check.reconciled === true, o4mini.c
   check("but NOT its VAT", bill.taxAmount === null, bill.taxAmount);
   check("nor its tip", bill.tipAmount === null, bill.tipAmount);
   check("nor its currency", bill.currency === "ILS", bill.currency);
+}
+
+
+// THE HEBREW CARD SLIP. he-dejavoo-twocolumn, as gpt-4o reads it on dev: every
+// item right, 208.00, and the 90.00 from the card-terminal slip taken as the
+// total. No discount explains a 57% gap and no second model can fix it, so it
+// must not be asked — it made this Hebrew scan take 19 seconds instead of 8.
+{
+  const slip = interpretReceipt({
+    items: [
+      { description: "TROPICAL BLUSH", quantity: 1, total: 30, originalTotal: 59 },
+      { description: "HONEY POT", quantity: 1, total: 31, originalTotal: 62 },
+      { description: "טורטליני קאצ'ו אה פפה", quantity: 1, total: 51, originalTotal: 68 },
+      { description: "סלט שורשים", quantity: 1, total: 45, originalTotal: 61 },
+      { description: "מקלות פולנטה", quantity: 1, total: 51, originalTotal: 68 },
+    ],
+    printedTotal: 90, taxAmount: null, currency: "ILS",
+  });
+  check("the card-slip reading does not reconcile", slip.check.reconciled === false, slip.check);
+  check("but a 57% gap is not a missed discount: no second opinion", !wantsSecondOpinion(slip), slip.check);
+
+  // And even if one were asked, a reading that shrinks correct items to fit
+  // the wrong total must be refused.
+  const shrunk = interpretReceipt({
+    items: [{ description: "TROPICAL BLUSH", quantity: 1, total: 45 }, { description: "HONEY POT", quantity: 1, total: 45 }],
+    printedTotal: 90, taxAmount: null, currency: "ILS",
+  });
+  const v = judgeReadings(slip, shrunk);
+  check("a second reading that shrinks the items to fit is refused",
+    shrunk.check.reconciled === true && v.use === "first" && "why" in v && v.why === "second-changed-the-items", v);
+}
+
+// Items LOWER than the receipt is a missing line, not a missed discount.
+{
+  const short = interpretReceipt({ items: rest, printedTotal: 120, currency: "USD" });
+  check("items below the printed total: no second opinion", !wantsSecondOpinion(short), short.check);
+}
+
+// Square's check-level discount now reconciles on the FIRST reading, because
+// the printed total includes tax. So it never needs a second opinion at all.
+{
+  const square = interpretReceipt({
+    items: [
+      { description: "Pork Dumplings x 2", quantity: 1, total: 18 }, { description: "Scallion Pancake", quantity: 1, total: 9 },
+      { description: "Dan Dan Noodles", quantity: 1, total: 17 }, { description: "Beef Chow Fun", quantity: 1, total: 19 },
+      { description: "Mapo Tofu", quantity: 1, total: 16 }, { description: "Tsingtao x 2", quantity: 1, total: 14 },
+      { description: "Jasmine Tea", quantity: 1, total: 11 },
+    ],
+    billDiscount: 15.6, printedTotal: 96.25, taxAmount: 7.85, currency: "USD",
+  });
+  check("US layout 3 keeps its 15.60 bill discount", square.billDiscount === 15.6, square.billDiscount);
+  check("and reconciles without any second opinion",
+    square.check.reconciled === true && !wantsSecondOpinion(square), square.check);
+}
+
+// The case the second opinion exists for must still be let through.
+{
+  check("US layout 2's full prices match, so its fix is still used",
+    judgeReadings(gpt4o, o4mini).use === "second");
 }
 
 // Parsing a model reply.

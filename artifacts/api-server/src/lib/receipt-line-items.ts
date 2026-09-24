@@ -201,17 +201,39 @@ export function reconcileTolerance(printedTotal: number): number {
  * paying, while one that is too low is not, and the printed-total warning has
  * nothing to fire on either way.
  */
+/**
+ * Does `amount` land on the printed total — either as it is, or once tax that
+ * the receipt ADDS ON TOP is included?
+ *
+ * The model is asked for the figure the items add up to, but when a discount
+ * sits between the subtotal and the tax there is no such line on the paper.
+ * Square prints "Subtotal 104.00 / Industry Night (15%) -15.60 / Sales Tax 7.85
+ * / Total 96.25", so the model reports 96.25 — the total WITH tax — and 104.00
+ * less 15.60 is 88.40, which never matched. It matches once the tax the same
+ * receipt printed is added back: 88.40 + 7.85 = 96.25. Without this the
+ * discount was read correctly and then thrown away, overcharging by 15.60.
+ *
+ * Tax only ever counts when there is a tax to add. On a receipt whose prices
+ * already include it — every Israeli one, French TTC — taxAmount is null and
+ * this is the plain comparison it always was.
+ */
+function landsOnTotal(amount: number, printedTotal: number, taxAmount: number | null): boolean {
+  const tolerance = reconcileTolerance(printedTotal);
+  if (Math.abs(round2(amount) - printedTotal) <= tolerance) return true;
+  return taxAmount !== null && taxAmount > 0 && Math.abs(round2(amount + taxAmount) - printedTotal) <= tolerance;
+}
+
 export function shouldApplyBillDiscount(
   itemsTotal: number,
   printedTotal: number | null,
   billDiscount: number | null,
+  taxAmount: number | null = null,
 ): boolean {
   if (billDiscount === null || billDiscount <= 0) return false;
   if (printedTotal === null) return false;
 
-  const tolerance = reconcileTolerance(printedTotal);
-  const withDiscount = Math.abs(round2(itemsTotal - billDiscount) - printedTotal) <= tolerance;
-  const withoutDiscount = Math.abs(round2(itemsTotal) - printedTotal) <= tolerance;
+  const withDiscount = landsOnTotal(itemsTotal - billDiscount, printedTotal, taxAmount);
+  const withoutDiscount = landsOnTotal(itemsTotal, printedTotal, taxAmount);
 
   // Only when taking it off is what agrees with the receipt, and leaving it on
   // does not. If both readings land on the total the discount is 0 in all but
@@ -255,6 +277,7 @@ export function checkAgainstPrintedTotal(
   items: LineItem[],
   printedTotal: number | null,
   billDiscount: number | null = null,
+  taxAmount: number | null = null,
 ): ReceiptCheck {
   const itemsTotal = round2(items.reduce((sum, item) => sum + item.total, 0));
   const expected = round2(itemsTotal - (billDiscount ?? 0));
@@ -263,12 +286,16 @@ export function checkAgainstPrintedTotal(
     return { itemsTotal, printedTotal: null, reconciled: null, difference: null };
   }
 
+  // Agreeing with a printed total that includes tax added on top is agreeing.
+  // See landsOnTotal. The difference reported is still before tax, because a
+  // real mismatch is a fact about the items and should be stated as one.
   const difference = round2(expected - printedTotal);
-  const tolerance = reconcileTolerance(printedTotal);
-  return {
-    itemsTotal,
-    printedTotal,
-    reconciled: Math.abs(difference) <= tolerance,
-    difference,
-  };
+  if (Math.abs(difference) <= reconcileTolerance(printedTotal)) {
+    return { itemsTotal, printedTotal, reconciled: true, difference };
+  }
+  if (landsOnTotal(expected, printedTotal, taxAmount)) {
+    // Agrees once the tax the receipt printed is included, so no gap remains.
+    return { itemsTotal, printedTotal, reconciled: true, difference: 0 };
+  }
+  return { itemsTotal, printedTotal, reconciled: false, difference };
 }

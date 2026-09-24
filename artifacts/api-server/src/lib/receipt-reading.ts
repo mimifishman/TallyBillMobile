@@ -50,22 +50,25 @@ export function parseModelJson(raw: string): AIReceiptResponse | null {
 export function interpretReceipt(parsed: AIReceiptResponse): Reading {
   const items = normalizeLineItems(parsed.items);
   const printedTotal = normalizePrintedTotal(parsed.printedTotal);
+  const taxAmount = normalizeReceiptAmount(parsed.taxAmount);
   const itemsTotal = Math.round(items.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
 
   // A footer discount is only passed on when taking it off is what agrees with
   // the receipt's own total. Otherwise it is the receipt restating a saving
   // already inside the line totals, and applying it would undercharge.
   const claimedDiscount = normalizeBillDiscount(parsed.billDiscount);
-  const billDiscount = shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount) ? claimedDiscount : null;
+  const billDiscount = shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount, taxAmount)
+    ? claimedDiscount
+    : null;
 
   return {
     items,
     billDiscount,
     // The receipt's own total, checked against what was read. It cannot fix a
     // bad scan, but it can say one happened.
-    check: checkAgainstPrintedTotal(items, printedTotal, billDiscount),
+    check: checkAgainstPrintedTotal(items, printedTotal, billDiscount, taxAmount),
     // The app adds these to the bill and formats them with .toFixed(2).
-    taxAmount: normalizeReceiptAmount(parsed.taxAmount),
+    taxAmount,
     tipAmount: normalizeReceiptAmount(parsed.tipAmount),
     currency: parsed.currency ?? null,
   };
@@ -84,11 +87,39 @@ export function interpretReceipt(parsed: AIReceiptResponse): Reading {
  * exactly as before.
  */
 export function wantsSecondOpinion(first: Reading): boolean {
-  return first.check.reconciled === false;
+  const { reconciled, difference, itemsTotal } = first.check;
+  if (reconciled !== false || difference === null || itemsTotal <= 0) return false;
+  // A missed discount always leaves the items HIGHER than the receipt.
+  if (difference <= 0) return false;
+  return difference / itemsTotal <= MAX_DISCOUNT_GAP;
 }
 
+/**
+ * The largest share of a bill a missed discount is believed to account for.
+ *
+ * Every real missed discount measured is well under it: US layout 2 is 6.7% of
+ * the items, 306 is 9.8%, the French happy hour 9.8%, Holy 20.5%. A 50%-off
+ * everything happy hour would sit exactly on it.
+ *
+ * Above it the printed total is almost certainly not the bill at all. On the
+ * Hebrew DejaVoo receipt gpt-4o reads every item right — 208.00 — and takes
+ * the 90.00 on the card-terminal slip below it as the total. That is a 57% gap.
+ * No discount explains it and no second model can fix it, because the items
+ * were never wrong; asking o4-mini anyway made a Hebrew scan take 19 seconds
+ * instead of 8, for nothing, every time.
+ */
+const MAX_DISCOUNT_GAP = 0.5;
+
 export type Verdict =
-  | { use: "first"; why: "first-reconciled" | "no-second" | "second-not-reconciled" | "second-read-a-different-total" }
+  | {
+      use: "first";
+      why:
+        | "first-reconciled"
+        | "no-second"
+        | "second-not-reconciled"
+        | "second-read-a-different-total"
+        | "second-changed-the-items";
+    }
   | { use: "second" };
 
 /**
@@ -108,7 +139,39 @@ export function judgeReadings(first: Reading, second: Reading | null): Verdict {
   if (a === null || b === null || Math.abs(a - b) > reconcileTolerance(a)) {
     return { use: "first", why: "second-read-a-different-total" };
   }
+  if (!sameFullPrices(first, second)) return { use: "first", why: "second-changed-the-items" };
   return { use: "second" };
+}
+
+/**
+ * How far apart two readings' full prices may be and still be the same items.
+ *
+ * One misread price on a normal bill is well inside it — the IPA read as 18.00
+ * against 16.00 is 1.7% of that receipt. Items shrunk to fit a wrong total are
+ * nowhere near: 208.00 squeezed to the 90.00 card slip is 57%.
+ */
+const SAME_ITEMS_TOLERANCE = 0.05;
+
+/** What the items come to BEFORE any of their own discounts. */
+function fullPrice(reading: Reading): number {
+  return reading.items.reduce((sum, item) => sum + (item.originalTotal ?? item.total), 0);
+}
+
+/**
+ * The second opinion is there to find a discount the first missed, and may only
+ * lower the bill by one. So it must describe the same items at the same full
+ * prices — the difference showing up only as an originalTotal, or as a
+ * billDiscount — and not simply different, smaller numbers.
+ *
+ * Two models agreeing on the printed total is not enough on its own. If both
+ * read a wrong one, a second reading that shrank correct items to fit it would
+ * pass every other check here and undercharge the table.
+ */
+function sameFullPrices(first: Reading, second: Reading): boolean {
+  const a = fullPrice(first);
+  const b = fullPrice(second);
+  if (a <= 0) return false;
+  return Math.abs(a - b) / a <= SAME_ITEMS_TOLERANCE;
 }
 
 /**
