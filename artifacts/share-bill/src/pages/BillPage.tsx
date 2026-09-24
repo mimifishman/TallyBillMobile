@@ -317,15 +317,37 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     if (meId != null && !users.some((u) => u.id === meId)) setMeId(null);
   }, [users, meId]);
 
-  const subtotal = useMemo(
-    () => lines.reduce((s, l) => s + num(l.total), 0),
+  /**
+   * The totals, worked out exactly as the app's bill screen works them out.
+   * See artifacts/mobile/app/bill/[id]/index.tsx — the two screens show the
+   * same bill, so there is one arithmetic and this is a copy of it, not a
+   * second opinion.
+   *
+   * A line's `total` is already net of its own discount, so what is owed for
+   * the items is simply their sum.
+   */
+  const chargedTotal = useMemo(
+    () => Math.round(lines.reduce((s, l) => s + num(l.total), 0) * 100) / 100,
     [lines],
   );
+  // Lines carry their own discount, so the bill-wide figure is just their sum.
+  const discountTotal = useMemo(
+    () => Math.round(lines.reduce((s, l) => s + num(l.discountAmount), 0) * 100) / 100,
+    [lines],
+  );
+  /**
+   * The subtotal shown is BEFORE the discount, so the card can be read down:
+   * subtotal, less discount, plus tax and tip, equals total. Line totals are
+   * stored net, so the discount has to be added back to get there.
+   */
+  const subtotal = Math.round((chargedTotal + discountTotal) * 100) / 100;
   const taxPercent = num(bill.taxPercent);
   const tipPercent = num(bill.tipPercent);
-  const taxAmount = Math.round(subtotal * (taxPercent / 100) * 100) / 100;
-  const tipAmount = Math.round(subtotal * (tipPercent / 100) * 100) / 100;
-  const grandTotal = subtotal + taxAmount + tipAmount;
+  // Worked out on what is owed, not on the pre-discount subtotal: tax is
+  // charged on the discounted price and a tip on a cheaper bill is smaller.
+  const taxAmount = Math.round(chargedTotal * (taxPercent / 100) * 100) / 100;
+  const tipAmount = Math.round(chargedTotal * (tipPercent / 100) * 100) / 100;
+  const grandTotal = Math.round((chargedTotal + taxAmount + tipAmount) * 100) / 100;
   const fmt = (n: number) => formatMoney(n, bill.currency ?? null);
 
   const handleAddPerson = () => {
@@ -372,6 +394,17 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     const remainderTotal = Math.round((lineTotal - splitTotal) * 100) / 100;
     const remainderQty = currentQty - splitQty;
 
+    // A discount belongs to the units, not to the row, so splitting the row
+    // splits it too. Without this, splitting a discounted line quietly put both
+    // halves back to full price and the bill went up.
+    const lineOriginal = line.originalTotal != null ? num(line.originalTotal) : null;
+    const splitOriginal = lineOriginal != null && lineOriginal > lineTotal
+      ? Math.round((lineOriginal / currentQty) * splitQty * 100) / 100
+      : null;
+    const remainderOriginal = lineOriginal != null && splitOriginal != null
+      ? Math.round((lineOriginal - splitOriginal) * 100) / 100
+      : null;
+
     setSplitLineId(null);
     setSplitQtyInput("");
     setSplitError("");
@@ -384,6 +417,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         quantity: remainderQty,
         unitPrice: lineUnitPrice,
         total: remainderTotal,
+        originalTotal: remainderOriginal,
       },
     });
 
@@ -394,6 +428,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         quantity: splitQty,
         unitPrice: lineUnitPrice,
         total: splitTotal,
+        originalTotal: splitOriginal,
         afterLineId: splitLineId,
       },
     });
@@ -512,7 +547,14 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                     })
                   }
                   onDelete={() => deleteLine.mutate({ billId, lineId: line.id })}
-                  onUpdate={(patch) =>
+                  onUpdate={(patch) => {
+                    // The server rewrites the discount from originalTotal on
+                    // every write, so a patch that leaves it out clears it.
+                    // Renaming an item must not quietly put it back to full
+                    // price, so the original price rides along whenever the
+                    // charged price has not moved. Typing a new charged price
+                    // does clear it, because that price is now the whole story.
+                    const priceUnchanged = patch.total === num(line.total);
                     updateLine.mutate({
                       billId,
                       lineId: line.id,
@@ -521,9 +563,12 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                         quantity: patch.quantity,
                         unitPrice: patch.total / (patch.quantity || 1),
                         total: patch.total,
+                        originalTotal: priceUnchanged && line.originalTotal != null
+                          ? num(line.originalTotal)
+                          : null,
                       },
-                    })
-                  }
+                    });
+                  }}
                   onSplit={() => {
                     setSplitLineId(line.id);
                     setSplitQtyInput("");
@@ -570,6 +615,14 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             </div>
           )}
           <SummaryRow label="Subtotal" value={fmt(subtotal)} />
+          {discountTotal > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Discount</span>
+              <span className="text-sm font-semibold text-primary-text tabular-nums">
+                {"\u2212"}{fmt(discountTotal)}
+              </span>
+            </div>
+          )}
           <PercentRow
             label="Tax"
             percent={taxPercent}
@@ -961,6 +1014,17 @@ function LineRow({
   const [qty, setQty] = useState(String(num(line.quantity) || 1));
   const [total, setTotal] = useState(String(num(line.total)));
   const assigned = new Set<number>(line.assignedUserIds ?? []);
+  const originalTotal = line.originalTotal != null ? num(line.originalTotal) : null;
+  const isDiscounted = originalTotal != null && originalTotal > num(line.total);
+  /**
+   * What to say about the discount: always the rate, worked out from the two
+   * prices. The same choice the app makes — a stored wording can go stale when
+   * a price is edited, and a rate is the thing someone can check against the
+   * paper in their hand.
+   */
+  const discountNote = isDiscounted
+    ? `${Math.round(((originalTotal - num(line.total)) / originalTotal) * 1000) / 10}% off`
+    : null;
 
   useEffect(() => {
     setDesc(line.description);
@@ -1040,6 +1104,18 @@ function LineRow({
                 </span>
               )}
             </div>
+            {/* The old price stays beside the new one, struck through: a number
+                that dropped without saying why reads as a mistake. It sits on
+                its own line rather than in front of the price, because on a
+                phone the two prices together left the item name no room. */}
+            {isDiscounted && (
+              <div className="flex items-baseline gap-1.5 mt-0.5 text-xs">
+                <span className="text-muted-foreground line-through tabular-nums">
+                  {formatMoney(originalTotal, currency)}
+                </span>
+                <span className="font-medium text-primary-text">{discountNote}</span>
+              </div>
+            )}
           </button>
         )}
         {!editing && (
