@@ -1,6 +1,14 @@
 /**
  * Which vision models can actually be reached, and can they read a receipt at
- * all. Run: pnpm run probe:models -- --try gpt-4o,gemini-3-pro-preview
+ * all.
+ *
+ *   pnpm run probe:models -- --list          what the gateway actually offers
+ *   pnpm run probe:models -- --try a,b,c     can each of them read a receipt
+ *
+ * ALWAYS --list FIRST. A published model list is not the same thing as what
+ * this gateway routes: on 2026-09-24 the ids from Replit's own docs —
+ * gemini-3-pro-preview, claude-sonnet-4-6, gemini-3-flash-preview — were all
+ * rejected with "Model 'x' is not supported", and only gpt-4o answered.
  *
  * MUST RUN ON REPLIT. There is no model credential on the Mac, and
  * AI_INTEGRATIONS_OPENAI_BASE_URL is Replit-internal.
@@ -29,6 +37,7 @@ function arg(flag: string): string | undefined {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 
+const listOnly = process.argv.includes("--list");
 const models = (arg("--try") ?? "gpt-4o")
   .split(",")
   .map((m) => m.trim())
@@ -114,6 +123,26 @@ async function probe(openai: OpenAI, model: string, dataUrl: string): Promise<{ 
 }
 
 const openai = client();
+
+if (listOnly) {
+  // The gateway is OpenAI-compatible, so it may answer GET /models. When it
+  // does this is the only trustworthy source of ids; when it does not, the
+  // error says so plainly rather than leaving a guess looking like a fact.
+  try {
+    const page = await openai.models.list();
+    const ids = page.data.map((m) => m.id).sort();
+    console.log(`${ids.length} model(s) offered by this gateway:\n`);
+    for (const id of ids) console.log("  " + id);
+    console.log("\nNow probe the plausible vision ones:\n  pnpm run probe:models -- --try <comma,separated,ids>");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("This gateway does not list its models: " + message.slice(0, 160));
+    console.error("Fall back to --try with candidate ids; a wrong one costs one tiny call.");
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
 const dataUrl = await tinyReceipt();
 console.log(`probing ${models.length} model(s) with one ${Math.round(dataUrl.length / 1.37 / 1024)}kB image each\n`);
 console.log("model".padEnd(30) + "verdict".padEnd(11) + "ms".padStart(7) + "  detail");
