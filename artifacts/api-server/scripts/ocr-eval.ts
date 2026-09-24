@@ -150,9 +150,26 @@ function loadExpected(name: string): Expected | undefined {
  * "ספרייט זירו" where the paper has "ספרייט ז'ירו" has read the item correctly.
  * Quoting marks, whitespace and case are stripped; the letters are not.
  */
+/**
+ * Hebrew final letters, folded to their ordinary forms for comparison.
+ *
+ * ך ם ן ף ץ are the same letters as כ מ נ פ צ, written differently at the end of
+ * a word. Receipts are inconsistent about them, and on a thermal printout the
+ * difference is often half a millimetre of smudged ink — so scoring it reports
+ * failures that are not real and hides the ones that are.
+ */
+const FINAL_FORMS: Record<string, string> = {
+  "\u05DA": "\u05DB", // ך -> כ
+  "\u05DD": "\u05DE", // ם -> מ
+  "\u05DF": "\u05E0", // ן -> נ
+  "\u05E3": "\u05E4", // ף -> פ
+  "\u05E5": "\u05E6", // ץ -> צ
+};
+
 function normalizeName(value: string): string {
   return value
     .replace(/[\u0022\u0027\u05F3\u05F4\u2018\u2019\u201C\u201D`]/g, "")
+    .replace(/[\u05DA\u05DD\u05DF\u05E3\u05E5]/g, (c) => FINAL_FORMS[c] ?? c)
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
@@ -340,7 +357,10 @@ async function run(): Promise<void> {
           namesOk: want ? matchNames(descriptions, want) : null,
           namesTotal: want ? want.length : null,
         });
-        writeFileSync(join(OUT, `${basename(file, extname(file))}${repeat > 1 ? `-${run}` : ""}.json`), JSON.stringify(items, null, 2));
+        // The model is part of the name: a sweep otherwise overwrites one model's
+        // raw answers with the next model's, and only the last one survives.
+        const tag = model ? `.${model.replace(/[^\w.-]/g, "_")}` : "";
+        writeFileSync(join(OUT, `${basename(file, extname(file))}${tag}${repeat > 1 ? `-${run}` : ""}.json`), JSON.stringify(items, null, 2));
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

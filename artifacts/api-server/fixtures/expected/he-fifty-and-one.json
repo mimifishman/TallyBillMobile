@@ -1,7 +1,14 @@
 {
   "items": 4,
-  "total": 259.00,
+  "total": 259.0,
   "currency": "ILS",
   "taxAmount": null,
-  "note": "Four items at 23.00, 66.00, 84.00, 86.00. Printed total 259.00. Trap: a tip suggestion table at the foot (10%/15%/20% = 26.00/39.00/52.00) must not be read as items, and 20% must not be read as a tip that was charged. Photo rotated 90 degrees, creased."
+  "note": "Four items at 23.00, 66.00, 84.00, 86.00. Printed total 259.00. Trap: a tip suggestion table at the foot (10%/15%/20% = 26.00/39.00/52.00) must not be read as items, and 20% must not be read as a tip that was charged. Photo rotated 90 degrees, creased.",
+  "itemDescriptions": [
+    "מינרליים נביעות",
+    "סלט עלים",
+    "ספגטי חמאת עגבניות",
+    "טורטליני גבינות פטריות"
+  ],
+  "descriptionsNote": "Read off the photo by eye, 2026-09-22, at high magnification. Scored as a set, not in order. Clean thermal print, all four legible without doubt."
 }
