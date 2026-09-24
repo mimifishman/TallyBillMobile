@@ -46,18 +46,20 @@ const OCR_TRANSLATE_MODEL = process.env["OCR_TRANSLATE_MODEL"] ?? "gpt-4o";
  * Empty or "off" disables it.
  */
 /**
- * gpt-5.4-mini, not o4-mini: Replit is retiring o4-mini and named gpt-5.4-mini as
- * its replacement (notice received 2026-09-24). Measured before switching, in
- * the second-opinion role — reasoning effort low, JPEG input — on Replit:
- *   US layout 2   gpt-5.4-mini 3/3 in 5.0-7.8s   o4-mini 3/3 in 7.9-12.0s
- *   French HH     gpt-5.4-mini 0/3               o4-mini 1/3 (and it times
- *                                                out in the route regardless)
- *   Hebrew        both added VAT on some runs — irrelevant here, because tax is
- *                 never taken from the second reading and it does not run on
- *                 Hebrew receipts (see MAX_DISCOUNT_GAP).
- * Same fix for the US discount, faster, so more of it lands inside the budget.
+ * gpt-5.4. Replit is retiring o4-mini (notice 2026-09-24). Its two proposed
+ * replacements were measured in the real route on dev — second opinion,
+ * reasoning effort low, US layout 2 sent as a JPEG like a phone photo, 12 scans
+ * each:
+ *   gpt-5.4        11/12 right, every scan 10.5-12.0s
+ *   gpt-5.4-mini    9/12 right, 9.5-18.4s, one timeout
+ *   o4-mini        10/10 right, 13.6-18.1s  (retiring)
+ * Every miss was safe: the scan kept its "doesn't match" warning.
+ * gpt-5.4 costs more per call than the mini, but it only runs on the rare
+ * receipt whose items do not add up. Its tendency to add Israeli VAT (seen on
+ * some Hebrew runs) never reaches a bill: tax is never taken from the second
+ * reading, and the gap guard keeps it off Hebrew receipts.
  */
-const OCR_SECOND_MODEL = (process.env["OCR_SECOND_MODEL"] ?? "gpt-5.4-mini").trim();
+const OCR_SECOND_MODEL = (process.env["OCR_SECOND_MODEL"] ?? "gpt-5.4").trim();
 const SECOND_OPINION_ON = OCR_SECOND_MODEL !== "" && OCR_SECOND_MODEL !== "off";
 /**
  * How hard the second model thinks.
