@@ -57,8 +57,8 @@ import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
 import { receiptDataUrl } from "../src/lib/receipt-image.ts";
+import { interpretReceipt, parseModelJson } from "../src/lib/receipt-reading.ts";
 import { OCR_PROMPT } from "../src/lib/receipt-prompt.ts";
-import { normalizeLineItems, normalizeBillDiscount } from "../src/lib/receipt-line-items.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Override to score a different set, e.g. upright copies of the same photos. */
@@ -345,14 +345,22 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
   });
   const ms = Date.now() - startedAt;
 
-  const raw = completion.choices[0]?.message?.content ?? "";
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("no JSON in model response");
-  const parsed = JSON.parse(match[0]) as { items?: unknown[]; currency?: string | null; billDiscount?: unknown; taxAmount?: number | null };
+  const parsed = parseModelJson(completion.choices[0]?.message?.content ?? "");
+  if (!parsed) throw new Error("no JSON in model response");
 
-  const items = normalizeLineItems(parsed.items as never) as unknown as OcrItem[];
-  const billDiscount = normalizeBillDiscount(parsed.billDiscount);
-  return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount };
+  // Interpreted by the SAME function the route uses. Before this, --local took
+  // the model's billDiscount at face value while the route only applies one
+  // the printed total agrees with — so a sweep scored US layout 3 as passing
+  // on every model when the real scanner dropped its discount every time.
+  // (Only the second opinion is route-only: --local measures one model.)
+  const reading = interpretReceipt(parsed);
+  return {
+    ms,
+    items: reading.items as unknown as OcrItem[],
+    currency: reading.currency,
+    taxAmount: reading.taxAmount,
+    billDiscount: reading.billDiscount,
+  };
 }
 
 async function scanOnce(file: string, model: string | null): Promise<ScanResult> {

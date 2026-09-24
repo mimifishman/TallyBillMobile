@@ -101,5 +101,35 @@ check("an unexplained gap does not get a discount applied to it",
 check("a rounding drift still counts as agreeing",
   shouldApplyBillDiscount(572, 478.01, 94) === true);
 
+
+// Square's check-level discount, en-ny-bottom-discount: "Subtotal 104.00 /
+// Industry Night (15%) -15.60 / Sales Tax 7.85 / Total 96.25". The model
+// reports the total WITH tax, because no line on the paper is "after the
+// discount, before tax". The discount was read right and then thrown away.
+{
+  const square = [item(18), item(9), item(17), item(19), item(16), item(14), item(11)];
+  check("the discount is applied once the printed total includes tax",
+    shouldApplyBillDiscount(104, 96.25, 15.6, 7.85) === true);
+  check("and was refused before tax was allowed for",
+    shouldApplyBillDiscount(104, 96.25, 15.6) === false);
+  const sq = checkAgainstPrintedTotal(square, 96.25, 15.6, 7.85);
+  check("so the receipt reconciles", sq.reconciled === true && sq.difference === 0, sq);
+}
+
+// Tax counts only when there is tax added on top. Every Israeli receipt has
+// taxAmount null, so nothing about them may change.
+{
+  const hebrew = checkAgainstPrintedTotal([item(30), item(31), item(51), item(45), item(51)], 90, null, null);
+  check("a Hebrew receipt with no tax is compared exactly as before",
+    hebrew.reconciled === false && hebrew.difference === 118, hebrew);
+  check("a zero tax adds nothing", checkAgainstPrintedTotal([item(100)], 117, null, 0).reconciled === false);
+}
+
+// Tax must not rescue a total that is simply wrong.
+{
+  const off = checkAgainstPrintedTotal([item(50), item(60)], 125, null, 7.85);
+  check("tax that does not close the gap does not reconcile", off.reconciled === false && off.difference === -15, off);
+}
+
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);
