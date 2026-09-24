@@ -108,73 +108,39 @@ function check(name: string, ok: boolean, got?: unknown): void {
   if (!ok && got !== undefined) console.log(`      got  ${JSON.stringify(got)}`);
 }
 
-// Square prints the quantity as a suffix on the name — "Pork Dumplings x 2
-// $18.00" — and the scan hands it back with quantity 1 and the count still in
-// the description. The money is already right; what is wrong is that two
-// portions look like one and cannot be split between two people.
+// A COUNT IN AN ITEM'S NAME IS LEFT ALONE. This pins a decision, not a feature.
+//
+// Square prints its quantity as a suffix — "Pork Dumplings x 2  $18.00" — and
+// it is tempting to split that off so two portions can go to two people. It
+// cannot be done safely: a menu name carries the same shape for a different
+// reason, and nothing in the text tells them apart.
+//
+//   "Pork Dumplings x 2"   Square's quantity: two orders.
+//   "Chicken Wings x 10"   the dish itself: one order, ten wings.
+//
+// Guessing wrong is SILENT — the line total stays correct, so no check fires —
+// and it turns a 15.00 plate into ten claimable portions at 1.50. The quantity
+// has to come from the receipt's own column, read by the scan.
 {
-  const [dumplings] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 1, total: 18 }]);
-  check("a trailing x 2 becomes a quantity",
-    dumplings?.description === "Pork Dumplings" && dumplings?.quantity === 2, dumplings);
-  check("and the line total is untouched by it",
-    dumplings?.total === 18 && dumplings?.unitPrice === 9, dumplings);
-
-  const [tight] = normalizeLineItems([{ description: "Tsingtao x2", quantity: 1, total: 14 }]);
-  check("with or without a space", tight?.description === "Tsingtao" && tight?.quantity === 2, tight);
-
-  const [times] = normalizeLineItems([{ description: "Tsingtao × 2", quantity: 1, total: 14 }]);
-  check("a real multiplication sign works too", times?.description === "Tsingtao" && times?.quantity === 2, times);
-
-  const [glued] = normalizeLineItems([{ description: "Tsingtao×2", quantity: 1, total: 14 }]);
-  check("a × needs no space, since no word contains one",
-    glued?.description === "Tsingtao" && glued?.quantity === 2, glued);
-}
-
-// THE NAME ALWAYS LOSES THE COUNT; THE QUANTITY IS ONLY FILLED IN.
-// A count is never part of what was ordered, so it comes off the name either
-// way. But a quantity the scan read from a real column beats one guessed from
-// the end of a string, even where the two disagree.
-{
-  const [agree] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 2, total: 18 }]);
-  check("a correctly read quantity still gets a clean name",
-    agree?.description === "Pork Dumplings" && agree?.quantity === 2, agree);
-
-  const [disagree] = normalizeLineItems([{ description: "Pork Dumplings x 2", quantity: 3, total: 27 }]);
-  check("and wins when the two disagree",
-    disagree?.description === "Pork Dumplings" && disagree?.quantity === 3, disagree);
-
-  const [one] = normalizeLineItems([{ description: "Jasmine Tea x 1", quantity: 1, total: 11 }]);
-  check("x 1 leaves the name clean and the quantity at 1",
-    one?.description === "Jasmine Tea" && one?.quantity === 1, one);
-}
-
-// THE CASE THAT WAS BROKEN: an "x" that is simply the last letter of a word,
-// with digits after it. Every one of these mangled the name and invented a
-// quantity until the x was required to be a token of its own. The earlier guard
-// here used "Xiao Long Bao", which has no trailing digits, so it never reached
-// the comparison at all and passed against the broken version.
-{
-  for (const [name, total] of [["Lunch Box 2", 18], ["Bento Box 2", 22], ["Phoenix 5", 30], ["Chateau Margaux 2", 90], ["Bordeaux 201", 60]] as [string, number][]) {
-    const [got] = normalizeLineItems([{ description: name, quantity: 1, total }]);
+  for (const name of [
+    "Pork Dumplings x 2",
+    "Chicken Wings x 10",
+    "Oysters x6",
+    "Gyoza x 5",
+    "Coke Zero ×330",
+    "Pizza 12 x 16",
+    "Lunch Box 2",
+    "Bordeaux 201",
+  ]) {
+    const [got] = normalizeLineItems([{ description: name, quantity: 1, total: 18 }]);
     check(`"${name}" keeps its name and its quantity of 1`,
       got?.description === name && got?.quantity === 1, got);
   }
-}
 
-// Other names that must survive untouched.
-{
-  const [word] = normalizeLineItems([{ description: "Beef Chow Fun", quantity: 1, total: 19 }]);
-  check("an ordinary name is left alone", word?.description === "Beef Chow Fun" && word?.quantity === 1, word);
-
-  const [size] = normalizeLineItems([{ description: "Pinot Noir 6x175ml", quantity: 1, total: 30 }]);
-  check("a pack size mid-name is not a count",
-    size?.description === "Pinot Noir 6x175ml" && size?.quantity === 1, size);
-
-  const [bare] = normalizeLineItems([{ description: "x 2", quantity: 1, total: 8 }]);
-  check("a line that is only a count keeps its name", bare?.description === "x 2" && bare?.quantity === 1, bare);
-
-  const [year] = normalizeLineItems([{ description: "Bordeaux 2019", quantity: 1, total: 60 }]);
-  check("a four-digit year is not a count", year?.description === "Bordeaux 2019" && year?.quantity === 1, year);
+  // A quantity the scan read from a real column is used, as it always was.
+  const [column] = normalizeLineItems([{ description: "Pork Dumplings", quantity: 2, total: 18 }]);
+  check("a quantity from the receipt's own column is kept",
+    column?.quantity === 2 && column?.unitPrice === 9, column);
 }
 
 console.log(failed === 0 ? "\nAll checks passed." : `\n${failed} check(s) FAILED.`);

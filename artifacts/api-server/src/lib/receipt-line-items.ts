@@ -56,51 +56,33 @@ function nonNegativeNumber(value: unknown): number | null {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * A quantity Square prints as a suffix on the name.
+ * NO QUANTITY IS TAKEN FROM AN ITEM'S NAME. Do not add it back.
  *
- * Square writes "Pork Dumplings x 2   $18.00" rather than putting the 2 in a
- * column of its own, and the scan comes back with quantity 1 and the "x 2"
- * still sitting in the description. The money is right either way — 18.00 is
- * the line total — but two portions that look like one cannot be handed to two
- * different people, and the name reads wrong on screen.
+ * Square prints its quantity as a suffix — "Pork Dumplings x 2   $18.00" — and
+ * the scan returns quantity 1 with the count still in the description, so two
+ * portions look like one and cannot be handed to two people. Splitting that
+ * suffix off looks obviously right and is not, because a menu name carries the
+ * same shape for a completely different reason:
  *
- * The "x" has to be a token of its own. Letting it float meant the x of an
- * ordinary word was read as a multiplication sign whenever digits happened to
- * follow: "Lunch Box 2" came out as "Lunch Bo" with a quantity of 2, and
- * "Bordeaux 201" as "Bordeau" with a quantity of 201. The line total survives
- * that, which is why nothing else would have caught it — but the name loses a
- * letter, and quantity decides how many shares of a line can be claimed, so one
- * ordered dish could be split between two people paying half each. So the
- * character before an "x" must not be a letter or a digit. A "×" needs no such
- * guard, since it never appears inside a word.
+ *   "Pork Dumplings x 2"   Square's quantity. Two orders of dumplings.
+ *   "Chicken Wings x 10"   the dish. ONE order, ten wings in it.
+ *   "Oysters x6"           the dish. "Coke Zero ×330" is millilitres.
  *
- * The NAME always loses a trailing count, because it is never part of what was
- * ordered. The QUANTITY is only filled in from it when the scan read no real
- * column of its own — a quantity the scan actually read always wins, even where
- * the two disagree.
+ * The two are the same string. Nothing in the text distinguishes them, and
+ * guessing wrong is silent: the line total stays correct, so no check fires,
+ * while a 15.00 plate of wings becomes ten claimable portions at 1.50 and
+ * whoever takes one pays a tenth of a dish they ate. A wrong split is the one
+ * failure this app cannot afford, and it is worse than the problem being fixed.
+ *
+ * The quantity has to come from the receipt's own column, which means the scan
+ * reading it — see the item-name and model work rather than a pattern here.
  */
-const QUANTITY_SUFFIX = /(?:(?<![\p{L}\p{N}])x|×)\s*(\d{1,3})\s*$/iu;
-
-function splitQuantitySuffix(description: string, quantity: number): { description: string; quantity: number } {
-  const match = QUANTITY_SUFFIX.exec(description);
-  if (!match) return { description, quantity };
-  const stripped = description.slice(0, match.index).trim();
-  // A line that is nothing but a count is not an item name; leave it alone.
-  if (!stripped) return { description, quantity };
-  const found = Number(match[1]);
-  const counted = quantity === 1 && Number.isFinite(found) && found >= 2 ? found : quantity;
-  return { description: stripped, quantity: counted };
-}
-
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {
   return (items ?? []).reduce<LineItem[]>((acc, item) => {
-    const rawDescription = typeof item.description === "string" ? item.description.trim() : "";
-    if (!rawDescription) return acc;
+    const description = typeof item.description === "string" ? item.description.trim() : "";
+    if (!description) return acc;
 
-    const { description, quantity } = splitQuantitySuffix(
-      rawDescription,
-      positiveNumber(item.quantity) ?? 1,
-    );
+    const quantity = positiveNumber(item.quantity) ?? 1;
 
     const originalTotal = positiveNumber(item.originalTotal);
 
