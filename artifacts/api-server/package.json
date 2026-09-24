@@ -14,6 +14,7 @@
     "stress:discount": "node --experimental-strip-types scripts/stress-discount.ts",
     "check:discount": "node --experimental-strip-types scripts/check-discount.ts",
     "eval:ocr": "node --experimental-strip-types scripts/ocr-eval.ts",
+    "probe:models": "node --experimental-strip-types scripts/probe-models.ts",
     "prep:fixtures": "node --experimental-strip-types scripts/prep-fixtures.ts"
   },
   "dependencies": {

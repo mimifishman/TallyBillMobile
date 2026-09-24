@@ -1,0 +1,133 @@
+/**
+ * Which vision models can actually be reached, and can they read a receipt at
+ * all. Run: pnpm run probe:models -- --try gpt-4o,gemini-3-pro-preview
+ *
+ * MUST RUN ON REPLIT. There is no model credential on the Mac, and
+ * AI_INTEGRATIONS_OPENAI_BASE_URL is Replit-internal.
+ *
+ * This exists because an eval run is expensive and a model id is easy to get
+ * wrong. A candidate can fail for three quite different reasons, and only one
+ * of them is worth a full run:
+ *
+ *   - the id does not route at all, so it is a typo or not offered here;
+ *   - it routes but has no vision, so it answers about an image it cannot see;
+ *   - it routes and sees, but will not return the JSON it was asked for.
+ *
+ * Each model gets one tiny generated image with three priced lines on it, so a
+ * dead id costs a few hundred bytes rather than fourteen receipts. Passing here
+ * means "worth evaluating", never "good" — that is what eval:ocr is for.
+ */
+import OpenAI from "openai";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+function arg(flag: string): string | undefined {
+  const i = process.argv.indexOf(flag);
+  return i === -1 ? undefined : process.argv[i + 1];
+}
+
+const models = (arg("--try") ?? "gpt-4o")
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+function client(): OpenAI {
+  const envPath = join(here, "..", ".env.local");
+  if (!process.env["AI_INTEGRATIONS_OPENAI_API_KEY"] && existsSync(envPath)) {
+    process.loadEnvFile(envPath);
+  }
+  const baseURL = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+  const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  if (!baseURL || !apiKey) {
+    console.error("probe:models needs AI_INTEGRATIONS_OPENAI_BASE_URL and AI_INTEGRATIONS_OPENAI_API_KEY.");
+    console.error("Those are Replit-internal — run this on Replit, not on the Mac.");
+    process.exit(1);
+  }
+  return new OpenAI({ baseURL, apiKey });
+}
+
+/**
+ * A minimal receipt, drawn rather than photographed.
+ *
+ * Three lines at 1.00, 2.00 and 3.00. A model that can see it should return
+ * three items; one that is guessing from the prompt alone usually invents
+ * something else, which is the point of using amounts rather than a blank box.
+ */
+async function tinyReceipt(): Promise<string> {
+  const { default: sharp } = await import("sharp");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="150">
+    <rect width="220" height="150" fill="#fff"/>
+    <g font-family="monospace" font-size="14" fill="#000">
+      <text x="12" y="30">TEA</text><text x="150" y="30">1.00</text>
+      <text x="12" y="60">RICE</text><text x="150" y="60">2.00</text>
+      <text x="12" y="90">FISH</text><text x="150" y="90">3.00</text>
+      <text x="12" y="125">TOTAL</text><text x="150" y="125">6.00</text>
+    </g></svg>`;
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  return `data:image/png;base64,${png.toString("base64")}`;
+}
+
+type Verdict = "ok" | "NO VISION" | "NO JSON" | "ERROR";
+
+async function probe(openai: OpenAI, model: string, dataUrl: string): Promise<{ verdict: Verdict; detail: string; ms: number }> {
+  const startedAt = Date.now();
+  try {
+    const completion = await openai.chat.completions.create({
+      model,
+      temperature: 0,
+      max_completion_tokens: 300,
+      messages: [
+        {
+          role: "system",
+          content: 'Read the receipt image. Return ONLY JSON: {"items":[{"description":"...","total":0.00}]}',
+        },
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+            { type: "text", text: "Extract the line items as JSON." },
+          ],
+        },
+      ],
+    });
+    const ms = Date.now() - startedAt;
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return { verdict: "NO JSON", detail: raw.slice(0, 60).replace(/\s+/g, " "), ms };
+
+    const parsed = JSON.parse(match[0]) as { items?: { description?: string; total?: number }[] };
+    const items = parsed.items ?? [];
+    const sum = Math.round(items.reduce((s, i) => s + (Number(i.total) || 0), 0) * 100) / 100;
+    // The drawn receipt is three lines summing to 6.00. Anything else means the
+    // image did not reach the model, or reached it and was not read.
+    if (items.length !== 3 || Math.abs(sum - 6) > 0.01) {
+      return { verdict: "NO VISION", detail: `${items.length} items, sum ${sum.toFixed(2)}`, ms };
+    }
+    return { verdict: "ok", detail: items.map((i) => i.description ?? "?").join(" "), ms };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { verdict: "ERROR", detail: message.slice(0, 60).replace(/\s+/g, " "), ms: Date.now() - startedAt };
+  }
+}
+
+const openai = client();
+const dataUrl = await tinyReceipt();
+console.log(`probing ${models.length} model(s) with one ${Math.round(dataUrl.length / 1.37 / 1024)}kB image each\n`);
+console.log("model".padEnd(30) + "verdict".padEnd(11) + "ms".padStart(7) + "  detail");
+console.log("-".repeat(78));
+
+const worth: string[] = [];
+for (const model of models) {
+  const { verdict, detail, ms } = await probe(openai, model, dataUrl);
+  if (verdict === "ok") worth.push(model);
+  console.log(model.padEnd(30) + verdict.padEnd(11) + String(ms).padStart(7) + "  " + detail);
+}
+
+console.log(
+  worth.length === 0
+    ? "\nNothing worth evaluating."
+    : `\nWorth a full run:\n  pnpm run eval:ocr -- --local --repeat 3 --models ${worth.join(",")}`,
+);

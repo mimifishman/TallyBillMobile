@@ -7,6 +7,9 @@
  *   OCR_BASE=http://localhost:5000 pnpm run eval:ocr
  *   OCR_FIXTURES=/path/to/other/photos pnpm run eval:ocr
  *   pnpm run eval:ocr -- --local        call the model directly, no server
+ *   pnpm run eval:ocr -- --local --models gpt-4o,gemini-3-pro-preview
+ *                                       score several models over the same
+ *                                       fixtures, reported side by side
  *
  * Posts each photo to the running server's /api/ocr, so what it measures is the
  * real path the app takes — the same prompt, the same model, the same network.
@@ -39,6 +42,13 @@
  * ticket, any Israeli receipt — the right answer is null, because the app adds
  * taxAmount to the items and would otherwise bill the tax a second time.
  *
+ * `--models` scores each model over every fixture and labels the rows with it,
+ * so candidates are compared on identical bytes in one command. It only works
+ * with `--local`, on purpose: a deployed route takes its model from the server
+ * environment, so that a public endpoint cannot be told by its caller which
+ * model to spend money on. Probe ids with `pnpm run probe:models` first — a
+ * model that cannot see an image should not cost fourteen receipts to find out.
+ *
  * Raw model output for each run lands in fixtures/out/, to diff after a change.
  */
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -65,6 +75,15 @@ function arg(flag: string): string | undefined {
 const only = arg("--only");
 const local = process.argv.includes("--local");
 const repeat = Number(arg("--repeat") ?? 1);
+/** Candidate models to compare; `--local` only. One entry means the default. */
+const models = (arg("--models") ?? process.env["OCR_MODEL"] ?? "")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+if (models.length > 0 && !local) {
+  console.error("--models needs --local: the deployed route takes its model from the server environment.");
+  process.exit(1);
+}
+/** What a run is labelled with when nothing was chosen. */
+const sweep = models.length > 0 ? models : [null];
 
 interface Expected {
   items?: number;
@@ -222,13 +241,13 @@ interface ScanResult {
 }
 
 /** The model call the route makes, with this repo's prompt and parsing. */
-async function scanLocally(file: string): Promise<ScanResult> {
+async function scanLocally(file: string, model: string | null): Promise<ScanResult> {
   const bytes = readFileSync(join(RECEIPTS, file));
   const dataUrl = `data:${mimeOf(file)};base64,${bytes.toString("base64")}`;
 
   const startedAt = Date.now();
   const completion = await openaiClient().chat.completions.create({
-    model: process.env["OCR_MODEL"] ?? "gpt-4o",
+    model: model ?? process.env["OCR_MODEL"] ?? "gpt-4o",
     temperature: 0,
     max_completion_tokens: 2048,
     response_format: { type: "json_object" },
@@ -255,8 +274,8 @@ async function scanLocally(file: string): Promise<ScanResult> {
   return { ms, items, currency: parsed.currency ?? null, taxAmount: parsed.taxAmount ?? null, billDiscount };
 }
 
-async function scanOnce(file: string): Promise<ScanResult> {
-  if (local) return scanLocally(file);
+async function scanOnce(file: string, model: string | null): Promise<ScanResult> {
+  if (local) return scanLocally(file, model);
   const bytes = readFileSync(join(RECEIPTS, file));
   const body = JSON.stringify({
     imageBase64: bytes.toString("base64"),
@@ -302,10 +321,11 @@ async function run(): Promise<void> {
     const language = languageOf(file);
     const expected = loadExpected(file);
 
+    for (const model of sweep) {
     for (let run = 1; run <= repeat; run++) {
-      const label = repeat > 1 ? `${file} #${run}` : file;
+      const label = (model ? `${file} [${model}]` : file) + (repeat > 1 ? ` #${run}` : "");
       try {
-        const { ms, items, currency, taxAmount, billDiscount } = await scanOnce(file);
+        const { ms, items, currency, taxAmount, billDiscount } = await scanOnce(file, model);
         const sum = Math.round(items.reduce((s, i) => s + (Number(i.total) || 0), 0) * 100) / 100;
         const maxQuantity = items.reduce((m, i) => Math.max(m, Number(i.quantity) || 1), 1);
 
@@ -332,24 +352,25 @@ async function run(): Promise<void> {
         process.stdout.write("!");
       }
     }
+    }
   }
   console.log("\n");
 
   // Per receipt
   // Measured from the header rather than written down, so a new column cannot
   // leave the rule short of the very column that was just added.
-  const receiptHeader = pad("receipt", 30) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) +
+  const receiptHeader = pad("receipt", 44) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) +
     padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names";
   console.log(receiptHeader);
   console.log("-".repeat(receiptHeader.length));
   for (const r of rows) {
     if (r.error) {
-      console.log(pad(r.name, 30) + "  ERROR  " + r.error.slice(0, 48));
+      console.log(pad(r.name, 44) + "  ERROR  " + r.error.slice(0, 48));
       continue;
     }
     const flag = r.ms > BUDGET_MS ? " OVER" : "";
     console.log(
-      pad(r.name, 30) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
+      pad(r.name, 44) + padL(r.ms, 7) + padL(r.items, 7) + padL(r.sum.toFixed(2), 10) +
       padL(r.currency ?? "-", 5) + padL(`x${r.maxQuantity}`, 6) +
       padL(r.itemsOk === null ? "-" : r.itemsOk ? "ok" : "MISS", 7) +
       padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) +
@@ -389,7 +410,7 @@ async function run(): Promise<void> {
   // all. A name that is wrong the same way every time is at least a misreading
   // of something that is there.
   if (repeat > 1) {
-    console.log("\n" + pad("receipt", 30) + padL("name agreement", 16) + "  names that moved");
+    console.log("\n" + pad("receipt", 44) + padL("name agreement", 16) + "  names that moved");
     console.log("-".repeat(80));
     for (const file of [...new Set(rows.map((r) => r.name.replace(/ #\d+$/, "")))]) {
       const runs = rows.filter((r) => !r.error && r.name.replace(/ #\d+$/, "") === file);
@@ -398,7 +419,7 @@ async function run(): Promise<void> {
       const stable = first.filter((name) => runs.every((r) => r.descriptions.map(normalizeName).includes(name)));
       const moved = [...new Set(runs.flatMap((r) => r.descriptions).filter((d) => !stable.includes(normalizeName(d))))];
       console.log(
-        pad(file, 30) + padL(`${stable.length}/${first.length}`, 16) +
+        pad(file, 44) + padL(`${stable.length}/${first.length}`, 16) +
         "  " + (moved.length === 0 ? "-" : moved.slice(0, 4).join(" | ")),
       );
     }

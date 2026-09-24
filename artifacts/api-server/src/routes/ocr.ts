@@ -11,6 +11,21 @@ import {
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
 import { prepareReceipt } from "../lib/receipt-image.js";
 
+/**
+ * Which vision model reads the receipts.
+ *
+ * Configuration rather than code, so trying a candidate is a setting and a
+ * restart instead of a deploy, and so is rolling back off one. The model is NOT
+ * taken from the request: this endpoint is open to guests, and a caller who
+ * could name the model could name an expensive one.
+ *
+ * The model that actually ran comes back in an X-OCR-Model header, so an eval
+ * run is labelled with what read the receipt rather than with what was
+ * intended. Without that a sweep can silently score the same model twice.
+ */
+const OCR_MODEL = process.env["OCR_MODEL"] ?? "gpt-4o";
+const OCR_TRANSLATE_MODEL = process.env["OCR_TRANSLATE_MODEL"] ?? "gpt-4o";
+
 const router = Router();
 
 let _openai: OpenAI | null = null;
@@ -50,7 +65,7 @@ router.post("/translate", async (req, res) => {
     const openai = getOpenAIClient();
     const numberedList = descriptions.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n");
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: OCR_TRANSLATE_MODEL,
       temperature: 0,
       max_completion_tokens: 1024,
       response_format: { type: "json_object" },
@@ -117,8 +132,9 @@ router.post("/", async (req, res) => {
       : "image/png";
     const dataUrl = `data:${mimeType};base64,${prepared.buffer.toString("base64")}`;
 
+    res.setHeader("X-OCR-Model", OCR_MODEL);
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: OCR_MODEL,
       temperature: 0,
       max_completion_tokens: 2048,
       response_format: { type: "json_object" },
