@@ -4,6 +4,7 @@ import {
   normalizeLineItems,
   normalizeBillDiscount,
   normalizePrintedTotal,
+  normalizeReceiptAmount,
   checkAgainstPrintedTotal,
   shouldApplyBillDiscount,
   type RawLineItem,
@@ -45,8 +46,8 @@ interface AIReceiptResponse {
   items?: RawLineItem[];
   billDiscount?: number | null;
   printedTotal?: number | null;
-  taxAmount?: number | null;
-  tipAmount?: number | null;
+  taxAmount?: unknown;
+  tipAmount?: unknown;
   currency?: string | null;
 }
 
@@ -200,8 +201,10 @@ router.post("/", async (req, res) => {
       printedTotal: check.printedTotal,
       itemsTotal: check.itemsTotal,
       reconciled: check.reconciled,
-      taxAmount: parsed.taxAmount ?? null,
-      tipAmount: parsed.tipAmount ?? null,
+      // The app adds these to the bill and formats them with .toFixed(2), so
+      // they go through the same normalizer as every other money field here.
+      taxAmount: normalizeReceiptAmount(parsed.taxAmount),
+      tipAmount: normalizeReceiptAmount(parsed.tipAmount),
       currency: parsed.currency ?? null,
     });
   } catch (err) {

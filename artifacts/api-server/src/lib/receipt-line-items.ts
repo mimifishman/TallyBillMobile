@@ -14,7 +14,9 @@
  *    that line. The prompt is what applies the discount, so that exactly one
  *    number counts and nothing can be subtracted twice. `originalTotal` carries
  *    the pre-discount amount purely so the app can show where the number came
- *    from, and is kept only when it really is higher than what was charged.
+ *    from, and is kept only when it really is higher than what was charged. How
+ *    the discount READS to a person is worked out from those two numbers where
+ *    it is shown; no wording for it is ever stored.
  */
 
 export interface RawLineItem {
@@ -32,6 +34,16 @@ export interface LineItem {
   unitPrice: number;
   total: number;
   originalTotal: number | null;
+  /**
+   * The discount's printed wording, straight from the model.
+   *
+   * Reported, never stored. The scan prompt asks for it because naming the
+   * discount is what makes the model commit to reading a "-14.00" line as a
+   * discount on the item above rather than as an item of its own, and that
+   * reading is what keeps a discounted bill from being overcharged. What the
+   * app puts on screen is worked out from originalTotal and total instead, so
+   * it cannot go stale when a price is edited. Do not persist this.
+   */
   discountLabel: string | null;
 }
 
@@ -116,6 +128,35 @@ export function normalizeLineItems(items: RawLineItem[] | undefined | null): Lin
 /** A discount printed against the whole bill rather than against one item. */
 export function normalizeBillDiscount(value: unknown): number | null {
   const n = positiveNumber(typeof value === "number" ? Math.abs(value) : Math.abs(Number(value)));
+  return n === null ? null : round2(n);
+}
+
+/**
+ * A tax or tip figure read off the receipt, for the app to ADD to the bill.
+ *
+ * Every other money field on the scan response is normalized; these two were
+ * passed straight through from the model, and both ways that can go wrong end
+ * at a person paying:
+ *
+ * - A string breaks the review screen outright. The scan screen calls
+ *   .toFixed(2) on this value, and a string has no such method, so the whole
+ *   screen throws instead of showing the bill. A string that IS a number is
+ *   just the model quoting a figure, so it is read as one; anything else is
+ *   not an amount and is refused.
+ * - A negative silently reduces someone's share, because the app adds this to
+ *   the total. Nothing on screen says where the missing money went, so it is
+ *   refused rather than flipped: tax and tip are added on top or they are not
+ *   there at all.
+ *
+ * Zero is kept, and is not the same as absent. A receipt that printed "TAX
+ * 0.00" told us something; a receipt that printed no tax line did not.
+ */
+export function normalizeReceiptAmount(value: unknown): number | null {
+  // Only a number or a quoted number is an amount. Without this, Number(true)
+  // is 1 and Number([]) is 0, so junk would arrive as a plausible-looking
+  // figure rather than as nothing.
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const n = nonNegativeNumber(value);
   return n === null ? null : round2(n);
 }
 

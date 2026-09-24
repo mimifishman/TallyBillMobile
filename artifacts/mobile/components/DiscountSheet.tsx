@@ -18,7 +18,6 @@ export interface DiscountResult {
   originalTotal: number | null;
   discountAmount: number;
   total: number;
-  discountLabel: string | null;
 }
 
 /**
@@ -198,8 +197,8 @@ export function DiscountSheet({
   const handleSave = () => {
     onSave(
       lines.map((line) => {
-        const { id, originalTotal, discountAmount, total, discountLabel } = applyPercent(line, rates.get(line.id) ?? 0);
-        return { id, originalTotal, discountAmount, total, discountLabel };
+        const { id, originalTotal, discountAmount, total } = applyPercent(line, rates.get(line.id) ?? 0);
+        return { id, originalTotal, discountAmount, total };
       }),
       rate > 0 ? rate : defaultPercent,
     );

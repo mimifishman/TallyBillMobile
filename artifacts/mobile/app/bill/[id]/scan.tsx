@@ -162,7 +162,7 @@ export default function ScanScreen() {
    * two discounts can never land on the same item, so there is no
    * order-of-application question to get wrong.
    */
-  const [itemDiscounts, setItemDiscounts] = useState<Map<number, { amount: number; originalTotal: number; label: string | null }>>(new Map());
+  const [itemDiscounts, setItemDiscounts] = useState<Map<number, { amount: number; originalTotal: number }>>(new Map());
   const taxTipSeeded = useRef(false);
   const keyboardHeight = useKeyboardHeight();
 
@@ -267,29 +267,21 @@ export default function ScanScreen() {
     const lines = scan.items.map((item, index) => ({ id: index, total: item.total, originalTotal: null }));
     const inferred = inferDiscountSelection(lines, scan.billDiscount);
 
-    const next = new Map<number, { amount: number; originalTotal: number; label: string | null }>();
+    const next = new Map<number, { amount: number; originalTotal: number }>();
     if (inferred) {
-      // Labelled with the rate, the same as a discount entered by hand. "20%
-      // off" is something a person can check against the receipt at a glance;
-      // "Discount on the receipt" only says that one exists.
-      const label = `${Math.round(inferred.percent * 100) / 100}% off`;
       for (const id of inferred.lineIds) {
-        const applied = applyPercent(lines[id]!, inferred.percent, label);
-        next.set(id, { amount: applied.discountAmount, originalTotal: applied.originalTotal!, label });
+        const applied = applyPercent(lines[id]!, inferred.percent);
+        next.set(id, { amount: applied.discountAmount, originalTotal: applied.originalTotal! });
       }
     } else {
       // Which items the discount came off could not be worked out, so it is
       // spread over everything — that lands the bill on the right figure and
       // leaves something obvious to correct.
-      for (const share of applyAmount(scan.billDiscount, lines, "Discount")) {
+      for (const share of applyAmount(scan.billDiscount, lines)) {
         if (share.discountAmount > 0) {
-          const percent = share.originalTotal
-            ? Math.round((share.discountAmount / share.originalTotal) * 1000) / 10
-            : 0;
           next.set(share.id, {
             amount: share.discountAmount,
             originalTotal: share.originalTotal!,
-            label: percent > 0 ? `${percent}% off` : "Discount",
           });
         }
       }
@@ -463,7 +455,6 @@ export default function ScanScreen() {
           next.set(index, {
             amount: values.discountAmount,
             originalTotal: values.total,
-            label: prev.get(index)?.label ?? "Discount",
           });
         } else {
           next.delete(index);
@@ -538,7 +529,6 @@ export default function ScanScreen() {
             unitPrice: quantity > 0 ? Math.round((charged / quantity) * 100) / 100 : charged,
             total: charged,
             originalTotal: discount ? discount.originalTotal : null,
-            discountLabel: discount?.label ?? null,
           };
         }),
       },
@@ -639,7 +629,7 @@ export default function ScanScreen() {
           </View>
           <Text style={[styles.pickTitle, { color: colors.foreground }]}>Scan a Receipt</Text>
           <Text style={[styles.pickSub, { color: colors.mutedForeground }]}>
-            Point your camera at the line items section of your receipt. Works with all language receipts.
+            Take a photo of the whole receipt, top to bottom. Works with receipts in any language.
           </Text>
           <TouchableOpacity
             style={[styles.pickBtn, { backgroundColor: colors.primary }]}
@@ -847,7 +837,7 @@ export default function ScanScreen() {
                       {priced.charged.toFixed(2)}
                     </Text>
                     {/* Worked out from the two prices, so it cannot go stale
-                        when one is edited or vanish if a label is lost. */}
+                        when one is edited or vanish if a write forgets it. */}
                     {priced.percent !== null ? (
                       <Text style={[styles.reviewItemOff, { color: colors.primaryText }]}>
                         {priced.percent}% off
@@ -913,13 +903,12 @@ export default function ScanScreen() {
         onClose={() => setShowDiscount(false)}
         onSave={(results) => {
           setShowDiscount(false);
-          const next = new Map<number, { amount: number; originalTotal: number; label: string | null }>();
+          const next = new Map<number, { amount: number; originalTotal: number }>();
           for (const result of results) {
             if (result.originalTotal == null || result.discountAmount <= 0) continue;
             next.set(result.id, {
               amount: result.discountAmount,
               originalTotal: result.originalTotal,
-              label: result.discountLabel,
             });
           }
           setItemDiscounts(next);

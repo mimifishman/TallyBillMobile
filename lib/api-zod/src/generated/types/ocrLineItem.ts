@@ -14,6 +14,6 @@ export interface OcrLineItem {
   total: number;
   /** Amount before the line's discount, null when it was not discounted. */
   originalTotal?: number | null;
-  /** Printed wording of the line's discount, e.g. "25% Happy Hour". */
+  /** Printed wording of the line's discount, e.g. "25% Happy Hour". Reported, never stored: what the app shows is worked out from originalTotal and total. See receipt-line-items.ts. */
   discountLabel?: string | null;
 }
