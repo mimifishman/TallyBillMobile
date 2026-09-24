@@ -26,7 +26,24 @@ import {
  * run is labelled with what read the receipt rather than with what was
  * intended. Without that a sweep can silently score the same model twice.
  */
-const OCR_MODEL = process.env["OCR_MODEL"] ?? "gpt-4o";
+/**
+ * gpt-5.4 reads every receipt, since 2026-09-24 (it was gpt-4o).
+ *
+ * Measured through this route on dev, all 19 fixtures, three runs each, with the
+ * second opinion and the uncropped re-read both on:
+ *                              gpt-4o      gpt-5.4
+ *   Hebrew totals               36/36       36/36
+ *   Hebrew tax                  36/36       36/36
+ *   Hebrew names recognisable  ~115/165     142/165   (exact ~90 -> 109)
+ *   English totals              15/15       15/15
+ *   English names recognisable  ~78/87       85/87
+ * Most users are in Israel, and item names are the Hebrew weakness; money was
+ * already right. gpt-4o is also older than gpt-4.1, which Replit is retiring.
+ * Known costs: the French happy-hour ticket errs a few euros low instead of
+ * high (still flagged as not matching), and one creased Hebrew receipt that
+ * needed the uncropped re-read took 22.7s end to end from the Mac.
+ */
+const OCR_MODEL = process.env["OCR_MODEL"] ?? "gpt-5.4";
 const OCR_TRANSLATE_MODEL = process.env["OCR_TRANSLATE_MODEL"] ?? "gpt-4o";
 
 /**
