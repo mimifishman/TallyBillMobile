@@ -11,6 +11,7 @@ import {
 } from "../lib/receipt-line-items.js";
 import { OCR_PROMPT } from "../lib/receipt-prompt.js";
 import { prepareReceipt } from "../lib/receipt-image.js";
+import { chatCompletion } from "../lib/model-call.js";
 
 /**
  * Which vision model reads the receipts.
@@ -65,7 +66,7 @@ router.post("/translate", async (req, res) => {
   try {
     const openai = getOpenAIClient();
     const numberedList = descriptions.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n");
-    const completion = await openai.chat.completions.create({
+    const completion = await chatCompletion(openai, {
       model: OCR_TRANSLATE_MODEL,
       temperature: 0,
       max_completion_tokens: 1024,
@@ -134,7 +135,7 @@ router.post("/", async (req, res) => {
     const dataUrl = `data:${mimeType};base64,${prepared.buffer.toString("base64")}`;
 
     res.setHeader("X-OCR-Model", OCR_MODEL);
-    const completion = await openai.chat.completions.create({
+    const completion = await chatCompletion(openai, {
       model: OCR_MODEL,
       temperature: 0,
       max_completion_tokens: 2048,
