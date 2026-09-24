@@ -1024,21 +1024,21 @@ function LineRow({
             onClick={() => setEditing(true)}
             className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                <span className="inline-flex items-center bg-muted text-muted-foreground text-[11px] font-semibold rounded px-1.5 py-0.5 shrink-0">
-                  ×{lineQty}
-                </span>
-                <span className="font-medium text-foreground truncate">{line.description}</span>
-              </div>
-              <span className="font-semibold text-foreground tabular-nums shrink-0">
-                {formatMoney(num(line.total), currency)}
-                {lineQty > 1 && (
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
-                    ({formatMoney(num(line.unitPrice), currency)} each)
-                  </span>
-                )}
+            <span className="font-medium text-foreground break-words">
+              {line.description}
+            </span>
+            <div className="mt-0.5 flex items-baseline gap-x-1.5 flex-wrap">
+              <span className="inline-flex items-center bg-muted text-muted-foreground text-[11px] font-semibold rounded px-1.5 py-0.5 shrink-0 self-center">
+                ×{lineQty}
               </span>
+              <span className="font-semibold text-foreground tabular-nums whitespace-nowrap">
+                {formatMoney(num(line.total), currency)}
+              </span>
+              {lineQty > 1 && (
+                <span className="text-xs font-normal text-muted-foreground whitespace-nowrap">
+                  {formatMoney(num(line.unitPrice), currency)} each
+                </span>
+              )}
             </div>
           </button>
         )}
