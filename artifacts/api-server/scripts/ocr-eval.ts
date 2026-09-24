@@ -109,10 +109,14 @@ interface OcrItem {
 interface Row {
   name: string;
   language: string;
+  /** The model that read it, in a --models sweep; null for a single-model run. */
+  model: string | null;
   /** Item names as returned, so runs can be compared against each other. */
   descriptions: string[];
   /** Names matched against the hand-read truth, when there is any. */
   namesOk: number | null;
+  /** Names a diner would recognise — exact or within a letter or two. */
+  namesClose: number | null;
   namesTotal: number | null;
   ms: number;
   items: number;
@@ -204,6 +208,66 @@ function scoreDiscount(got: number | null, expected: Expected | undefined): bool
   const want = expected.billDiscount;
   if (want == null) return got == null || got === 0;
   return got != null && Math.abs(got - want) <= 0.01;
+}
+
+/** Edit distance between two strings, by code point. */
+function editDistance(a: string, b: string): number {
+  const x = [...a], y = [...b];
+  let prev = Array.from({ length: y.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= x.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= y.length; j++) {
+      cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (x[i - 1] === y[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[y.length]!;
+}
+
+/** How alike two names are, 0 to 1, after the same normalising as an exact match. */
+function nameSimilarity(a: string, b: string): number {
+  const x = normalizeName(a), y = normalizeName(b);
+  const longest = Math.max([...x].length, [...y].length);
+  return longest === 0 ? 1 : 1 - editDistance(x, y) / longest;
+}
+
+/**
+ * The bar for "a diner would recognise this as their dish".
+ *
+ * Exact matching counts `טורטליני גבינת פטריות` for `טורטליני גבינות פטריות` —
+ * one letter — as exactly as wrong as `תפריט ילדים` ("kids' menu") for
+ * `סורבה יוזו` ("yuzu sorbet"). Only the second stops someone finding their
+ * line on the bill, and a model change should be judged on that.
+ *
+ * Why 0.8, from every non-exact Hebrew name in the 2026-09-24 gpt-4o run:
+ *   - 0.85-0.95: all the same dish, misspelt by a letter or two
+ *     (גבינת/גבינות, קרם/קרמו, קטן/קופ, לקס/קסק).
+ *   - 0.78 and below: a different dish, or unreadable — with one borderline
+ *     case, אפאש סמאש for אפל סמאש at 0.78, deliberately left out.
+ *   - A wrong dish is NOT always far off. טורטליני ריקוטה for טורטליני שייטל,
+ *     ricotta for shiitake, scores 0.73 because the two share a word. That is
+ *     why the bar is not lower.
+ * 0.8 sits in the empty gap between 0.78 and 0.85. Re-check it if a new model
+ * produces names that land inside that gap.
+ */
+const CLOSE_NAME = 0.8;
+
+/** How many expected names came back close enough to recognise, matched one-to-one. */
+function closeNames(got: string[], want: string[]): number {
+  const pool = [...got];
+  let matched = 0;
+  for (const w of want) {
+    let best = -1, bestScore = 0;
+    pool.forEach((g, i) => {
+      const score = nameSimilarity(g, w);
+      if (score > bestScore) { bestScore = score; best = i; }
+    });
+    if (best >= 0 && bestScore >= CLOSE_NAME) {
+      matched++;
+      pool.splice(best, 1);
+    }
+  }
+  return matched;
 }
 
 /** How many of the expected names came back, compared as a set. */
@@ -352,9 +416,10 @@ async function run(): Promise<void> {
         const descriptions = items.map((i) => String(i.description ?? ""));
         const want = expected?.itemDescriptions;
         rows.push({
-          name: label, language, ms, items: items.length, sum, currency, maxQuantity, taxAmount, billDiscount, expected, itemsOk, totalOk, taxOk, discountOk,
+          name: label, language, model, ms, items: items.length, sum, currency, maxQuantity, taxAmount, billDiscount, expected, itemsOk, totalOk, taxOk, discountOk,
           descriptions,
           namesOk: want ? matchNames(descriptions, want) : null,
+          namesClose: want ? closeNames(descriptions, want) : null,
           namesTotal: want ? want.length : null,
         });
         // The model is part of the name: a sweep otherwise overwrites one model's
@@ -364,7 +429,7 @@ async function run(): Promise<void> {
         process.stdout.write(".");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        rows.push({ name: label, language, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, billDiscount: null, expected, itemsOk: null, totalOk: null, taxOk: null, discountOk: null, descriptions: [], namesOk: null, namesTotal: null, error: message });
+        rows.push({ name: label, language, model, ms: 0, items: 0, sum: 0, currency: null, maxQuantity: 1, taxAmount: null, billDiscount: null, expected, itemsOk: null, totalOk: null, taxOk: null, discountOk: null, descriptions: [], namesOk: null, namesClose: null, namesTotal: null, error: message });
         process.stdout.write("!");
       }
     }
@@ -376,7 +441,7 @@ async function run(): Promise<void> {
   // Measured from the header rather than written down, so a new column cannot
   // leave the rule short of the very column that was just added.
   const receiptHeader = pad("receipt", 44) + padL("ms", 7) + padL("items", 7) + padL("sum", 10) +
-    padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names";
+    padL("cur", 5) + padL("maxQ", 6) + "  count  total    tax   disc  names  close";
   console.log(receiptHeader);
   console.log("-".repeat(receiptHeader.length));
   for (const r of rows) {
@@ -392,30 +457,41 @@ async function run(): Promise<void> {
       padL(r.totalOk === null ? "-" : r.totalOk ? "ok" : "OFF", 7) +
       padL(r.taxOk === null ? "-" : r.taxOk ? "ok" : "TAX", 7) +
       padL(r.discountOk === null ? "-" : r.discountOk ? "ok" : "DISC", 7) +
-      padL(r.namesTotal === null ? "-" : `${r.namesOk}/${r.namesTotal}`, 7) + flag
+      padL(r.namesTotal === null ? "-" : `${r.namesOk}/${r.namesTotal}`, 7) +
+      padL(r.namesTotal === null ? "-" : `${r.namesClose}/${r.namesTotal}`, 7) + flag
     );
   }
 
-  // Per language — never blended, so a Hebrew regression cannot hide behind English.
-  const languageHeader = pad("language", 10) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) +
+  // Per language — never blended, so a Hebrew regression cannot hide behind
+  // English. And per MODEL within a language: a sweep summarised by language
+  // alone averages the candidates together, which hid, for instance, that one
+  // model was 21/21 on Hebrew totals and the other 19/21.
+  const languageHeader = pad("language", 22) + padL("runs", 6) + padL("p50 ms", 8) + padL("p95 ms", 8) +
     padL("over 20s", 10) + padL("count ok", 10) + padL("total ok", 10) + padL("tax ok", 9) +
-    padL("disc ok", 9) + padL("errors", 8);
+    padL("disc ok", 9) + padL("names", 9) + padL("close", 9) + padL("errors", 8);
   console.log("\n" + languageHeader);
   console.log("-".repeat(languageHeader.length));
-  const languages = [...new Set(rows.map((r) => r.language))].sort();
+  const groupOf = (r: Row) => (r.model ? `${r.language} ${r.model}` : r.language);
+  const languages = [...new Set(rows.map(groupOf))].sort();
   for (const language of languages) {
-    const group = rows.filter((r) => r.language === language);
+    const group = rows.filter((r) => groupOf(r) === language);
     const good = group.filter((r) => !r.error);
     const times = good.map((r) => r.ms);
+    const nameTotals = (key: "namesOk" | "namesClose") => {
+      const judged = good.filter((r) => r.namesTotal !== null);
+      if (judged.length === 0) return "-";
+      return `${judged.reduce((s, r) => s + (r[key] ?? 0), 0)}/${judged.reduce((s, r) => s + (r.namesTotal ?? 0), 0)}`;
+    };
     const scored = (key: "itemsOk" | "totalOk" | "taxOk" | "discountOk") => {
       const judged = good.filter((r) => r[key] !== null);
       if (judged.length === 0) return "-";
       return `${judged.filter((r) => r[key]).length}/${judged.length}`;
     };
     console.log(
-      pad(language, 10) + padL(group.length, 6) + padL(percentile(times, 0.5), 8) + padL(percentile(times, 0.95), 8) +
+      pad(language, 22) + padL(group.length, 6) + padL(percentile(times, 0.5), 8) + padL(percentile(times, 0.95), 8) +
       padL(good.filter((r) => r.ms > BUDGET_MS).length, 10) + padL(scored("itemsOk"), 10) + padL(scored("totalOk"), 10) +
-      padL(scored("taxOk"), 9) + padL(scored("discountOk"), 9) + padL(group.filter((r) => r.error).length, 8)
+      padL(scored("taxOk"), 9) + padL(scored("discountOk"), 9) + padL(nameTotals("namesOk"), 9) + padL(nameTotals("namesClose"), 9) +
+      padL(group.filter((r) => r.error).length, 8)
     );
   }
 
