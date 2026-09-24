@@ -212,6 +212,38 @@ check("o4-mini's reading reconciles", o4mini.check.reconciled === true, o4mini.c
   check("a tie keeps the cropped reading", closerToReceipt(cropped, cropped) === cropped);
 }
 
+
+// The clean Hebrew bar receipt: gpt-4o right on one line and backwards on the
+// other. The cocktail is freed correctly; the beers' 25% happy hour is added
+// instead of taken off. gpt-5.4 reads both right and must not be refused.
+{
+  const others = [
+    { description: "המבורגר 200 גרם", quantity: 1, total: 78 },
+    { description: "צ'יפס בטטה", quantity: 1, total: 28 },
+    { description: "כנפיים חריפות", quantity: 1, total: 52 },
+  ];
+  const mixed = interpretReceipt({
+    items: [
+      { description: "בירה גולדסטאר", quantity: 2, total: 64, originalTotal: 80, discountLabel: "הנחת הפי האוור 25%" },
+      ...others,
+      { description: "קוקטייל הבית", quantity: 1, total: 0, originalTotal: 48, discountLabel: "הנחה 100%" },
+    ],
+    printedTotal: 206, taxAmount: null, currency: "ILS",
+  });
+  const right = interpretReceipt({
+    items: [
+      { description: "בירה גולדסטאר", quantity: 2, total: 48, originalTotal: 64, discountLabel: "הנחת הפי האוור 25%" },
+      ...others,
+      { description: "קוקטייל הבית", quantity: 1, total: 0, originalTotal: 48, discountLabel: "הנחה 100%" },
+    ],
+    printedTotal: 206, taxAmount: null, currency: "ILS",
+  });
+  check("the half-backwards reading asks for a second opinion", wantsSecondOpinion(mixed), mixed.check);
+  const v = judgeReadings(mixed, right);
+  check("and the correct second reading is used", v.use === "second", v);
+  check("so the bill is the printed 206", combineReadings(mixed, right, v).check.itemsTotal === 206);
+}
+
 // Parsing a model reply.
 check("JSON inside prose is found", parseModelJson('here: {"items":[]} done')?.items?.length === 0);
 check("no JSON is null, not a throw", parseModelJson("sorry, I cannot read that") === null);

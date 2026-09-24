@@ -201,17 +201,37 @@ function fullPrice(reading: Reading): number {
  * pass every other check here and undercharge the table.
  */
 function sameFullPrices(first: Reading, second: Reading): boolean {
-  const b = fullPrice(second);
-  const close = (a: number) => a > 0 && Math.abs(a - b) / a <= SAME_ITEMS_TOLERANCE;
-  // Either description of the first reading will do. Its charged total is what
-  // it believed the items cost; its full price adds the originalTotals it
-  // claimed. Those can disagree because the FIRST reading is the one in doubt:
-  // on US layout 2 as a JPEG, gpt-4o sometimes applies the happy hour
-  // backwards and invents an original of 24.00 for a 16.00 beer. Measured
-  // against that invention, o4-mini's correct reading looked 6% off and was
-  // thrown away — 2 scans in 6 on dev. A reading that shrinks items to fit a
-  // wrong total matches neither description.
-  return close(first.check.itemsTotal) || close(fullPrice(first));
+  const target = fullPrice(second);
+  if (target <= 0) return false;
+  const close = (a: number) => a > 0 && Math.abs(a - target) / a <= SAME_ITEMS_TOLERANCE;
+  // The first reading is the one in doubt, and each of its lines can be wrong in
+  // its own way. So every line may be taken at EITHER the amount it charged or
+  // the originalTotal it claimed, in any mix, and the second reading's full
+  // price must match one of those sums.
+  //
+  // Needed because a first reading can be right on one line and backwards on
+  // another. On the clean Hebrew bar receipt gpt-4o freed the cocktail
+  // correctly (0.00, original 48.00) but applied the beers' happy hour
+  // backwards (64.00 with an invented original of 80.00). gpt-5.4's correct
+  // reading comes to 270.00 at full price — beers at 64, cocktail at 48 — which
+  // is neither all-charged (222) nor all-original (286), and was refused 3/3.
+  // A reading that shrinks correct items to fit a wrong total still matches no
+  // mix at all, which is what this check exists to catch.
+  let sums = [0];
+  for (const item of first.items) {
+    const options = item.originalTotal !== null && item.originalTotal !== item.total
+      ? [item.total, item.originalTotal]
+      : [item.total];
+    const next = new Set<number>();
+    for (const s of sums) for (const o of options) next.add(Math.round((s + o) * 100) / 100);
+    sums = [...next];
+    // Receipts have a handful of discounted lines. Should one ever have dozens,
+    // keep the two whole-reading baselines rather than an unbounded set.
+    if (sums.length > 4096) {
+      return close(first.check.itemsTotal) || close(fullPrice(first));
+    }
+  }
+  return sums.some(close);
 }
 
 /**
