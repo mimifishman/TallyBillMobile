@@ -1,6 +1,6 @@
 {
-  "total": 330.00,
+  "total": 330.0,
   "currency": "ILS",
   "taxAmount": null,
-  "note": "MODIFIERS AND A DISCOUNT. Printed lines in order: 0.00, 45.00, 59.00, 78.00, 0.00, 67.00, 73.00, 8.00, 0.00, 36.00, and a final -36.00 marked 100% discount. Lines prefixed '>>' are modifiers on the item above (e.g. 'not spicy' at 0.00, 'beef' at 8.00). Sums to the printed total of 330.00. 'items' is deliberately unset: whether a modifier or a zero-price line counts as an item is an open design question. Note a 0.00 line and the -36.00 discount are both dropped today by the total > 0 filter. Photo rotated 90 degrees, creased."
+  "note": "MODIFIERS AND A DISCOUNT. Printed lines in order: 0.00, 45.00, 59.00, 78.00, 0.00, 67.00, 73.00, 8.00, 0.00, 36.00, and a final -36.00 marked 100% discount. Lines prefixed '>>' are modifiers on the item above (e.g. 'not spicy' at 0.00, 'beef' at 8.00). Sums to the printed total of 330.00. 'items' is deliberately unset: whether a modifier or a zero-price line counts as an item is an open design question. Note a 0.00 line and the -36.00 discount are both dropped today by the total > 0 filter. Photo rotated 90 degrees, creased.\n\nA REPORT OF THIS UNDERCHARGING (322 against a printed 330, the 8.00 beef modifier dropped) DID NOT REPRODUCE, 2026-09-24: nine runs, three on dev and six across dev and production, all returned 7 items and exactly 330.00 with reconciled true. Not called fixed and not called absent — an undercharge is the direction nobody reports, so if it shows again, capture the raw output and which preparation the image had."
 }
