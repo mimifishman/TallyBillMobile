@@ -56,6 +56,7 @@ import { basename, extname, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
+import { receiptDataUrl } from "../src/lib/receipt-image.ts";
 import { OCR_PROMPT } from "../src/lib/receipt-prompt.ts";
 import { normalizeLineItems, normalizeBillDiscount } from "../src/lib/receipt-line-items.ts";
 
@@ -140,13 +141,6 @@ function loadExpected(name: string): Expected | undefined {
   return JSON.parse(readFileSync(path, "utf8")) as Expected;
 }
 
-function mimeOf(name: string): string {
-  const ext = extname(name).toLowerCase();
-  if (ext === ".png") return "image/png";
-  if (ext === ".webp") return "image/webp";
-  if (ext === ".heic") return "image/heic";
-  return "image/jpeg";
-}
 
 
 /**
@@ -243,8 +237,9 @@ interface ScanResult {
 
 /** The model call the route makes, with this repo's prompt and parsing. */
 async function scanLocally(file: string, model: string | null): Promise<ScanResult> {
-  const bytes = readFileSync(join(RECEIPTS, file));
-  const dataUrl = `data:${mimeOf(file)};base64,${bytes.toString("base64")}`;
+  // The same preparation the route applies — rotation and crop — through the
+  // same function, or a model comparison scores sideways receipts.
+  const { dataUrl } = await receiptDataUrl(readFileSync(join(RECEIPTS, file)));
 
   const startedAt = Date.now();
   const completion = await chatCompletion(openaiClient(), {
