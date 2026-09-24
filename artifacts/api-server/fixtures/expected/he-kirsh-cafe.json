@@ -1,7 +1,13 @@
 {
   "items": 3,
-  "total": 177.00,
+  "total": 177.0,
   "currency": "ILS",
   "taxAmount": null,
-  "note": "Clean case. Three items at 75.00, 85.00, 17.00. Printed total 177.00. Photo is rotated 90 degrees, as taken."
+  "note": "Clean case. Three items at 75.00, 85.00, 17.00. Printed total 177.00. Photo is rotated 90 degrees, as taken.",
+  "itemDescriptions": [
+    "ריגטוני אלה וודקה",
+    "פרנץ טוסט לקס",
+    "אמריקנו קר קטן"
+  ],
+  "descriptionsNote": "Read off the photo by eye, 2026-09-22, at high magnification. Scored as a set, not in order. The receipt prints no geresh on פרנץ; the harness folds Hebrew final letters and quoting marks, so פרנץ'/פרנצ all match."
 }
