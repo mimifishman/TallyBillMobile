@@ -36,6 +36,18 @@ export interface LineDiscount {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * A discount rate as a label: a whole number. The exact rate is kept for the
+ * money — 14.00 off 57.00 is 24.56% — but "24.6% off" on a receipt row reads
+ * as noise. A real discount never shows as 0% or as a free item's 100%.
+ */
+export function percentLabel(percent: number): string {
+  const whole = Math.round(percent);
+  if (whole <= 0 && percent > 0) return "<1";
+  if (whole >= 100 && percent < 100) return "99";
+  return String(whole);
+}
+
 /** What a line costs with no discount on it — the base every rate applies to. */
 export function baseTotalOf(line: DiscountableLine): number {
   return line.originalTotal ?? line.total;

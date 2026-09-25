@@ -28,6 +28,14 @@ function num(v: unknown): number {
   return typeof v === "number" ? v : parseFloat(String(v ?? 0)) || 0;
 }
 
+/** A discount rate as a whole number, the same as the app shows it. */
+function percentLabel(percent: number): string {
+  const whole = Math.round(percent);
+  if (whole <= 0 && percent > 0) return "<1";
+  if (whole >= 100 && percent < 100) return "99";
+  return String(whole);
+}
+
 /* ─── Toast system ─────────────────────────────────────────────────── */
 
 type Toast = { id: number; message: string };
@@ -1023,7 +1031,7 @@ function LineRow({
    * paper in their hand.
    */
   const discountNote = isDiscounted
-    ? `${Math.round(((originalTotal - num(line.total)) / originalTotal) * 1000) / 10}% off`
+    ? `${percentLabel(((originalTotal - num(line.total)) / originalTotal) * 100)}% off`
     : null;
 
   useEffect(() => {
