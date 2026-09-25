@@ -6,7 +6,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/utils/currency";
-import { applyPercent, baseTotalOf, parsePercent, percentLabel, type DiscountableLine } from "@/utils/discount";
+import { applyPercent, baseTotalOf, parsePercent, percentInput, percentLabel, type DiscountableLine } from "@/utils/discount";
 
 export interface DiscountLineInput extends DiscountableLine {
   description: string;
@@ -318,7 +318,7 @@ export function DiscountSheet({
                   <TouchableOpacity
                     onPress={() => {
                       setEditing(line.id);
-                      setEditDraft(linePercent === undefined ? "" : String(Math.round(linePercent * 100) / 100));
+                      setEditDraft(linePercent === undefined ? "" : percentInput(linePercent));
                     }}
                     onLongPress={linePercent === undefined ? undefined : () => clearOne(line.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
