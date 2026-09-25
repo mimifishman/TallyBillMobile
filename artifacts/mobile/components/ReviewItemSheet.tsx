@@ -5,7 +5,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
-import { percentInput } from "@/utils/discount";
+import { discountRate, percentInput } from "@/utils/discount";
 
 export interface ReviewItemValues {
   name: string;
@@ -59,7 +59,7 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
         setPriceDraft(initial.total.toFixed(2));
         setDiscountDraft(
           initial.discountAmount > 0 && initial.total > 0
-            ? percentInput((initial.discountAmount / initial.total) * 100)
+            ? percentInput(discountRate(initial.total, initial.total - initial.discountAmount))
             : "",
         );
       } else {
