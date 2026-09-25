@@ -61,6 +61,39 @@ export function percentInput(percent: number): string {
   return String(whole);
 }
 
+/**
+ * The rate a discount was taken at, as the receipt would print it.
+ *
+ * Restaurants round the money off, not the rate. An Israeli receipt printed
+ * "25% Happy Hour" under 57.00 and under 74.00, and took 14.00 and 19.00:
+ * 25% is 14.25 and 18.50, rounded to whole shekels. Worked backwards, those
+ * are 24.6% and 25.7%, and rounding them says 25% and 26%. Neither matches
+ * the paper.
+ *
+ * So the discount is read at the precision it was printed to. A whole-number
+ * discount could have come from any rate within half a unit of it. Among the
+ * whole-number rates that fit, a round one (a multiple of 5, as promotions
+ * are) wins, then the one nearest the exact rate. Money is never touched:
+ * this only decides the label.
+ */
+export function discountRate(original: number, charged: number): number {
+  if (!(original > 0)) return 0;
+  const off = Math.round((original - charged) * 100) / 100;
+  if (!(off > 0)) return 0;
+  const exact = (off / original) * 100;
+  const cents = Math.round(off * 100);
+  const half = cents % 100 === 0 ? 0.5 : cents % 10 === 0 ? 0.05 : 0.005;
+  const fits: number[] = [];
+  if (!(charged > 0)) return 100;
+  for (let rate = 1; rate < 100; rate++) {
+    if (Math.abs((original * rate) / 100 - off) <= half + 1e-9) fits.push(rate);
+  }
+  if (fits.length === 0) return exact;
+  const round = fits.filter((rate) => rate % 5 === 0);
+  const pool = round.length > 0 ? round : fits;
+  return pool.reduce((best, rate) => (Math.abs(rate - exact) < Math.abs(best - exact) ? rate : best));
+}
+
 /** What a line costs with no discount on it — the base every rate applies to. */
 export function baseTotalOf(line: DiscountableLine): number {
   return line.originalTotal ?? line.total;

@@ -33,7 +33,7 @@ import { LanguagePicker } from "@/components/LanguagePicker";
 import { ReviewItemSheet, type ReviewItemValues } from "@/components/ReviewItemSheet";
 import { TaxTipField } from "@/components/TaxTipField";
 import { amountFromPercent, toPercent, type MoneyMode } from "@/utils/taxTip";
-import { applyAmount, applyPercent, inferDiscountSelection, percentLabel } from "@/utils/discount";
+import { applyAmount, applyPercent, discountRate, inferDiscountSelection, percentLabel } from "@/utils/discount";
 import { DiscountSheet } from "@/components/DiscountSheet";
 
 const THUMBNAIL_HEIGHT = 300;
@@ -194,7 +194,7 @@ export default function ScanScreen() {
     if (!discount) return { charged: total, was: null as number | null, percent: null as number | null };
     const charged = Math.round((discount.originalTotal - discount.amount) * 100) / 100;
     const percent = discount.originalTotal > 0
-      ? (discount.amount / discount.originalTotal) * 100
+      ? discountRate(discount.originalTotal, charged)
       : null;
     return { charged, was: discount.originalTotal, percent };
   };

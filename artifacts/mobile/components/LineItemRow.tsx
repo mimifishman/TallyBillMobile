@@ -20,7 +20,7 @@ import Animated, {
 import { useColors } from "@/hooks/useColors";
 import { AutoFocusTextInput } from "./AutoFocusTextInput";
 import { getCurrencySymbol } from "@/utils/currency";
-import { percentInput, percentLabel } from "@/utils/discount";
+import { discountRate, percentInput, percentLabel } from "@/utils/discount";
 import { PersonBadge } from "./PersonBadge";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
@@ -119,7 +119,7 @@ export function LineItemRow({
    * paper in their hand.
    */
   const discountNote = isDiscounted
-    ? `${percentLabel(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 100)}% off`
+    ? `${percentLabel(discountRate(Number(originalTotal), Number(total)))}% off`
     : null;
   // Edited as the FULL price plus what comes off it, so a discount survives an
   // edit rather than being silently dropped by it.
@@ -127,7 +127,7 @@ export function LineItemRow({
   const [editQty, setEditQty] = useState(String(quantity));
   const [editDiscount, setEditDiscount] = useState(
     isDiscounted && Number(originalTotal) > 0
-      ? percentInput(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 100)
+      ? percentInput(discountRate(Number(originalTotal), Number(total)))
       : "",
   );
   /** Untouched, the amount read off the receipt is kept to the agora. */
@@ -154,7 +154,7 @@ export function LineItemRow({
     setEditQty(String(quantity));
     setEditDiscount(
       isDiscounted && Number(originalTotal) > 0
-        ? percentInput(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 100)
+        ? percentInput(discountRate(Number(originalTotal), Number(total)))
         : "",
     );
     setDiscountEdited(false);

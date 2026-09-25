@@ -6,7 +6,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/utils/currency";
-import { applyPercent, baseTotalOf, parsePercent, percentInput, percentLabel, type DiscountableLine } from "@/utils/discount";
+import { applyPercent, baseTotalOf, discountRate, parsePercent, percentInput, percentLabel, type DiscountableLine } from "@/utils/discount";
 
 export interface DiscountLineInput extends DiscountableLine {
   description: string;
@@ -208,10 +208,17 @@ export function DiscountSheet({
 
   /** Rates in use, so the footer can say what was applied and to how many. */
   const groups = useMemo(() => {
+    // Grouped by the rate as it reads, so two lines the receipt calls "25%"
+    // are one group even when their exact rates differ by the rounding.
     const byRate = new Map<number, number>();
-    for (const value of rates.values()) byRate.set(value, (byRate.get(value) ?? 0) + 1);
+    for (const line of lines) {
+      const value = rates.get(line.id);
+      if (value === undefined) continue;
+      const shown = discountRate(baseTotalOf(line), applyPercent(line, value).total);
+      byRate.set(shown, (byRate.get(shown) ?? 0) + 1);
+    }
     return [...byRate.entries()].sort((a, b) => b[0] - a[0]);
-  }, [rates]);
+  }, [rates, lines]);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Discount">
@@ -318,7 +325,7 @@ export function DiscountSheet({
                   <TouchableOpacity
                     onPress={() => {
                       setEditing(line.id);
-                      setEditDraft(linePercent === undefined ? "" : percentInput(linePercent));
+                      setEditDraft(linePercent === undefined ? "" : percentInput(discountRate(base, result.total)));
                     }}
                     onLongPress={linePercent === undefined ? undefined : () => clearOne(line.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -326,7 +333,7 @@ export function DiscountSheet({
                     accessibilityLabel={
                       linePercent === undefined
                         ? `${line.description} has no discount. Tap to set one`
-                        : `${line.description} has ${percentLabel(linePercent)}% off. Tap to change, hold to remove`
+                        : `${line.description} has ${percentLabel(discountRate(base, result.total))}% off. Tap to change, hold to remove`
                     }
                     style={[
                       styles.chip,
@@ -341,7 +348,7 @@ export function DiscountSheet({
                         { color: linePercent === undefined ? colors.mutedForeground : colors.primaryText },
                       ]}
                     >
-                      {linePercent === undefined ? 0 : percentLabel(linePercent)}%
+                      {linePercent === undefined ? 0 : percentLabel(discountRate(base, result.total))}%
                     </Text>
                     <Feather
                       name="edit-2"
