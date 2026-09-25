@@ -11,6 +11,12 @@ export interface ParsedItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  /**
+   * What the line cost before a discount printed under it on the receipt —
+   * "DRAFT IPA 16.00 / HAPPY HOUR 50% -8.00" arrives as total 8, originalTotal
+   * 16. Null when the line had no discount of its own.
+   */
+  originalTotal?: number | null;
   selected: boolean;
 }
 

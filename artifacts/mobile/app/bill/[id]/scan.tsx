@@ -261,33 +261,67 @@ export default function ScanScreen() {
   const seededDiscountRef = useRef(false);
   useEffect(() => {
     if (seededDiscountRef.current) return;
-    if (scan.billDiscount == null || scan.billDiscount <= 0 || scan.items.length === 0) return;
+    if (scan.items.length === 0) return;
     seededDiscountRef.current = true;
 
-    const lines = scan.items.map((item, index) => ({ id: index, total: item.total, originalTotal: null }));
-    const inferred = inferDiscountSelection(lines, scan.billDiscount);
-
     const next = new Map<number, { amount: number; originalTotal: number }>();
-    if (inferred) {
-      for (const id of inferred.lineIds) {
-        const applied = applyPercent(lines[id]!, inferred.percent);
-        next.set(id, { amount: applied.discountAmount, originalTotal: applied.originalTotal! });
-      }
-    } else {
-      // Which items the discount came off could not be worked out, so it is
-      // spread over everything — that lands the bill on the right figure and
-      // leaves something obvious to correct.
-      for (const share of applyAmount(scan.billDiscount, lines)) {
-        if (share.discountAmount > 0) {
-          next.set(share.id, {
-            amount: share.discountAmount,
-            originalTotal: share.originalTotal!,
-          });
+
+    // Discounts the receipt printed under an item — "HAPPY HOUR 50% -8.00".
+    // The scan charges the line at the lower price and reports the full one
+    // beside it. Both were dropped on the way in, so a happy hour looked like
+    // cheap drinks and the bill showed no discount at all. Here, as everywhere
+    // on this screen, the item holds its full price and the discount sits
+    // beside it.
+    //
+    // Only when the reading agrees with the receipt's printed total. A reading
+    // that does not can carry a full price the model made up — a happy hour
+    // applied backwards, 16.00 "was" 24.00 — and a "33% off" beside the
+    // mismatch warning would be a discount that is not on the paper.
+    const fullPrice = new Map<number, number>();
+    if (scan.reconciled !== false) scan.items.forEach((item, index) => {
+      const was = item.originalTotal;
+      if (was == null || !Number.isFinite(was) || !(was > item.total)) return;
+      next.set(index, { amount: Math.round((was - item.total) * 100) / 100, originalTotal: was });
+      fullPrice.set(index, was);
+    });
+    if (fullPrice.size > 0) {
+      scan.setItems((prev) => prev.map((item, index) => {
+        const was = fullPrice.get(index);
+        if (was == null) return item;
+        const unitPrice = item.quantity > 0 ? Math.round((was / item.quantity) * 100) / 100 : was;
+        return { ...item, total: was, unitPrice, originalTotal: null };
+      }));
+    }
+
+    // A discount on the whole bill. One discount per item, so it is only
+    // worked out over the lines that do not already carry one of their own.
+    if (scan.billDiscount != null && scan.billDiscount > 0) {
+      const lines = scan.items
+        .map((item, index) => ({ id: index, total: item.total, originalTotal: null }))
+        .filter((line) => !next.has(line.id));
+      const byId = new Map(lines.map((line) => [line.id, line]));
+      const inferred = lines.length > 0 ? inferDiscountSelection(lines, scan.billDiscount) : null;
+      if (inferred) {
+        for (const id of inferred.lineIds) {
+          const applied = applyPercent(byId.get(id)!, inferred.percent);
+          next.set(id, { amount: applied.discountAmount, originalTotal: applied.originalTotal! });
+        }
+      } else if (lines.length > 0) {
+        // Which items the discount came off could not be worked out, so it is
+        // spread over everything — that lands the bill on the right figure and
+        // leaves something obvious to correct.
+        for (const share of applyAmount(scan.billDiscount, lines)) {
+          if (share.discountAmount > 0) {
+            next.set(share.id, {
+              amount: share.discountAmount,
+              originalTotal: share.originalTotal!,
+            });
+          }
         }
       }
     }
-    setItemDiscounts(next);
-  }, [scan.billDiscount, scan.items]);
+    if (next.size > 0) setItemDiscounts(next);
+  }, [scan.billDiscount, scan.items, scan.reconciled]);
 
   /**
    * How far the selected items sit from the receipt's own total.
@@ -299,11 +333,16 @@ export default function ScanScreen() {
    */
   const receiptGap = useMemo(() => {
     if (scan.reconciled !== false || scan.printedTotal == null) return null;
-    const readTotal = scan.items.reduce((sum, i) => sum + (Number.isFinite(i.total) ? i.total : 0), 0);
+    // What will be charged for each line, so a discount the receipt printed
+    // under an item is not counted as a gap.
+    const readTotal = scan.items.reduce(
+      (sum, i, index) => sum + pricedItem(index, Number.isFinite(i.total) ? i.total : 0).charged,
+      0,
+    );
     const difference = Math.round((readTotal - scan.printedTotal) * 100) / 100;
     if (difference === 0) return null;
     return { difference, printedTotal: scan.printedTotal };
-  }, [scan.reconciled, scan.printedTotal, scan.items]);
+  }, [scan.reconciled, scan.printedTotal, scan.items, itemDiscounts]);
 
   const discountedCount = useMemo(
     () => scan.items.filter((item, index) => isCountedItem(item) && (itemDiscounts.get(index)?.amount ?? 0) > 0).length,
