@@ -20,7 +20,7 @@ import Animated, {
 import { useColors } from "@/hooks/useColors";
 import { AutoFocusTextInput } from "./AutoFocusTextInput";
 import { getCurrencySymbol } from "@/utils/currency";
-import { percentLabel } from "@/utils/discount";
+import { percentInput, percentLabel } from "@/utils/discount";
 import { PersonBadge } from "./PersonBadge";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
@@ -127,7 +127,7 @@ export function LineItemRow({
   const [editQty, setEditQty] = useState(String(quantity));
   const [editDiscount, setEditDiscount] = useState(
     isDiscounted && Number(originalTotal) > 0
-      ? String(Math.round(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 1000) / 10)
+      ? percentInput(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 100)
       : "",
   );
   /** Untouched, the amount read off the receipt is kept to the agora. */
@@ -154,7 +154,7 @@ export function LineItemRow({
     setEditQty(String(quantity));
     setEditDiscount(
       isDiscounted && Number(originalTotal) > 0
-        ? String(Math.round(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 1000) / 10)
+        ? percentInput(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 100)
         : "",
     );
     setDiscountEdited(false);

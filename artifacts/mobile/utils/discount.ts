@@ -48,6 +48,19 @@ export function percentLabel(percent: number): string {
   return String(whole);
 }
 
+/**
+ * The same rate for an edit box: the whole number the label shows, so the two
+ * never disagree. Only a rate that would round to 0 or 100 keeps a decimal,
+ * because the box must hold a number, not "<1".
+ */
+export function percentInput(percent: number): string {
+  const whole = Math.round(percent);
+  if ((whole <= 0 && percent > 0) || (whole >= 100 && percent < 100)) {
+    return String(Math.round(percent * 10) / 10);
+  }
+  return String(whole);
+}
+
 /** What a line costs with no discount on it — the base every rate applies to. */
 export function baseTotalOf(line: DiscountableLine): number {
   return line.originalTotal ?? line.total;
