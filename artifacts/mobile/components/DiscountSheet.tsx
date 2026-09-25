@@ -6,7 +6,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/utils/currency";
-import { applyPercent, baseTotalOf, parsePercent, type DiscountableLine } from "@/utils/discount";
+import { applyPercent, baseTotalOf, parsePercent, percentLabel, type DiscountableLine } from "@/utils/discount";
 
 export interface DiscountLineInput extends DiscountableLine {
   description: string;
@@ -95,7 +95,9 @@ export function DiscountSheet({
     for (const line of lines) {
       if (line.originalTotal != null && line.originalTotal > line.total) {
         const base = baseTotalOf(line);
-        if (base > 0) existing.set(line.id, Math.round(((base - line.total) / base) * 1000) / 10);
+        // The exact rate, not a rounded one: re-applying 24.6% to 57.00 gives
+        // 42.98, and opening the sheet would quietly move the price.
+        if (base > 0) existing.set(line.id, ((base - line.total) / base) * 100);
       }
     }
     setRates(existing);
@@ -316,7 +318,7 @@ export function DiscountSheet({
                   <TouchableOpacity
                     onPress={() => {
                       setEditing(line.id);
-                      setEditDraft(linePercent === undefined ? "" : String(linePercent));
+                      setEditDraft(linePercent === undefined ? "" : String(Math.round(linePercent * 100) / 100));
                     }}
                     onLongPress={linePercent === undefined ? undefined : () => clearOne(line.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -324,7 +326,7 @@ export function DiscountSheet({
                     accessibilityLabel={
                       linePercent === undefined
                         ? `${line.description} has no discount. Tap to set one`
-                        : `${line.description} has ${linePercent}% off. Tap to change, hold to remove`
+                        : `${line.description} has ${percentLabel(linePercent)}% off. Tap to change, hold to remove`
                     }
                     style={[
                       styles.chip,
@@ -339,7 +341,7 @@ export function DiscountSheet({
                         { color: linePercent === undefined ? colors.mutedForeground : colors.primaryText },
                       ]}
                     >
-                      {linePercent === undefined ? 0 : Math.round(linePercent * 100) / 100}%
+                      {linePercent === undefined ? 0 : percentLabel(linePercent)}%
                     </Text>
                     <Feather
                       name="edit-2"
@@ -369,7 +371,7 @@ export function DiscountSheet({
             ? "No discount"
             : groups
                 .slice(0, 2)
-                .map(([percent, count]) => `${Math.round(percent * 100) / 100}% off ${count}`)
+                .map(([percent, count]) => `${percentLabel(percent)}% off ${count}`)
                 .join("  ·  ") + (groups.length > 2 ? `  +${groups.length - 2} more` : "")}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.foreground }]}>

@@ -20,6 +20,7 @@ import Animated, {
 import { useColors } from "@/hooks/useColors";
 import { AutoFocusTextInput } from "./AutoFocusTextInput";
 import { getCurrencySymbol } from "@/utils/currency";
+import { percentLabel } from "@/utils/discount";
 import { PersonBadge } from "./PersonBadge";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 
@@ -118,7 +119,7 @@ export function LineItemRow({
    * paper in their hand.
    */
   const discountNote = isDiscounted
-    ? `${Math.round(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 1000) / 10}% off`
+    ? `${percentLabel(((Number(originalTotal) - Number(total)) / Number(originalTotal)) * 100)}% off`
     : null;
   // Edited as the FULL price plus what comes off it, so a discount survives an
   // edit rather than being silently dropped by it.
