@@ -11,6 +11,7 @@ import meRouter from "./me.js";
 import storageRouter from "./globalStorage.js";
 import circlesRouter from "./circles.js";
 import { requireBillAccess } from "../middlewares/billAccess.js";
+import { ocrGuard } from "../middlewares/ocrGuard.js";
 
 const router: IRouter = Router();
 
@@ -22,7 +23,8 @@ router.use("/bills/:billId/lines", requireBillAccess, billLinesRouter);
 router.use("/bills/:billId/users", requireBillAccess, billUsersRouter);
 router.use("/bills/:billId/totals", requireBillAccess, totalsRouter);
 router.use("/bills/:billId/storage", requireBillAccess, storageRouter);
-router.use("/ocr", ocrRouter);
+// No sign-in on /ocr: guests must always be able to scan. ocrGuard meters it.
+router.use("/ocr", ocrGuard, ocrRouter);
 router.use("/currency", currencyRouter);
 router.use("/circles", circlesRouter);
 
