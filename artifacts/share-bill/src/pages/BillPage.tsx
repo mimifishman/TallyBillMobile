@@ -22,52 +22,23 @@ import {
   type UpdateBillRequest,
 } from "@workspace/api-client-react";
 import { CURRENCY_OPTIONS, formatMoney, PEOPLE_COLORS } from "@/lib/currency";
-import { getInitials } from "@workspace/utils";
+import {
+  amountFromPercent,
+  applyPercent,
+  baseTotalOf,
+  discountRate,
+  fmtPct,
+  getInitials,
+  parsePercent,
+  percentInput,
+  percentLabel,
+  toPercent,
+  type DiscountableLine,
+  type MoneyMode,
+} from "@workspace/utils";
 
 function num(v: unknown): number {
   return typeof v === "number" ? v : parseFloat(String(v ?? 0)) || 0;
-}
-
-/** A discount rate as a whole number, the same as the app shows it. */
-function percentLabel(percent: number): string {
-  const whole = Math.round(percent);
-  if (whole <= 0 && percent > 0) return "<1";
-  if (whole >= 100 && percent < 100) return "99";
-  return String(whole);
-}
-
-/**
- * The rate a discount was taken at, as the receipt would print it. Same rule
- * as the app (artifacts/mobile/utils/discount.ts), so the two agree.
- *
- * Restaurants round the money off, not the rate. An Israeli receipt printed
- * "25% Happy Hour" under 57.00 and under 74.00, and took 14.00 and 19.00:
- * 25% is 14.25 and 18.50, rounded to whole shekels. Worked backwards, those
- * are 24.6% and 25.7%, and rounding them says 25% and 26%. Neither matches
- * the paper.
- *
- * So the discount is read at the precision it was printed to. A whole-number
- * discount could have come from any rate within half a unit of it. Among the
- * whole-number rates that fit, a round one (a multiple of 5, as promotions
- * are) wins, then the one nearest the exact rate. Money is never touched:
- * this only decides the label.
- */
-function discountRate(original: number, charged: number): number {
-  if (!(original > 0)) return 0;
-  const off = Math.round((original - charged) * 100) / 100;
-  if (!(off > 0)) return 0;
-  const exact = (off / original) * 100;
-  const cents = Math.round(off * 100);
-  const half = cents % 100 === 0 ? 0.5 : cents % 10 === 0 ? 0.05 : 0.005;
-  const fits: number[] = [];
-  if (!(charged > 0)) return 100;
-  for (let rate = 1; rate < 100; rate++) {
-    if (Math.abs((original * rate) / 100 - off) <= half + 1e-9) fits.push(rate);
-  }
-  if (fits.length === 0) return exact;
-  const round = fits.filter((rate) => rate % 5 === 0);
-  const pool = round.length > 0 ? round : fits;
-  return pool.reduce((best, rate) => (Math.abs(rate - exact) < Math.abs(best - exact) ? rate : best));
 }
 
 /* ─── Toast system ─────────────────────────────────────────────────── */
@@ -324,6 +295,11 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     },
   });
   const toggleAssignment = useToggleBillLineUser({ mutation: { onSuccess: onChange } });
+  const renamePerson = useUpdateBillUser({
+    mutation: {
+      onSuccess: () => { onChange(); showToast("Saved"); },
+    },
+  });
 
   const saveBill = (patch: UpdateBillRequest) =>
     updateBill.mutate({ billId, data: patch });
@@ -339,8 +315,14 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const [splitQtyInput, setSplitQtyInput] = useState("");
   const [splitError, setSplitError] = useState("");
 
-  const [confirmPersonId, setConfirmPersonId] = useState<number | null>(null);
-  const confirmPerson = users.find((u) => u.id === confirmPersonId) ?? null;
+  const [editPersonId, setEditPersonId] = useState<number | null>(null);
+  const editPerson = users.find((u) => u.id === editPersonId) ?? null;
+  const [editPersonName, setEditPersonName] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [showTaxTip, setShowTaxTip] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   // "That's me": lets a diner tap their name once and thereafter see their own
   // share pinned at the top. Persisted per-bill so it survives refreshes.
@@ -391,6 +373,82 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const tipAmount = Math.round(chargedTotal * (tipPercent / 100) * 100) / 100;
   const grandTotal = Math.round((chargedTotal + taxAmount + tipAmount) * 100) / 100;
   const fmt = (n: number) => formatMoney(n, bill.currency ?? null);
+  const defaultDiscountPercent = num(bill.discountPercent);
+
+  // The photo the bill was scanned from, served through the bill's own storage
+  // route, which the join code opens. The same URL the app builds.
+  const receiptObjectId = bill.receiptImagePath ? bill.receiptImagePath.split("/").pop() ?? null : null;
+  const receiptUrl = receiptObjectId
+    ? `/api/bills/${billId}/storage/objects/uploads/${receiptObjectId}?joinCode=${encodeURIComponent(bill.joinCode)}`
+    : null;
+
+  const discountLines: DiscountLine[] = lines.map((l) => ({
+    id: l.id,
+    description: l.description,
+    total: num(l.total),
+    originalTotal: l.originalTotal != null ? num(l.originalTotal) : null,
+  }));
+
+  /**
+   * Writes back only the lines whose price actually moved, as the app does,
+   * and remembers the rate as the bill's default for next time.
+   */
+  const handleDiscountSave = (results: DiscountResultRow[], newDefaultPercent: number) => {
+    setShowDiscount(false);
+    const byId = new Map(lines.map((l) => [l.id, l]));
+    let changed = 0;
+    for (const result of results) {
+      const line = byId.get(result.id);
+      if (!line) continue;
+      const currentOriginal = line.originalTotal != null ? num(line.originalTotal) : null;
+      if (num(line.total) === result.total && currentOriginal === result.originalTotal) continue;
+      const quantity = num(line.quantity) || 1;
+      changed += 1;
+      updateLine.mutate({
+        billId,
+        lineId: line.id,
+        data: {
+          description: line.description,
+          quantity,
+          unitPrice: Math.round((result.total / quantity) * 100) / 100,
+          total: result.total,
+          originalTotal: result.originalTotal,
+        },
+      });
+    }
+    if (newDefaultPercent !== defaultDiscountPercent) saveBill({ discountPercent: newDefaultPercent });
+    if (changed > 0) showToast("Discount saved");
+  };
+
+  /**
+   * An item is edited as its FULL price plus money off it, as in the app, so a
+   * discount survives an edit instead of being dropped by it.
+   */
+  const handleUpdateLine = (
+    line: BillLine,
+    patch: { description: string; quantity: number; total: number; discountAmount: number },
+  ) => {
+    const charged = Math.round((patch.total - patch.discountAmount) * 100) / 100;
+    updateLine.mutate({
+      billId,
+      lineId: line.id,
+      data: {
+        description: patch.description,
+        quantity: patch.quantity,
+        unitPrice: charged / (patch.quantity || 1),
+        total: charged,
+        // Sent every time, so an edit neither drops a discount nor leaves a
+        // stale original claiming a saving that no longer matches the price.
+        originalTotal: patch.discountAmount > 0 ? patch.total : null,
+      },
+    });
+  };
+
+  const openEditPerson = (u: BillMember) => {
+    setEditPersonId(u.id);
+    setEditPersonName(u.name);
+    setConfirmRemove(false);
+  };
 
   const handleAddPerson = () => {
     const name = newPersonName.trim();
@@ -492,6 +550,15 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
       <header className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <HeaderEditable bill={bill} onSave={saveBill} ownerName={ownerName} peopleCount={users.length} />
+          {receiptUrl && (
+            <button
+              onClick={() => setShowReceipt(true)}
+              className="mt-3 w-full flex items-center gap-3 border border-border rounded-xl p-2 text-left hover:bg-muted transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <img src={receiptUrl} alt="" className="w-12 h-12 object-cover rounded-lg bg-muted shrink-0" />
+              <span className="text-sm font-medium text-foreground">View receipt</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -543,7 +610,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                     user={u}
                     isMe={u.id === meId}
                     onIdentify={() => setMeId(u.id === meId ? null : u.id)}
-                    onRemove={() => setConfirmPersonId(u.id)}
+                    onEdit={() => openEditPerson(u)}
                   />
                 ))}
               </div>
@@ -589,28 +656,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                     })
                   }
                   onDelete={() => deleteLine.mutate({ billId, lineId: line.id })}
-                  onUpdate={(patch) => {
-                    // The server rewrites the discount from originalTotal on
-                    // every write, so a patch that leaves it out clears it.
-                    // Renaming an item must not quietly put it back to full
-                    // price, so the original price rides along whenever the
-                    // charged price has not moved. Typing a new charged price
-                    // does clear it, because that price is now the whole story.
-                    const priceUnchanged = patch.total === num(line.total);
-                    updateLine.mutate({
-                      billId,
-                      lineId: line.id,
-                      data: {
-                        description: patch.description,
-                        quantity: patch.quantity,
-                        unitPrice: patch.total / (patch.quantity || 1),
-                        total: patch.total,
-                        originalTotal: priceUnchanged && line.originalTotal != null
-                          ? num(line.originalTotal)
-                          : null,
-                      },
-                    });
-                  }}
+                  onUpdate={(patch) => handleUpdateLine(line, patch)}
                   onSplit={() => {
                     setSplitLineId(line.id);
                     setSplitQtyInput("");
@@ -657,28 +703,29 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             </div>
           )}
           <SummaryRow label="Subtotal" value={fmt(subtotal)} />
-          {discountTotal > 0 && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Discount</span>
-              <span className="text-sm font-semibold text-primary-text tabular-nums">
-                {"\u2212"}{fmt(discountTotal)}
-              </span>
-            </div>
-          )}
-          <PercentRow
-            label="Tax"
-            percent={taxPercent}
-            amount={taxAmount}
-            currency={bill.currency ?? null}
-            onChange={(v) => saveBill({ taxPercent: v })}
-          />
-          <PercentRow
-            label="Tip"
-            percent={tipPercent}
-            amount={tipAmount}
-            currency={bill.currency ?? null}
-            onChange={(v) => saveBill({ tipPercent: v })}
-          />
+          {/* Tinted together so they read as controls, as on the app's bill. */}
+          <div className="rounded-xl bg-muted/60 -mx-2 px-2 py-1">
+            {lines.length > 0 && (
+              <TappableRow
+                label="Discount"
+                value={discountTotal > 0 ? `\u2212${fmt(discountTotal)}` : fmt(0)}
+                highlight={discountTotal > 0}
+                onClick={() => setShowDiscount(true)}
+              />
+            )}
+            <TappableRow
+              label={taxPercent > 0 ? `Tax (${fmtPct(taxPercent)}%)` : "Tax"}
+              value={taxPercent > 0 ? fmt(taxAmount) : "Add tax"}
+              highlight={taxPercent === 0}
+              onClick={() => setShowTaxTip(true)}
+            />
+            <TappableRow
+              label={tipPercent > 0 ? `Tip (${fmtPct(tipPercent)}%)` : "Tip"}
+              value={tipPercent > 0 ? fmt(tipAmount) : "Add tip"}
+              highlight={tipPercent === 0}
+              onClick={() => setShowTaxTip(true)}
+            />
+          </div>
           <div className="h-px bg-border my-1" />
           <div className="flex justify-between items-center">
             <span className="text-base font-bold text-foreground">Grand Total</span>
@@ -850,23 +897,105 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         );
       })()}
 
-      {/* Confirm remove person modal */}
-      {confirmPerson && (
-        <Modal title="Remove person" onClose={() => setConfirmPersonId(null)}>
-          <p className="text-sm text-muted-foreground">
-            Remove <span className="font-semibold text-foreground">{confirmPerson.name}</span> from this bill?
-            Their item assignments will be cleared.
-          </p>
-          <ModalButtons
-            onCancel={() => setConfirmPersonId(null)}
-            onConfirm={() => {
-              removePerson.mutate({ billId, userId: confirmPerson.id });
-              setConfirmPersonId(null);
-            }}
-            confirmLabel="Remove"
-            destructive
-          />
+      {/* Edit person modal: rename, or remove from the bill */}
+      {editPerson && (
+        <Modal title="Edit person" onClose={() => setEditPersonId(null)}>
+          {confirmRemove ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Remove <span className="font-semibold text-foreground">{editPerson.name}</span> from this bill?
+                Their item assignments will be cleared.
+              </p>
+              <ModalButtons
+                onCancel={() => setConfirmRemove(false)}
+                onConfirm={() => {
+                  removePerson.mutate({ billId, userId: editPerson.id });
+                  setEditPersonId(null);
+                }}
+                confirmLabel="Remove"
+                destructive
+              />
+            </>
+          ) : (
+            <>
+              <label className="block text-xs text-muted-foreground font-medium">
+                Name
+                <input
+                  autoFocus
+                  value={editPersonName}
+                  onChange={(e) => setEditPersonName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    const name = editPersonName.trim();
+                    if (name && name !== editPerson.name) renamePerson.mutate({ billId, userId: editPerson.id, data: { name } });
+                    setEditPersonId(null);
+                  }}
+                  className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5 text-base text-foreground focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </label>
+              <ModalButtons
+                onCancel={() => setEditPersonId(null)}
+                onConfirm={() => {
+                  const name = editPersonName.trim();
+                  if (name && name !== editPerson.name) renamePerson.mutate({ billId, userId: editPerson.id, data: { name } });
+                  setEditPersonId(null);
+                }}
+                confirmLabel="Save"
+              />
+              <button
+                onClick={() => setConfirmRemove(true)}
+                className="w-full text-sm font-semibold text-destructive border-2 border-destructive/40 rounded-lg py-2.5 min-h-[44px] hover:bg-destructive/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Remove from bill
+              </button>
+            </>
+          )}
         </Modal>
+      )}
+
+      {showDiscount && (
+        <DiscountModal
+          lines={discountLines}
+          defaultPercent={defaultDiscountPercent}
+          currency={bill.currency ?? null}
+          onSave={handleDiscountSave}
+          onClose={() => setShowDiscount(false)}
+        />
+      )}
+
+      {showTaxTip && (
+        <TaxTipModal
+          subtotal={chargedTotal}
+          taxPercent={taxPercent}
+          tipPercent={tipPercent}
+          currency={bill.currency ?? null}
+          onSave={(tax, tip) => {
+            setShowTaxTip(false);
+            const patch: UpdateBillRequest = {};
+            if (tax !== taxPercent) patch.taxPercent = tax;
+            if (tip !== tipPercent) patch.tipPercent = tip;
+            if (Object.keys(patch).length > 0) saveBill(patch);
+          }}
+          onClose={() => setShowTaxTip(false)}
+        />
+      )}
+
+      {showReceipt && receiptUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowReceipt(false)}
+          role="dialog"
+          aria-label="Receipt"
+        >
+          <img src={receiptUrl} alt="Receipt" className="max-h-full max-w-full object-contain rounded-lg" />
+          <button
+            onClick={() => setShowReceipt(false)}
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/60 text-white text-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Close receipt"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );
@@ -986,12 +1115,12 @@ function PersonChip({
   user,
   isMe,
   onIdentify,
-  onRemove,
+  onEdit,
 }: {
   user: BillMember;
   isMe: boolean;
   onIdentify: () => void;
-  onRemove: () => void;
+  onEdit: () => void;
 }) {
   const initials = getInitials(user.name);
   return (
@@ -1021,12 +1150,12 @@ function PersonChip({
         </span>
       </button>
       <button
-        onClick={onRemove}
-        aria-label={`Remove ${user.name}`}
-        title={`Remove ${user.name}`}
-        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-card border border-border text-muted-foreground hover:text-destructive hover:border-destructive flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onEdit}
+        aria-label={`Edit ${user.name}`}
+        title={`Rename or remove ${user.name}`}
+        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-card border border-border text-muted-foreground hover:text-foreground flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       </button>
     </div>
   );
@@ -1048,16 +1177,21 @@ function LineRow({
   currency: string | null;
   onToggle: (billUserId: number) => void;
   onDelete: () => void;
-  onUpdate: (patch: { description: string; quantity: number; total: number }) => void;
+  /** `total` is the FULL price; `discountAmount` is the money off it. */
+  onUpdate: (patch: { description: string; quantity: number; total: number; discountAmount: number }) => void;
   onSplit: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [desc, setDesc] = useState(line.description);
-  const [qty, setQty] = useState(String(num(line.quantity) || 1));
-  const [total, setTotal] = useState(String(num(line.total)));
   const assigned = new Set<number>(line.assignedUserIds ?? []);
   const originalTotal = line.originalTotal != null ? num(line.originalTotal) : null;
   const isDiscounted = originalTotal != null && originalTotal > num(line.total);
+  const fullPrice = isDiscounted ? originalTotal : num(line.total);
+  const shownRate = isDiscounted ? percentInput(discountRate(originalTotal, num(line.total))) : "";
+  const [editing, setEditing] = useState(false);
+  const [desc, setDesc] = useState(line.description);
+  const [qty, setQty] = useState(String(num(line.quantity) || 1));
+  // Edited as the FULL price plus a rate off it, as in the app.
+  const [total, setTotal] = useState(String(fullPrice));
+  const [rate, setRate] = useState(shownRate);
   /**
    * What to say about the discount: always the rate, worked out from the two
    * prices. The same choice the app makes — a stored wording can go stale when
@@ -1071,18 +1205,40 @@ function LineRow({
   useEffect(() => {
     setDesc(line.description);
     setQty(String(num(line.quantity) || 1));
-    setTotal(String(num(line.total)));
-  }, [line.id, line.description, line.quantity, line.total]);
+    setTotal(String(fullPrice));
+    setRate(shownRate);
+  }, [line.id, line.description, line.quantity, line.total, line.originalTotal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const parsedTotal = parseFloat(total.replace(",", ".")) || 0;
+  const rateRaw = rate.trim() === "" ? 0 : Number(rate.replace(",", "."));
+  const rateError = !Number.isFinite(rateRaw) || rateRaw < 0 || rateRaw > 100 ? "0 to 100" : null;
+  /**
+   * Money off. Kept to the cent the receipt printed while neither the price nor
+   * the rate has been touched, so "25%" shown for 14.00 off 57.00 does not
+   * quietly become 14.25 on save.
+   */
+  const untouched = parsedTotal === fullPrice && rate === shownRate;
+  const discountMoney = rateError || rateRaw <= 0 || parsedTotal <= 0
+    ? 0
+    : untouched && isDiscounted
+      ? Math.round((originalTotal - num(line.total)) * 100) / 100
+      : Math.round(parsedTotal * (rateRaw / 100) * 100) / 100;
+  const youPay = Math.round((parsedTotal - Math.min(discountMoney, parsedTotal)) * 100) / 100;
 
   const save = () => {
+    if (rateError) return;
     const q = parseFloat(qty) || 1;
-    const t = parseFloat(total) || 0;
-    if (
+    const changed =
       desc.trim() !== line.description ||
       q !== num(line.quantity) ||
-      t !== num(line.total)
-    ) {
-      onUpdate({ description: desc.trim() || line.description, quantity: q, total: t });
+      !untouched;
+    if (changed) {
+      onUpdate({
+        description: desc.trim() || line.description,
+        quantity: q,
+        total: parsedTotal,
+        discountAmount: Math.min(discountMoney, parsedTotal),
+      });
     }
     setEditing(false);
   };
@@ -1114,15 +1270,33 @@ function LineRow({
                 value={total}
                 onChange={(e) => setTotal(e.target.value)}
                 inputMode="decimal"
-                placeholder="Total"
-                className="flex-1 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
+                placeholder="Price"
+                aria-label="Full price"
+                className="flex-1 min-w-0 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
               />
               <button
                 onClick={save}
-                className="px-3 py-1.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={!!rateError}
+                className="px-3 py-1.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md min-h-[44px] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Save
               </button>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <label htmlFor={`rate-${line.id}`} className="text-muted-foreground">Discount</label>
+              <input
+                id={`rate-${line.id}`}
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && save()}
+                inputMode="decimal"
+                placeholder="0"
+                className={`w-16 border rounded-md px-2 py-1.5 text-sm text-center focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px] ${rateError ? "border-destructive" : "border-border"}`}
+              />
+              <span className="text-muted-foreground">%</span>
+              <span className={`ml-auto text-sm font-medium whitespace-nowrap ${rateError ? "text-destructive" : "text-primary-text"}`}>
+                {rateError ?? (discountMoney > 0 ? `you pay ${formatMoney(youPay, currency)}` : "")}
+              </span>
             </div>
           </div>
         ) : (
@@ -1446,42 +1620,397 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PercentRow({
+function TappableRow({
   label,
-  percent,
-  amount,
-  currency,
-  onChange,
+  value,
+  highlight,
+  onClick,
 }: {
   label: string;
-  percent: number;
-  amount: number;
-  currency: string | null;
-  onChange: (value: number) => void;
+  value: string;
+  highlight?: boolean;
+  onClick: () => void;
 }) {
-  const [val, setVal] = useState(String(percent));
-  useEffect(() => setVal(String(percent)), [percent]);
   return (
-    <div className="flex justify-between items-center">
-      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <span>{label}</span>
-        <input
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onBlur={() => {
-            const n = parseFloat(val);
-            if (!isNaN(n) && n !== percent) onChange(n);
-            else setVal(String(percent));
-          }}
-          inputMode="decimal"
-          className="w-12 text-center border border-border rounded px-1 py-0.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <span>%</span>
-      </div>
-      <span className="text-sm font-semibold text-foreground tabular-nums">
-        {formatMoney(amount, currency)}
+    <button
+      onClick={onClick}
+      className="w-full flex justify-between items-center min-h-[44px] rounded-lg px-1 hover:bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1">
+        <span className={`text-sm font-semibold tabular-nums ${highlight ? "text-primary-text" : "text-foreground"}`}>{value}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>
       </span>
+    </button>
+  );
+}
+
+/* ─── Discount ──────────────────────────────────────────────────────── */
+
+type DiscountLine = DiscountableLine & { description: string };
+type DiscountResultRow = { id: number; originalTotal: number | null; total: number };
+
+/**
+ * Enter discounts and choose which items each one comes off. The web copy of
+ * the app's DiscountSheet (artifacts/mobile/components/DiscountSheet.tsx), with
+ * the same rules and the same shared maths:
+ *
+ * - It works in rounds: tick items, set a rate, apply; then tick others and
+ *   apply a different rate. That is "30% off food, 20% off drinks".
+ * - An item holds exactly ONE rate. Applying again replaces it, so a discount
+ *   can never stack onto another.
+ * - Every rate is measured against the undiscounted price.
+ * - It opens on the EXACT rate each item already has, so opening it and
+ *   pressing Done never moves a price by a rounding.
+ */
+function DiscountModal({
+  lines,
+  defaultPercent,
+  currency,
+  onSave,
+  onClose,
+}: {
+  lines: DiscountLine[];
+  defaultPercent: number;
+  currency: string | null;
+  onSave: (results: DiscountResultRow[], newDefaultPercent: number) => void;
+  onClose: () => void;
+}) {
+  const [rateDraft, setRateDraft] = useState(
+    String(defaultPercent > 0 ? Math.round(defaultPercent * 100) / 100 : 20),
+  );
+  const [rates, setRates] = useState<Map<number, number>>(() => {
+    const existing = new Map<number, number>();
+    for (const line of lines) {
+      if (line.originalTotal != null && line.originalTotal > line.total) {
+        const base = baseTotalOf(line);
+        if (base > 0) existing.set(line.id, ((base - line.total) / base) * 100);
+      }
+    }
+    return existing;
+  });
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [editing, setEditing] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const fmt = (n: number) => formatMoney(n, currency);
+
+  const rate = parsePercent(rateDraft);
+  const preview = useMemo(() => {
+    let off = 0;
+    let after = 0;
+    for (const line of lines) {
+      const result = applyPercent(line, rates.get(line.id) ?? 0);
+      off += result.discountAmount;
+      after += result.total;
+    }
+    return { off: Math.round(off * 100) / 100, after: Math.round(after * 100) / 100 };
+  }, [lines, rates]);
+
+  // Grouped by the rate as it reads, so two lines a receipt calls "25%" are one
+  // group even when their exact rates differ by the rounding.
+  const groups = useMemo(() => {
+    const byRate = new Map<number, number>();
+    for (const line of lines) {
+      const value = rates.get(line.id);
+      if (value === undefined) continue;
+      const shown = discountRate(baseTotalOf(line), applyPercent(line, value).total);
+      byRate.set(shown, (byRate.get(shown) ?? 0) + 1);
+    }
+    return [...byRate.entries()].sort((a, b) => b[0] - a[0]);
+  }, [rates, lines]);
+
+  const toggle = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allSelected = lines.length > 0 && selected.size === lines.length;
+
+  const applyToSelected = () => {
+    if (rate <= 0 || selected.size === 0) return;
+    setRates((prev) => {
+      const next = new Map(prev);
+      for (const id of selected) next.set(id, rate);
+      return next;
+    });
+    setSelected(new Set());
+    setEditing(null);
+  };
+
+  /** Applied as it is typed, so what is shown is always what is in force. */
+  const editRate = (id: number, text: string) => {
+    const raw = Number(text.replace(",", "."));
+    setEditDraft(Number.isFinite(raw) && raw > 100 ? "100" : text);
+    const value = parsePercent(text);
+    setRates((prev) => {
+      const next = new Map(prev);
+      if (value > 0) next.set(id, value);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleSave = () => {
+    onSave(
+      lines.map((line) => {
+        const { id, originalTotal, total } = applyPercent(line, rates.get(line.id) ?? 0);
+        return { id, originalTotal, total };
+      }),
+      rate > 0 ? rate : defaultPercent,
+    );
+  };
+
+  return (
+    <Modal title="Discount" onClose={onClose}>
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor="discount-rate" className="text-sm text-muted-foreground">Discount</label>
+        <div className="flex items-center gap-1 border-2 border-border rounded-lg px-3 focus-within:border-primary">
+          <input
+            id="discount-rate"
+            value={rateDraft}
+            onChange={(e) => setRateDraft(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            inputMode="decimal"
+            className="w-14 py-2 text-base font-semibold text-right text-foreground bg-transparent focus:outline-none"
+          />
+          <span className="text-muted-foreground">%</span>
+        </div>
+      </div>
+
+      <button
+        onClick={applyToSelected}
+        disabled={rate <= 0 || selected.size === 0}
+        className="w-full rounded-lg py-2.5 text-sm font-semibold min-h-[44px] transition enabled:bg-primary enabled:text-primary-foreground disabled:bg-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {selected.size === 0
+          ? "Tick the items this comes off"
+          : `Take ${Math.round(rate * 100) / 100}% off ${selected.size} item${selected.size === 1 ? "" : "s"}`}
+      </button>
+
+      <div className="flex justify-between text-sm">
+        <button
+          onClick={() => setSelected(allSelected ? new Set() : new Set(lines.map((l) => l.id)))}
+          className="font-semibold text-primary-text min-h-[44px] px-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {allSelected ? "Untick all" : "Tick all"}
+        </button>
+        {rates.size > 0 && (
+          <button
+            onClick={() => { setRates(new Map()); setSelected(new Set()); }}
+            className="text-muted-foreground min-h-[44px] px-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Clear discounts
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-[40vh] overflow-y-auto -mx-1 px-1 divide-y divide-border">
+        {lines.map((line) => {
+          const linePercent = rates.get(line.id);
+          const base = baseTotalOf(line);
+          const result = applyPercent(line, linePercent ?? 0);
+          const ticked = selected.has(line.id);
+          const shown = linePercent === undefined ? 0 : percentLabel(discountRate(base, result.total));
+          return (
+            <div key={line.id} className="flex items-center gap-2 py-2">
+              <label className="flex items-center gap-2 flex-1 min-w-0 min-h-[44px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ticked}
+                  onChange={() => toggle(line.id)}
+                  className="w-5 h-5 accent-[hsl(var(--primary))] shrink-0"
+                />
+                <span className="text-sm text-foreground truncate">{line.description}</span>
+              </label>
+              {editing === line.id ? (
+                <span className="flex items-center gap-0.5 border-2 border-primary rounded-md px-1.5">
+                  <input
+                    autoFocus
+                    value={editDraft}
+                    onChange={(e) => editRate(line.id, e.target.value)}
+                    onBlur={() => setEditing(null)}
+                    onKeyDown={(e) => e.key === "Enter" && setEditing(null)}
+                    inputMode="decimal"
+                    aria-label={`Discount percent for ${line.description}`}
+                    className="w-10 py-1.5 text-sm text-right bg-transparent focus:outline-none"
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setEditing(line.id);
+                    setEditDraft(linePercent === undefined ? "" : percentInput(discountRate(base, result.total)));
+                  }}
+                  aria-label={`${line.description}: ${shown}% off. Change`}
+                  className={`text-xs font-semibold rounded-md border px-2 min-h-[36px] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    linePercent === undefined
+                      ? "border-border text-muted-foreground bg-muted"
+                      : "border-primary/40 text-primary-text bg-primary/10"
+                  }`}
+                >
+                  {shown}%
+                </button>
+              )}
+              <span className="w-20 text-right shrink-0">
+                {result.discountAmount > 0 && (
+                  <span className="block text-[11px] text-muted-foreground line-through tabular-nums">{fmt(base)}</span>
+                )}
+                <span className="block text-sm font-semibold text-foreground tabular-nums">{fmt(result.total)}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex justify-between items-center text-sm pt-1 border-t border-border">
+        <span className="text-muted-foreground truncate">
+          {groups.length === 0
+            ? "No discount"
+            : groups.slice(0, 2).map(([p, c]) => `${percentLabel(p)}% off ${c}`).join("  ·  ") +
+              (groups.length > 2 ? `  +${groups.length - 2} more` : "")}
+        </span>
+        <span className="font-semibold text-foreground tabular-nums">{"\u2212"}{fmt(preview.off)}</span>
+      </div>
+
+      <button
+        onClick={handleSave}
+        className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold min-h-[44px] hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Done · {fmt(preview.after)}
+      </button>
+    </Modal>
+  );
+}
+
+/* ─── Tax and tip ───────────────────────────────────────────────────── */
+
+/**
+ * Tax and tip, each as a percent or as an amount — most receipts print the
+ * amount. The bill stores a rate, so an amount is turned into one against what
+ * is owed for the items (after discounts), exactly as the app does.
+ */
+function TaxTipModal({
+  subtotal,
+  taxPercent,
+  tipPercent,
+  currency,
+  onSave,
+  onClose,
+}: {
+  subtotal: number;
+  taxPercent: number;
+  tipPercent: number;
+  currency: string | null;
+  onSave: (tax: number, tip: number) => void;
+  onClose: () => void;
+}) {
+  const [taxMode, setTaxMode] = useState<MoneyMode>("percent");
+  const [tipMode, setTipMode] = useState<MoneyMode>("percent");
+  const [taxInput, setTaxInput] = useState(taxPercent === 0 ? "" : String(taxPercent));
+  const [tipInput, setTipInput] = useState(tipPercent === 0 ? "" : String(tipPercent));
+  const fmt = (n: number) => formatMoney(n, currency);
+
+  const tax = toPercent(taxMode, taxInput, subtotal);
+  const tip = toPercent(tipMode, tipInput, subtotal);
+  const taxAmount = amountFromPercent(tax, subtotal);
+  const tipAmount = amountFromPercent(tip, subtotal);
+
+  // Switching unit converts what is there rather than clearing it.
+  const switchMode = (
+    mode: MoneyMode,
+    current: MoneyMode,
+    percent: number,
+    setMode: (m: MoneyMode) => void,
+    setInput: (v: string) => void,
+  ) => {
+    if (mode === current) return;
+    setMode(mode);
+    if (percent <= 0) return setInput("");
+    setInput(mode === "amount" ? amountFromPercent(percent, subtotal).toFixed(2) : fmtPct(percent));
+  };
+
+  const Field = ({
+    label,
+    mode,
+    input,
+    amount,
+    onMode,
+    onInput,
+  }: {
+    label: string;
+    mode: MoneyMode;
+    input: string;
+    amount: number;
+    onMode: (m: MoneyMode) => void;
+    onInput: (v: string) => void;
+  }) => (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">{label}</span>
+        <div className="inline-flex rounded-lg border border-border overflow-hidden text-xs font-semibold" role="group" aria-label={`${label} as`}>
+          {(["percent", "amount"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => onMode(m)}
+              aria-pressed={mode === m}
+              className={`px-3 min-h-[36px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {m === "percent" ? "%" : "Amount"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          value={input}
+          onChange={(e) => onInput(e.target.value)}
+          inputMode="decimal"
+          placeholder="0"
+          aria-label={`${label} ${mode === "percent" ? "percent" : "amount"}`}
+          className="flex-1 min-w-0 border-2 border-border rounded-lg px-3 py-2 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <span className="text-sm font-semibold text-foreground tabular-nums w-24 text-right">
+          {mode === "percent" ? fmt(amount) : `${fmtPct(amount > 0 ? (amount / (subtotal || 1)) * 100 : 0)}%`}
+        </span>
+      </div>
     </div>
+  );
+
+  return (
+    <Modal title="Tax and tip" onClose={onClose}>
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">Subtotal</span>
+        <span className="font-semibold text-foreground tabular-nums">{fmt(subtotal)}</span>
+      </div>
+      {Field({
+        label: "Tax",
+        mode: taxMode,
+        input: taxInput,
+        amount: taxAmount,
+        onMode: (m) => switchMode(m, taxMode, tax, setTaxMode, setTaxInput),
+        onInput: setTaxInput,
+      })}
+      {Field({
+        label: "Tip",
+        mode: tipMode,
+        input: tipInput,
+        amount: tipAmount,
+        onMode: (m) => switchMode(m, tipMode, tip, setTipMode, setTipInput),
+        onInput: setTipInput,
+      })}
+      <div className="flex justify-between items-center pt-1 border-t border-border">
+        <span className="text-sm font-bold text-foreground">Total</span>
+        <span className="text-lg font-bold text-primary-text tabular-nums">
+          {fmt(Math.round((subtotal + taxAmount + tipAmount) * 100) / 100)}
+        </span>
+      </div>
+      <ModalButtons onCancel={onClose} onConfirm={() => onSave(tax, tip)} confirmLabel="Save" />
+    </Modal>
   );
 }
 

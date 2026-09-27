@@ -14,7 +14,7 @@
 import {
   applyPercent, applyAmount, apportion, baseTotalOf, parsePercent, totalDiscount,
   inferDiscountSelection, discountAt, type DiscountableLine,
-} from "../../mobile/utils/discount.ts";
+} from "../../../lib/utils/src/discount.ts";
 import {
   checkAgainstPrintedTotal, shouldApplyBillDiscount, normalizeLineItems,
 } from "../src/lib/receipt-line-items.ts";
