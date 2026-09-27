@@ -8,7 +8,7 @@ import {
   applyPercent, applyAmount, apportion, baseTotalOf, parsePercent, totalDiscount,
   inferDiscountSelection,
   type DiscountableLine,
-} from "../../mobile/utils/discount.ts";
+} from "../../../lib/utils/src/discount.ts";
 
 let failed = 0;
 function check(name: string, ok: boolean, got?: unknown) {
