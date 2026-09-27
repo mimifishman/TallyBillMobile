@@ -5,3 +5,4 @@ export * from "./bill-users";
 export * from "./bill-lines";
 export * from "./bill-line-users";
 export * from "./circles";
+export * from "./usage-counters";
