@@ -65,10 +65,15 @@ function memoryStore(): Bump & { counts: Map<string, number> } {
 }
 
 const policy = policyFromEnv({});
-check("default numbers", policy.scan.guest.hour === 20 && policy.scan.guest.day === 60 &&
-  policy.scan.user.hour === 60 && policy.scan.dailyCeiling === 1000, policy.scan);
+check("default scan numbers", policy.scan.guest.hour === 10 && policy.scan.guest.day === 25 &&
+  policy.scan.user.hour === 15 && policy.scan.user.day === 40 && policy.scan.dailyCeiling === 5000, policy.scan);
+check("default translate numbers", policy.translate.guest.hour === 15 && policy.translate.guest.day === 40 &&
+  policy.translate.user.hour === 20 && policy.translate.user.day === 60 && policy.translate.dailyCeiling === 10000,
+  policy.translate);
+check("signing in always gives more", policy.scan.user.hour > policy.scan.guest.hour &&
+  policy.scan.user.day > policy.scan.guest.day);
 check("env overrides a number", policyFromEnv({ OCR_GUEST_PER_HOUR: "5" }).scan.guest.hour === 5);
-check("a bad env value keeps the default", policyFromEnv({ OCR_GUEST_PER_HOUR: "lots" }).scan.guest.hour === 20);
+check("a bad env value keeps the default", policyFromEnv({ OCR_GUEST_PER_HOUR: "lots" }).scan.guest.hour === policy.scan.guest.hour);
 
 const at = new Date("2026-09-27T14:35:00Z");
 const guest: Caller = { kind: "guest", id: "176.229.21.27" };
@@ -77,13 +82,14 @@ const user: Caller = { kind: "user", id: "user_abc" };
 {
   const store = memoryStore();
   let last;
-  for (let i = 0; i < 20; i++) last = await checkUsage(store, "scan", policy.scan, guest, at);
-  check("a guest's 20th scan in an hour goes ahead", last!.ok === true && last!.ok && last.remaining === 0, last);
+  const G = policy.scan.guest.hour;
+  for (let i = 0; i < G; i++) last = await checkUsage(store, "scan", policy.scan, guest, at);
+  check(`a guest's ${G}th scan in an hour goes ahead`, last!.ok === true && last!.ok && last.remaining === 0, last);
   const refused = await checkUsage(store, "scan", policy.scan, guest, at);
-  check("the 21st is refused with a plain message", !refused.ok && refused.reason === "caller" &&
+  check(`scan ${G + 1} is refused with a plain message`, !refused.ok && refused.reason === "caller" &&
     refused.message === "Too many scans from this network this hour. Try again in 25 minutes, or sign in to scan more." &&
     refused.retryAfterSeconds === 25 * 60, refused);
-  check("a refused call does not use up the ceiling", store.counts.get("scan:all:d:2026-09-27") === 20, [...store.counts]);
+  check("a refused call does not use up the ceiling", store.counts.get("scan:all:d:2026-09-27") === G, [...store.counts]);
 
   const nextHour = await checkUsage(store, "scan", policy.scan, guest, new Date("2026-09-27T15:00:00Z"));
   check("the next hour the guest can scan again", nextHour.ok, nextHour);
@@ -98,19 +104,22 @@ const user: Caller = { kind: "user", id: "user_abc" };
 {
   const store = memoryStore();
   let last;
-  for (let h = 0; h < 4; h++) {
-    for (let i = 0; i < 20; i++) {
+  // Spread over enough hours that no single hour is over its limit.
+  const { hour: H, day: D } = policy.scan.guest;
+  for (let h = 0; h < Math.ceil((D + 1) / H); h++) {
+    for (let i = 0; i < H; i++) {
       last = await checkUsage(store, "scan", policy.scan, guest, new Date(Date.UTC(2026, 8, 27, 8 + h, 5)));
     }
   }
-  check("a guest's day limit is 60", !last!.ok && /today\. Try again in \d+ hours/.test(last!.message), last);
+  check(`a guest's day limit is ${D}`, !last!.ok && /today\. Try again in \d+ hours/.test(last!.message), last);
 }
 
 {
   const store = memoryStore();
   let last;
-  for (let i = 0; i < 61; i++) last = await checkUsage(store, "scan", policy.scan, user, at);
-  check("a signed-in user gets 60 an hour, and is not told to sign in", !last!.ok &&
+  const U = policy.scan.user.hour;
+  for (let i = 0; i < U + 1; i++) last = await checkUsage(store, "scan", policy.scan, user, at);
+  check(`a signed-in user gets ${U} an hour, and is not told to sign in`, !last!.ok &&
     last!.message === "Too many scans from your account this hour. Try again in 25 minutes.", last);
 }
 
