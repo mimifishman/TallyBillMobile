@@ -153,9 +153,8 @@ export async function askForReceipt(
 /**
  * The names reading by a Claude model, through Replit's Anthropic integration.
  *
- * A separate provider from the OpenAI gateway, so it neither waits on nor adds
- * to that gateway's rate limit. No SDK: one POST to the Messages API. Without
- * the integration's credentials it throws at once, and the next reader starts.
+ * No SDK: one POST to the Messages API. Without the integration's credentials
+ * it throws at once, and the other readers still vote.
  */
 async function askClaudeForNames(model: string, strips: string[], opts: CallOptions): Promise<NameLine[] | null> {
   const key = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
@@ -241,19 +240,9 @@ function noteRateLimit(err: unknown): void {
 
 /** Why the names reading should not run now, or null when it may. */
 function namesBlocked(): string | null {
+  if (Date.now() - rateLimitedAt < RATE_LIMIT_COOL_OFF_MS) return "skipped-rate-limited";
   if (namesInFlight >= MAX_NAMES_IN_FLIGHT) return "skipped-busy";
   return null;
-}
-
-/**
- * The readers that may run now. After the OpenAI gateway's 429 its readers sit
- * out the cool-off; a Claude reader goes to another provider and still runs.
- */
-function readersAllowed(readers: NamesReader[]): { allowed: NamesReader[]; skipped: string[] } {
-  const cooling = Date.now() - rateLimitedAt < RATE_LIMIT_COOL_OFF_MS;
-  const allowed = readers.filter((r) => !cooling || isClaude(r.model));
-  const skipped = readers.filter((r) => !allowed.includes(r)).map((r) => `${readerLabel(r)}:skipped-rate-limited`);
-  return { allowed, skipped };
 }
 
 interface NamesAnswer {
@@ -271,10 +260,9 @@ interface NamesPick {
 /**
  * The names readings, all at once. Never rejects.
  *
- * Every reader starts together and each gets until the names budget. The
- * readers go to two providers — Claude through Anthropic, gpt-5.4 through the
- * OpenAI gateway — so this is one OpenAI call per scan, where the old hedge
- * (gpt-5.4 low, then gpt-5.4 none after 8 s) often made two.
+ * Every reader starts together and each gets until the names budget. That is
+ * two names calls per scan; the old hedge (gpt-5.4 low, then gpt-5.4 none if
+ * low had not answered by 8 s) made two on most long receipts as well.
  *
  * Measured 2026-09-28 on the 13 Hebrew fixtures, names right exactly as
  * printed, of 71: gpt-4o alone 39, gpt-5.4 44, Claude Sonnet 5 53, and the
@@ -303,8 +291,10 @@ function readNames(
         });
         return lines && lines.length > 0 ? { reader, lines } : `${label}:no-answer`;
       } catch (err) {
-        // Only the OpenAI gateway's 429 is shared with the money reads.
-        if (!isClaude(reader.model)) noteRateLimit(err);
+        // Replit's Anthropic integration answered 429 at the same moments as
+        // the OpenAI gateway (eval of 2026-09-28), so it counts as the same
+        // limit: any 429 rests the names readings.
+        noteRateLimit(err);
         if (!outer.aborted) warn(err, `names reading by ${label} failed`);
         return `${label}:${failure(err)}`;
       }
@@ -346,16 +336,13 @@ export async function scanReceipt(
   const wholeCall = cropped
     ? settle(askForReceipt(openai, config.model, wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }))
     : null;
-  const { allowed: nameReaders, skipped: namesSkipped } = readersAllowed(config.names);
-  const namesBlock = config.names.length === 0 ? null
-    : nameReaders.length === 0 ? "skipped-rate-limited"
-    : namesBlocked();
-  if (nameReaders.length > 0 && !namesBlock) namesInFlight++;
-  const namesPick = nameReaders.length > 0 && !namesBlock
+  const namesBlock = config.names.length > 0 ? namesBlocked() : null;
+  if (config.names.length > 0 && !namesBlock) namesInFlight++;
+  const namesPick = config.names.length > 0 && !namesBlock
     ? readNames(
         openai,
         receiptStrips(wholePrep.prepared.buffer).catch(() => [] as string[]),
-        nameReaders,
+        config.names,
         { startedAt, budgetMs: config.namesBudgetMs },
         cancelNames.signal,
         warn,
@@ -448,7 +435,7 @@ export async function scanReceipt(
           ...parts.map((p) => `${p.label}:matched=${p.named.matched}`),
         ].join(" ");
       }
-      notes["X-OCR-Names"] = [note, ...namesSkipped, ...skipped].join(" ");
+      notes["X-OCR-Names"] = [note, ...skipped].join(" ");
     }
 
     notes["X-OCR-Server-Ms"] = String(Date.now() - startedAt);
