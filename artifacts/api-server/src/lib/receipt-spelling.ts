@@ -9,7 +9,8 @@
  * 2026-09-28.
  *
  * A person reading a smudged receipt does both in turn: letter shapes first,
- * then the menu word the shapes fit. This is the second step. It is one short
+ * then the menu word the shapes fit — a restaurant, bar or cafe menu, which is
+ * what TallyBill splits. This is the second step. It is one short
  * text-only call — no photo — given every reading of each Hebrew line, and it
  * may only:
  *   - keep a name that is already a real word, or pick a real one among the
@@ -19,17 +20,21 @@
  * The limit is enforced here, not trusted to the model: an answer further than
  * that from EVERY reading is thrown away and the voted name stays. Money is
  * never part of the request, so it cannot change.
+ *
+ * The prompt's example words are on no fixture receipt, on purpose: a real
+ * fixture name in a prompt gets copied back and inflates the score (see the
+ * note on prompt contamination in receipt-prompt.ts).
  */
 import type { LineItem } from "./receipt-line-items";
 import { editDistance, foldForVote } from "./receipt-names";
 
-export const SPELLING_PROMPT = `You fix OCR misreadings of item names on an Israeli restaurant, cafe or shop receipt.
+export const SPELLING_PROMPT = `You fix OCR misreadings of item names on the receipt of an Israeli restaurant, bar or cafe. Every name is something on its menu: a dish, a side, a drink, a dessert, or an extra such as a sauce or a topping.
 
 Each line gives one or more readings of the SAME printed name, made by different OCR readers. The first reading is the current best guess. The readers confuse Hebrew letters that look alike in receipt fonts — ר and ד and ך, ב and כ, ו and ז and ן and י, ה and ח and ת, ס and ם, ט and מ, ע and צ, ג and נ — and sometimes add or drop a ו or a י.
 
 For each line, return the name that was most likely printed:
-- If a reading is already a real, sensible item name (a dish, drink or product in Hebrew, or a name in Latin letters), return it exactly as written. When more than one reading is real, prefer the earlier one.
-- If no reading is a real name, return the real item name closest to the readings, changing at most two letters, and only look-alike letters as above, or adding or dropping one ו or י.
+- If a reading is already a real, sensible menu item — words a restaurant, bar or cafe in Israel would print, including dishes from other cuisines written in Hebrew letters (ניוקי, ברוסקטה, אנטרקוט) and names in Latin letters — return it exactly as written. When more than one reading is, prefer the earlier one.
+- If no reading is a real menu item, return the real menu item closest to the readings, changing at most two letters, and only look-alike letters as above, or adding or dropping one ו or י.
 - If you are not sure, return the first reading unchanged.
 - Never translate. Never add or remove a word. Never turn one real dish into a different real dish.
 
