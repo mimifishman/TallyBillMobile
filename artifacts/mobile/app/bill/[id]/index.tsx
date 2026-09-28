@@ -124,6 +124,13 @@ export default function BillDetailScreen() {
 
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  /**
+   * Someone who did not create the bill opens it to read it, so it opens
+   * read-only and they tap Edit to change it. People scrolling a bill to check
+   * their share were tapping badges and buttons by mistake and changing it for
+   * everyone. Not remembered: every visit starts read-only again.
+   */
+  const [editMode, setEditMode] = useState(false);
 
   // Close the overflow menu, then run the action on the next tick so the menu
   // sheet finishes dismissing before another sheet/alert is presented (avoids
@@ -707,7 +714,11 @@ export default function BillDetailScreen() {
     !!guestOwnerId &&
     bill.guestOwnerId === guestOwnerId;
   const canDelete = isOwner || isGuestOwner;
-  const canEditHeader = isOwner || !!isMember || isGuestOwner || (!user && !!bill.isGuestBill && guestHasBill);
+  // The creator is never asked to press Edit: it is their bill to set up.
+  const isCreator = isOwner || isGuestOwner;
+  const canEdit = isCreator || editMode;
+  const canEditHeader =
+    canEdit && (isOwner || !!isMember || isGuestOwner || (!user && !!bill.isGuestBill && guestHasBill));
   const canRemoveFromList = !isOwner && !isGuestOwner && (!!isMember || guestHasBill);
 
   const currencySymbol = getCurrencySymbol(bill.currency);
@@ -950,10 +961,50 @@ export default function BillDetailScreen() {
             <Feather name="more-vertical" size={20} color={colors.foreground} />
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={() => router.push(`/bill/${billId}/totals`)} style={[styles.totalsBtn, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity
+          onPress={() => router.push(canEdit ? `/bill/${billId}/totals?edit=1` : `/bill/${billId}/totals`)}
+          style={[styles.totalsBtn, { backgroundColor: colors.primary }]}
+        >
           <Text style={styles.totalsBtnText}>Totals</Text>
         </TouchableOpacity>
       </View>
+
+      {!isCreator && (
+        <View
+          style={[
+            styles.modeBar,
+            { borderBottomColor: colors.border, backgroundColor: editMode ? colors.primarySoft : colors.muted },
+          ]}
+        >
+          <Feather name={editMode ? "edit-2" : "eye"} size={14} color={editMode ? colors.primaryText : colors.mutedForeground} />
+          <Text
+            style={[styles.modeBarText, { color: editMode ? colors.primaryText : colors.mutedForeground }]}
+            numberOfLines={2}
+          >
+            {editMode ? "Editing. Everyone on the bill sees your changes." : "View only. Tap Edit to make changes."}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setEditMode((v) => !v);
+            }}
+            style={[
+              styles.modeBarBtn,
+              editMode
+                ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                : { backgroundColor: colors.card, borderColor: colors.primaryText },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={editMode ? "Done editing" : "Edit this bill"}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            {!editMode && <Feather name="edit-2" size={13} color={colors.primaryText} />}
+            <Text style={[styles.modeBarBtnText, { color: editMode ? "#fff" : colors.primaryText }]}>
+              {editMode ? "Done" : "Edit"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Without this, the first tap while a keyboard is up is spent dismissing
           it and never reaches what was tapped — so Save on an item being edited
@@ -987,7 +1038,7 @@ export default function BillDetailScreen() {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PEOPLE</Text>
             <View style={styles.itemActions}>
-              {user && circles && circles.length > 0 && (
+              {canEdit && user && circles && circles.length > 0 && (
                 <TouchableOpacity
                   onPress={() => setShowCirclePicker(true)}
                   style={[styles.addBtn, { backgroundColor: colors.muted }]}
@@ -996,10 +1047,12 @@ export default function BillDetailScreen() {
                   <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Circle</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => setShowAddPerson(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
-                <Feather name="plus" size={14} color={colors.primaryText} />
-                <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add</Text>
-              </TouchableOpacity>
+              {canEdit && (
+                <TouchableOpacity onPress={() => setShowAddPerson(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
+                  <Feather name="plus" size={14} color={colors.primaryText} />
+                  <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -1007,7 +1060,9 @@ export default function BillDetailScreen() {
             <Animated.View entering={FadeInDown.duration(400)} style={styles.emptyPeople}>
               <EmptyNoPeopleIllustration size={120} />
               <Text style={[styles.emptyStateTitle, { color: colors.foreground }]}>No one here yet</Text>
-              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>Add people to start splitting the bill</Text>
+              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
+                {canEdit ? "Add people to start splitting the bill" : "Tap Edit to add people"}
+              </Text>
             </Animated.View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peopleScroll}>
@@ -1032,26 +1087,30 @@ export default function BillDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ITEMS</Text>
-            <View style={styles.itemActions}>
-              <TouchableOpacity
-                onPress={() => router.push(`/bill/${billId}/scan`)}
-                style={[styles.addBtn, { backgroundColor: colors.muted }]}
-              >
-                <Feather name="camera" size={14} color={colors.primaryText} />
-                <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Scan</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowAddItem(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
-                <Feather name="plus" size={14} color={colors.primaryText} />
-                <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add</Text>
-              </TouchableOpacity>
-            </View>
+            {canEdit && (
+              <View style={styles.itemActions}>
+                <TouchableOpacity
+                  onPress={() => router.push(`/bill/${billId}/scan`)}
+                  style={[styles.addBtn, { backgroundColor: colors.muted }]}
+                >
+                  <Feather name="camera" size={14} color={colors.primaryText} />
+                  <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Scan</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowAddItem(true)} style={[styles.addBtn, { backgroundColor: colors.muted }]}>
+                  <Feather name="plus" size={14} color={colors.primaryText} />
+                  <Text style={[styles.addBtnText, { color: colors.primaryText }]}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {lines.length === 0 ? (
             <Animated.View entering={FadeInDown.duration(400)} style={[styles.emptyItems, { borderColor: colors.border }]}>
               <EmptyNoItemsIllustration size={120} />
               <Text style={[styles.emptyStateTitle, { color: colors.foreground }]}>No items yet</Text>
-              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>Scan a receipt or add items manually</Text>
+              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
+                {canEdit ? "Scan a receipt or add items manually" : "Tap Edit to add items"}
+              </Text>
             </Animated.View>
           ) : (
             lines.map((line) => (
@@ -1074,6 +1133,7 @@ export default function BillDetailScreen() {
                 onDelete={handleDeleteLine}
                 onUpdate={handleUpdateLine}
                 onSplit={openSplitModal}
+                readOnly={!canEdit}
               />
             ))
           )}
@@ -1516,6 +1576,26 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   headerBtn: { padding: SPACING.sm },
+  modeBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+  },
+  modeBarText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_500Medium" },
+  modeBarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1.5,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 7,
+    minHeight: 34,
+  },
+  modeBarBtnText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_700Bold" },
   menuContent: { gap: 4 },
   menuRow: { flexDirection: "row", alignItems: "center", gap: SPACING.md, paddingVertical: 14, paddingHorizontal: SPACING.xs },
   menuRowText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_500Medium" },

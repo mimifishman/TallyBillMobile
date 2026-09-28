@@ -97,6 +97,41 @@ function TopBar() {
   );
 }
 
+/* ─── View / edit mode bar ──────────────────────────────────────────── */
+
+/**
+ * The bill opens read-only and this is where it is switched to editing. People
+ * reading a shared bill to check their share were tapping things by mistake and
+ * changing it for everyone. Sticky under the top bar, so Done is always in reach.
+ */
+function ModeBar({ editing, onToggle }: { editing: boolean; onToggle: () => void }) {
+  return (
+    <div
+      className={`sticky top-12 z-30 border-b border-border ${editing ? "bg-primary/10" : "bg-muted"}`}
+    >
+      <div className="max-w-2xl mx-auto px-4 py-2 flex items-center gap-3">
+        <span className={`flex-1 min-w-0 text-sm font-medium ${editing ? "text-primary-text" : "text-muted-foreground"}`}>
+          {editing ? "Editing. Everyone on the bill sees your changes." : "View only. Tap Edit to make changes."}
+        </span>
+        <button
+          onClick={onToggle}
+          aria-pressed={editing}
+          className={`shrink-0 inline-flex items-center gap-1.5 text-sm font-bold px-4 rounded-full border-2 min-h-[40px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            editing
+              ? "bg-primary border-primary text-primary-foreground hover:opacity-90"
+              : "bg-card border-primary-text text-primary-text hover:bg-primary/10"
+          }`}
+        >
+          {!editing && (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          )}
+          {editing ? "Done" : "Edit"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Loading skeleton ──────────────────────────────────────────────── */
 
 function BillSkeleton() {
@@ -326,6 +361,11 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const [showTaxTip, setShowTaxTip] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
 
+  // Opens read-only; Edit switches it. Not remembered, so every visit starts
+  // safe. The page cannot tell the creator from anyone else, so it asks everyone.
+  const [editing, setEditing] = useState(false);
+  const readOnly = !editing;
+
   // "That's me": lets a diner tap their name once and thereafter see their own
   // share pinned at the top. Persisted per-bill so it survives refreshes.
   const meStorageKey = `tallybill:me:${bill.joinCode}`;
@@ -551,10 +591,17 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   return (
     <div className="min-h-screen pb-24">
       <TopBar />
+      <ModeBar editing={editing} onToggle={() => setEditing((v) => !v)} />
 
       <header className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <HeaderEditable bill={bill} onSave={saveBill} ownerName={ownerName} peopleCount={users.length} />
+          <HeaderEditable
+            bill={bill}
+            onSave={saveBill}
+            ownerName={ownerName}
+            peopleCount={users.length}
+            readOnly={readOnly}
+          />
           {receiptUrl && (
             <button
               onClick={() => setShowReceipt(true)}
@@ -595,11 +642,11 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           <SectionHeader
             title="PEOPLE"
             actionLabel="+ Add"
-            onAction={() => setShowAddPerson(true)}
+            onAction={readOnly ? undefined : () => setShowAddPerson(true)}
           />
           {users.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              Add people to start splitting
+              {readOnly ? "No people yet. Tap Edit to add them." : "Add people to start splitting"}
             </p>
           ) : (
             <>
@@ -615,7 +662,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                     user={u}
                     isMe={u.id === meId}
                     onIdentify={() => setMeId(u.id === meId ? null : u.id)}
-                    onEdit={() => openEditPerson(u)}
+                    onEdit={readOnly ? undefined : () => openEditPerson(u)}
                   />
                 ))}
               </div>
@@ -627,7 +674,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           <SectionHeader
             title="ITEMS"
             actionLabel="+ Add item"
-            onAction={() => setShowAddItem(true)}
+            onAction={readOnly ? undefined : () => setShowAddItem(true)}
           />
 
           {hasUnassigned && (
@@ -642,7 +689,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
           {lines.length === 0 ? (
             <div className="border-2 border-dashed border-border rounded-2xl py-10 px-6 text-center mt-3">
               <p className="text-sm text-muted-foreground">
-                No items yet. Add the first one above.
+                {readOnly ? "No items yet. Tap Edit to add them." : "No items yet. Add the first one above."}
               </p>
             </div>
           ) : (
@@ -653,6 +700,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                   line={line}
                   users={users}
                   currency={bill.currency ?? null}
+                  readOnly={readOnly}
                   onToggle={(billUserId) =>
                     toggleAssignment.mutate({
                       billId,
@@ -686,6 +734,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                   currency={bill.currency ?? null}
                   billId={billId}
                   isMe={p.billUserId === meId}
+                  readOnly={readOnly}
                   onChange={onChange}
                 />
               ))}
@@ -708,7 +757,17 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
             </div>
           )}
           <SummaryRow label="Subtotal" value={fmt(subtotal)} />
-          {/* Tinted together so they read as controls, as on the app's bill. */}
+          {readOnly ? (
+            // Plain figures while reading: a chevron promises something to tap.
+            <>
+              {discountTotal > 0 && (
+                <SummaryRow label="Discount" value={`\u2212${fmt(discountTotal)}`} />
+              )}
+              <SummaryRow label={taxPercent > 0 ? `Tax (${fmtPct(taxPercent)}%)` : "Tax"} value={fmt(taxAmount)} />
+              <SummaryRow label={tipPercent > 0 ? `Tip (${fmtPct(tipPercent)}%)` : "Tip"} value={fmt(tipAmount)} />
+            </>
+          ) : (
+          /* Tinted together so they read as controls, as on the app's bill. */
           <div className="rounded-xl bg-muted/60 -mx-2 px-2 py-1">
             {lines.length > 0 && (
               <TappableRow
@@ -731,6 +790,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
               onClick={() => setShowTaxTip(true)}
             />
           </div>
+          )}
           <div className="h-px bg-border my-1" />
           <div className="flex justify-between items-center">
             <span className="text-base font-bold text-foreground">Grand Total</span>
@@ -1021,11 +1081,13 @@ function HeaderEditable({
   onSave,
   ownerName,
   peopleCount,
+  readOnly,
 }: {
   bill: Bill;
   onSave: (patch: UpdateBillRequest) => void;
   ownerName: string;
   peopleCount: number;
+  readOnly: boolean;
 }) {
   const [title, setTitle] = useState<string>(bill.title);
   const [date, setDate] = useState<string>(bill.date);
@@ -1036,6 +1098,31 @@ function HeaderEditable({
     setDate(bill.date);
     setCurrency(bill.currency ?? "");
   }, [bill.title, bill.date, bill.currency]);
+
+  if (readOnly) {
+    return (
+      <div className="space-y-1.5">
+        <h1 className="text-xl font-bold text-foreground break-words" dir="auto">{bill.title}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">By {ownerName}</span>
+          {bill.date && (
+            <span className="inline-flex items-center text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {formatBillDate(bill.date)}
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {peopleCount} {peopleCount === 1 ? "person" : "people"}
+          </span>
+          {bill.currency && (
+            <span className="inline-flex items-center text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-mono">
+              {bill.currency}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">
@@ -1096,6 +1183,17 @@ function HeaderEditable({
   );
 }
 
+/**
+ * "2026-09-28" as the viewer's locale writes a date. Built from its parts, not
+ * parsed: `new Date("2026-09-28")` is midnight UTC, which is the day before
+ * anywhere west of Greenwich.
+ */
+function formatBillDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
 /* ─── Original name ─────────────────────────────────────────────────── */
 
 /**
@@ -1136,19 +1234,20 @@ function SectionHeader({
 }: {
   title: string;
   actionLabel: string;
-  onAction: () => void;
+  /** Left out while the bill is read-only, which hides the button. */
+  onAction?: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between min-h-[44px]">
       <h2 className="text-xs font-semibold tracking-wider text-muted-foreground">
         {title}
       </h2>
-      <button
+      {onAction && <button
         onClick={onAction}
         className="text-sm font-semibold text-primary-text bg-muted px-3 py-1.5 rounded-lg hover:bg-secondary transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {actionLabel}
-      </button>
+      </button>}
     </div>
   );
 }
@@ -1164,7 +1263,8 @@ function PersonChip({
   user: BillMember;
   isMe: boolean;
   onIdentify: () => void;
-  onEdit: () => void;
+  /** Left out while the bill is read-only, which hides the pencil. */
+  onEdit?: () => void;
 }) {
   const initials = getInitials(user.name);
   return (
@@ -1193,14 +1293,14 @@ function PersonChip({
           {isMe ? "You" : user.name}
         </span>
       </button>
-      <button
+      {onEdit && <button
         onClick={onEdit}
         aria-label={`Edit ${user.name}`}
         title={`Rename or remove ${user.name}`}
         className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-card border border-border text-muted-foreground hover:text-foreground flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      </button>
+      </button>}
     </div>
   );
 }
@@ -1215,10 +1315,13 @@ function LineRow({
   onDelete,
   onUpdate,
   onSplit,
+  readOnly,
 }: {
   line: BillLine;
   users: BillMember[];
   currency: string | null;
+  /** No editing, and only the people the item is assigned to, as plain badges. */
+  readOnly: boolean;
   onToggle: (billUserId: number) => void;
   onDelete: () => void;
   /** `total` is the FULL price; `discountAmount` is the money off it. */
@@ -1231,6 +1334,10 @@ function LineRow({
   const fullPrice = isDiscounted ? originalTotal : num(line.total);
   const shownRate = isDiscounted ? percentInput(discountRate(originalTotal, num(line.total))) : "";
   const [editing, setEditing] = useState(false);
+  // Done drops an item edit left half-done rather than leaving a form open.
+  useEffect(() => {
+    if (readOnly) setEditing(false);
+  }, [readOnly]);
   const [desc, setDesc] = useState(line.description);
   const [qty, setQty] = useState(String(num(line.quantity) || 1));
   // Edited as the FULL price plus a rate off it, as in the app.
@@ -1295,7 +1402,7 @@ function LineRow({
       style={{ boxShadow: "0 1px 4px 0 hsl(222 47% 11% / 0.06)" }}
     >
       <div className="flex items-start gap-2">
-        {editing ? (
+        {editing && !readOnly ? (
           <div className="flex-1 space-y-2">
             <input
               value={desc}
@@ -1348,10 +1455,7 @@ function LineRow({
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => setEditing(true)}
-            className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-          >
+          <ItemSummaryWrap readOnly={readOnly} onEdit={() => setEditing(true)}>
             <span className="font-medium text-foreground break-words" dir="auto">
               {line.description}
             </span>
@@ -1381,9 +1485,9 @@ function LineRow({
                 <span className="font-medium text-primary-text">{discountNote}</span>
               </div>
             )}
-          </button>
+          </ItemSummaryWrap>
         )}
-        {!editing && (
+        {!editing && !readOnly && (
           <div className="flex items-center gap-1 shrink-0">
             {lineQty > 1 && (
               <button
@@ -1415,7 +1519,29 @@ function LineRow({
         )}
       </div>
 
-      {users.length > 0 && (
+      {readOnly && users.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          {assigned.size === 0 ? (
+            <span className="text-xs italic text-muted-foreground">Not assigned yet</span>
+          ) : (
+            users
+              .filter((u) => assigned.has(u.id))
+              .map((u) => (
+                <span
+                  key={u.id}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] leading-none font-bold tracking-tight text-white shrink-0"
+                  style={{ backgroundColor: u.color }}
+                  title={u.name}
+                  aria-label={u.name}
+                >
+                  {getInitials(u.name) || "?"}
+                </span>
+              ))
+          )}
+        </div>
+      )}
+
+      {!readOnly && users.length > 0 && (
         <div className="space-y-1.5 pt-1">
           <div className="inline-flex rounded-lg border border-border overflow-hidden text-xs font-medium">
             <button
@@ -1473,6 +1599,30 @@ function LineRow({
   );
 }
 
+/**
+ * The item's name and price: a button that opens the edit form while editing,
+ * plain text while reading, so a stray tap does nothing.
+ */
+function ItemSummaryWrap({
+  readOnly,
+  onEdit,
+  children,
+}: {
+  readOnly: boolean;
+  onEdit: () => void;
+  children: React.ReactNode;
+}) {
+  if (readOnly) return <div className="flex-1 min-w-0 min-h-[44px]">{children}</div>;
+  return (
+    <button
+      onClick={onEdit}
+      className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+    >
+      {children}
+    </button>
+  );
+}
+
 /* ─── Person total row ──────────────────────────────────────────────── */
 
 function PersonTotalRow({
@@ -1480,12 +1630,14 @@ function PersonTotalRow({
   currency,
   billId,
   isMe,
+  readOnly,
   onChange,
 }: {
   person: PersonTotal;
   currency: string | null;
   billId: number;
   isMe: boolean;
+  readOnly: boolean;
   onChange: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -1611,15 +1763,15 @@ function PersonTotalRow({
               <span className={`text-xs font-semibold tabular-nums ${person.tipIsCustom ? "text-primary-text" : "text-foreground"}`}>
                 {fmt(person.tipAmount)}
               </span>
-              <button
+              {!readOnly && <button
                 onClick={openTipModal}
                 className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 title="Set custom tip %"
                 aria-label="Edit tip percentage"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              {person.tipIsCustom && (
+              </button>}
+              {!readOnly && person.tipIsCustom && (
                 <button
                   onClick={resetTip}
                   className="text-muted-foreground hover:text-foreground transition p-0.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
