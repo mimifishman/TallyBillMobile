@@ -449,7 +449,7 @@ export async function scanReceipt(
         ].join(" ");
 
         // Then the closest real word, for the Hebrew names that are no word.
-        const lines = config.spelling ? spellingRequest(bill.items, voted.candidates) : [];
+        const lines = config.spelling ? spellingRequest(bill.items, voted.candidates, voted.agreed) : [];
         if (config.spelling && lines.length > 0) {
           const label = readerLabel(config.spelling);
           let outcome: string;

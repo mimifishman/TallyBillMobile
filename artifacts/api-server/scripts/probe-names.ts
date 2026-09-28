@@ -179,13 +179,13 @@ if (vote && expected.length) {
   }
   // --spell a,b: the closest-real-word check after the vote, per model.
   for (const reader of parseNamesReaders(flag("--spell") ?? "")) {
-    const lines = spellingRequest(voted, vote.candidates);
+    const lines = spellingRequest(voted, vote.candidates, vote.agreed);
     const t0 = Date.now();
     try {
       const answers = await askSpelling(openai, reader, lines, {});
       const spelled = answers ? applySpelling(voted, lines, answers) : { items: voted, changed: 0, refused: 0 };
       console.log(`SPELL ${basename(photo)} ${reader.model}${reader.effort ? ":" + reader.effort : ""} ${Date.now() - t0} ms ` +
-        `vote=${scoreItems(voted)} spelled=${scoreItems(spelled.items)} of ${expected.length} changed=${spelled.changed} refused=${spelled.refused}`);
+        `vote=${scoreItems(voted)} spelled=${scoreItems(spelled.items)} of ${expected.length} changed=${spelled.changed} refused=${spelled.refused} sent=${lines.length}`);
       spelled.items.forEach((it, i) => {
         if (it.description !== voted[i]!.description) {
           console.log(`  ${wantAll.includes(fold(it.description)) ? "+" : "-"} ${voted[i]!.description} -> ${it.description}`);

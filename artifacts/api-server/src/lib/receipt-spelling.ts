@@ -11,11 +11,18 @@
  * A person reading a smudged receipt does both in turn: letter shapes first,
  * then the menu word the shapes fit — a restaurant, bar or cafe menu, which is
  * what TallyBill splits. This is the second step. It is one short
- * text-only call — no photo — given every reading of each Hebrew line, and it
- * may only:
+ * text-only call — no photo — given every reading of each Hebrew line that the
+ * readers did NOT agree on, and it may only:
  *   - keep a name that is already a real word, or pick a real one among the
  *     readings, or
  *   - change a name that is no word by at most two look-alike letters.
+ *
+ * A name two readers spelled the same way is never sent. Measured 2026-09-28
+ * on the 13 Hebrew fixtures, twice: sent every line, gpt-4o and gpt-5.4 turned
+ * right names into other real dishes (שיפוד כרוב -> שיפוד כבד, עגור קסם ->
+ * עוגת קסם) and lost more than they fixed; Claude Sonnet 5 fixed 7 and broke
+ * none, but took 8 s typical, 25 s at worst, writing back every line. So only
+ * the disputed lines go, and only the changed names come back.
  *
  * The limit is enforced here, not trusted to the model: an answer further than
  * that from EVERY reading is thrown away and the voted name stays. Money is
@@ -39,7 +46,7 @@ For each line, return the name that was most likely printed:
 - Never translate. Never add or remove a word. Never turn one real dish into a different real dish.
 
 The input is JSON: {"lines":[{"id":0,"readings":["...","..."]}]}
-Return ONLY valid JSON: {"names":[{"id":0,"name":"..."}]}`;
+Return ONLY valid JSON listing just the lines whose first reading you change: {"names":[{"id":0,"name":"..."}]}. If you change none, return {"names":[]}.`;
 
 const HEBREW = /[֐-׿]/;
 
@@ -50,11 +57,14 @@ export interface SpellingLine {
   readings: string[];
 }
 
-/** The Hebrew lines worth checking, with their readings. Other lines are left alone. */
-export function spellingRequest(items: LineItem[], candidates: string[][]): SpellingLine[] {
+/**
+ * The Hebrew lines worth checking, with their readings: those whose name no
+ * two readers agreed on. Every other line is left alone.
+ */
+export function spellingRequest(items: LineItem[], candidates: string[][], agreed: boolean[]): SpellingLine[] {
   const lines: SpellingLine[] = [];
   items.forEach((item, id) => {
-    if (!HEBREW.test(item.description)) return;
+    if (!HEBREW.test(item.description) || agreed[id]) return;
     const readings = candidates[id]?.length ? candidates[id]! : [item.description];
     lines.push({ id, readings: [item.description, ...readings.filter((r) => r !== item.description)] });
   });

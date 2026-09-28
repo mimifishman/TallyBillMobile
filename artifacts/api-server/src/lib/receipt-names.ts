@@ -226,9 +226,10 @@ export function foldForVote(name: string): string {
 export function voteNames(
   base: LineItem[],
   readings: LineItem[][],
-): { items: LineItem[]; changed: number; candidates: string[][] } {
+): { items: LineItem[]; changed: number; candidates: string[][]; agreed: boolean[] } {
   let changed = 0;
   const candidates: string[][] = [];
+  const agreed: boolean[] = [];
   const items = base.map((item, i) => {
     const here = [...readings.map((r) => r[i]?.description), item.description]
       .filter((d): d is string => typeof d === "string" && d.length > 0);
@@ -237,11 +238,13 @@ export function voteNames(
       const cost = here.reduce((sum, o) => sum + (1 - similarity(foldForVote(c), foldForVote(o))), 0);
       if (cost < bestCost - 1e-9) { best = c; bestCost = cost; }
     }
-    // Every distinct reading, the chosen one first, for the spelling check.
+    // Every distinct reading, the chosen one first, for the spelling check,
+    // and whether a second reading spelled the chosen name the same way.
     candidates.push([...new Set([best, ...here])]);
+    agreed.push(here.filter((c) => foldForVote(c) === foldForVote(best)).length >= 2);
     if (best === item.description) return item;
     changed++;
     return { ...item, description: best };
   });
-  return { items, changed, candidates };
+  return { items, changed, candidates, agreed };
 }
