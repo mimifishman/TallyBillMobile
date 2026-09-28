@@ -49,15 +49,14 @@ export interface ScanConfig {
   secondModel: string | null;
   secondEffort: Effort;
   /**
-   * Readers of item names only, best first. All start at once; the first in
-   * the list is used if it has answered by `namesPatienceMs` (or by the time
-   * the money is read, if that is later), otherwise the next. Empty turns the
-   * names reading off.
+   * Readers of item names only, best first. The first starts at once; the
+   * next starts if it has not answered by `namesPatienceMs`, and the first
+   * answer wins. Empty turns the names reading off. See readNames.
    */
   names: NamesReader[];
   /** The server's share of the 20-second budget. */
   budgetMs: number;
-  /** How long, from the start of the scan, the preferred names reader is waited for. */
+  /** When, from the start of the scan, the next names reader starts if none has answered. */
   namesPatienceMs: number;
   /** How long, from the start of the scan, any names reading may take. */
   namesBudgetMs: number;
@@ -96,20 +95,12 @@ function settle<T>(p: Promise<T>): Promise<Settled<T>> {
   return p.then((value) => ({ ok: true as const, value }), (error: unknown) => ({ ok: false as const, error }));
 }
 
-/** A settled promise, or "late" if it has not settled by `at` (epoch ms). */
-async function until<T>(p: Promise<T>, at: number): Promise<T | "late"> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<"late">((resolve) => { timer = setTimeout(() => resolve("late"), Math.max(0, at - Date.now())); });
-  try {
-    return await Promise.race([p, late]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function failure(err: unknown): string {
   if (err instanceof Error && /abort/i.test(err.name + err.message)) return "cancelled";
-  return err instanceof Error && /timed? ?out/i.test(err.message) ? "timeout" : "error";
+  if (err instanceof Error && /timed? ?out/i.test(err.message)) return "timeout";
+  // The HTTP status says whether it was the gateway's rate limit (429).
+  const status = (err as { status?: number } | null)?.status;
+  return status ? `error-${status}` : "error";
 }
 
 interface CallOptions {
@@ -191,6 +182,91 @@ async function askForNames(
   return parseNameLines(completion.choices[0]?.message?.content ?? "");
 }
 
+interface NamesPick {
+  lines: NameLine[] | null;
+  used: NamesReader | null;
+  /** What happened to the readers that were not used. */
+  skipped: string[];
+}
+
+/**
+ * The names reading, hedged. Never rejects.
+ *
+ * Only the best reader starts at once. If it has not answered by the patience
+ * mark, or fails, the next one starts, and whichever answers first is used.
+ * Starting every reader up front was measured to cost money on the bill: on
+ * 2026-09-28 four calls per scan made gateway calls fail, which took the time
+ * the discount second opinion needed on 2 of 60 scans. Most receipts are
+ * answered by the best reader well before the patience mark, so most scans
+ * make one names call, not two.
+ */
+function readNames(
+  openai: OpenAI,
+  strips: Promise<string[]>,
+  readers: NamesReader[],
+  timing: { startedAt: number; patienceMs: number; budgetMs: number },
+  outer: AbortSignal,
+  warn: (err: unknown, message: string) => void,
+): Promise<NamesPick> {
+  const cancel = new AbortController();
+  outer.addEventListener("abort", () => cancel.abort(), { once: true });
+  const elapsed = () => Date.now() - timing.startedAt;
+  return new Promise<NamesPick>((resolve) => {
+    const skipped: string[] = [];
+    let done = false, running = 0, next = 0;
+    let hedge: ReturnType<typeof setTimeout> | undefined;
+    const finish = (lines: NameLine[] | null, used: NamesReader | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(hedge);
+      cancel.abort();
+      resolve({ lines, used, skipped: [...skipped] });
+    };
+    const failed = (note: string) => {
+      if (done) return;
+      skipped.push(note);
+      if (next < readers.length) start();
+      else if (running === 0) finish(null, null);
+    };
+    const start = () => {
+      if (done || next >= readers.length) return;
+      const reader = readers[next++]!;
+      const label = readerLabel(reader);
+      running++;
+      strips
+        .then((urls) =>
+          urls.length === 0
+            ? null
+            : askForNames(openai, reader.model, urls, {
+                effort: reader.effort,
+                deadlineMs: Math.max(1, timing.budgetMs - elapsed()),
+                signal: cancel.signal,
+              }),
+        )
+        .then(
+          (lines) => {
+            running--;
+            if (lines && lines.length > 0) finish(lines, reader);
+            else failed(`${label}:no-answer`);
+          },
+          (err: unknown) => {
+            running--;
+            if (!done) warn(err, `names reading by ${label} failed`);
+            failed(`${label}:${failure(err)}`);
+          },
+        );
+    };
+    start();
+    if (readers.length > 1) {
+      hedge = setTimeout(() => {
+        if (done) return;
+        skipped.push(`${readerLabel(readers[0]!)}:slow`);
+        start();
+      }, Math.max(0, timing.patienceMs - elapsed()));
+    }
+  });
+}
+
 /**
  * Scan one receipt photo. Throws only when the MAIN reading fails; every other
  * reading failing leaves the bill as the main reading made it.
@@ -222,22 +298,16 @@ export async function scanReceipt(
   const wholeCall = cropped
     ? settle(askForReceipt(openai, config.model, wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }))
     : null;
-  const strips = config.names.length > 0 ? receiptStrips(wholePrep.prepared.buffer) : null;
-  const namesCalls = strips
-    ? config.names.map((reader) =>
-        settle(
-          strips.then((urls) =>
-            urls.length === 0
-              ? null
-              : askForNames(openai, reader.model, urls, {
-                  effort: reader.effort,
-                  deadlineMs: Math.max(1, config.namesBudgetMs - (Date.now() - startedAt)),
-                  signal: cancelNames.signal,
-                }),
-          ),
-        ),
+  const namesPick = config.names.length > 0
+    ? readNames(
+        openai,
+        receiptStrips(wholePrep.prepared.buffer).catch(() => [] as string[]),
+        config.names,
+        { startedAt, patienceMs: config.namesPatienceMs, budgetMs: config.namesBudgetMs },
+        cancelNames.signal,
+        warn,
       )
-    : [];
+    : null;
 
   try {
     const firstRaw = await askForReceipt(openai, config.model, croppedPrep.dataUrl);
@@ -306,30 +376,9 @@ export async function scanReceipt(
     }
 
     // Names last: they attach to whichever lines ended up on the bill, and
-    // only their words change. The best reader is waited for until the
-    // patience runs out (or the money is read, if that took longer); after
-    // that the next one is taken. The last is waited for up to its deadline.
-    if (namesCalls.length > 0) {
-      const patienceEnd = Math.max(Date.now(), startedAt + config.namesPatienceMs);
-      const skipped: string[] = [];
-      let lines: NameLine[] | null = null;
-      let used: NamesReader | null = null;
-      for (let k = 0; k < namesCalls.length && !lines; k++) {
-        const reader = config.names[k]!;
-        const last = k === namesCalls.length - 1;
-        const settled = last ? await namesCalls[k]! : await until(namesCalls[k]!, patienceEnd);
-        if (settled === "late") {
-          skipped.push(`${readerLabel(reader)}:late`);
-        } else if (!settled.ok) {
-          skipped.push(`${readerLabel(reader)}:${failure(settled.error)}`);
-          warn(settled.error, "names reading failed");
-        } else if (!settled.value) {
-          skipped.push(`${readerLabel(reader)}:no-answer`);
-        } else {
-          lines = settled.value;
-          used = reader;
-        }
-      }
+    // only their words change.
+    if (namesPick) {
+      const { lines, used, skipped } = await namesPick;
       let note = "none-used";
       if (lines && used) {
         const named = applyNames(bill.items, lines);

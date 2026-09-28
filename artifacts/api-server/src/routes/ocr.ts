@@ -108,13 +108,13 @@ const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
  *
  * gpt-5.4 at low effort reads names best, but on a long or creased receipt it
  * thinks for 15-40 seconds. At no effort it answers in under 4 seconds, a little
- * less accurately. Both start together; the low one is used when it answers in
- * time. Measured 2026-09-28 over every fixture, three runs, against gpt-4o's
+ * less accurately. The low one starts first; the fast one starts only if it has
+ * not answered by OCR_NAMES_PATIENCE_MS, and the first answer wins. Measured 2026-09-28 over every fixture, three runs, against gpt-4o's
  * own names: Hebrew exact 112 -> 151 of 213, English 73 -> 75 of 87, French
  * 27 -> 56 of 60, money untouched.
  */
 const OCR_NAMES = process.env["OCR_NAMES"] ?? "gpt-5.4:low,gpt-5.4:none";
-/** How long from the start of a scan the best names reader is waited for. */
+/** When, from the start of a scan, the fallback names reader is started. */
 const OCR_NAMES_PATIENCE_MS = budgetFromEnv(process.env["OCR_NAMES_PATIENCE_MS"], 8_000);
 /** How long from the start of a scan any names reading may run. */
 const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14_000);
