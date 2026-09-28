@@ -1,3 +1,5 @@
+import { APP_STORE_URL } from "@/lib/appLinks";
+
 export default function NotFoundPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-background">
@@ -12,7 +14,7 @@ export default function NotFoundPage() {
           Open the link from your friend or check the join code.
         </p>
         <a
-          href="https://apps.apple.com"
+          href={APP_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-6 py-3 rounded-xl min-h-[44px] hover:opacity-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
