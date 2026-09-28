@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -83,6 +83,12 @@ interface LineItemRowProps {
     discountAmount: number;
   }) => void;
   onSplit: (lineId: number) => void;
+  /**
+   * Shows the item without anything that changes it: no edit, delete or split,
+   * and only the people it is assigned to, as plain badges. For someone reading
+   * a bill they did not create, until they choose to edit it.
+   */
+  readOnly?: boolean;
 }
 
 export function LineItemRow({
@@ -101,10 +107,16 @@ export function LineItemRow({
   onDelete,
   onUpdate,
   onSplit,
+  readOnly = false,
 }: LineItemRowProps) {
   const colors = useColors();
   const currencySymbol = getCurrencySymbol(currency);
   const [editing, setEditing] = useState(false);
+  // Leaving edit mode drops an item edit left half-done, rather than keeping
+  // an open form on a bill that is now read-only.
+  useEffect(() => {
+    if (readOnly) setEditing(false);
+  }, [readOnly]);
   const [editDesc, setEditDesc] = useState(description);
   const isDiscounted = originalTotal != null && Number(originalTotal) > Number(total);
   /**
@@ -243,7 +255,7 @@ export function LineItemRow({
         </View>
       )}
 
-      {editing ? (
+      {editing && !readOnly ? (
         <View style={styles.editBlock}>
           <View style={styles.editRow}>
             <AutoFocusTextInput
@@ -367,22 +379,40 @@ export function LineItemRow({
               </Text>
             ) : null}
           </View>
-          {quantity > 1 && (
+          {!readOnly && quantity > 1 && (
             <TouchableOpacity onPress={() => onSplit(id)} style={[styles.splitBtn, { borderColor: colors.primaryText }]} accessibilityLabel="Split item quantity">
               <Feather name="scissors" size={13} color={colors.primaryText} />
               <Text style={[styles.splitBtnText, { color: colors.primaryText }]}>Split</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleEdit} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={`Edit ${description}`}>
-            <Feather name="edit-2" size={15} color={colors.mutedForeground} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={`Delete ${description}`}>
-            <Feather name="trash-2" size={15} color={colors.destructive} />
-          </TouchableOpacity>
+          {!readOnly && (
+            <TouchableOpacity onPress={handleEdit} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={`Edit ${description}`}>
+              <Feather name="edit-2" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+          {!readOnly && (
+            <TouchableOpacity onPress={handleDelete} style={styles.iconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={`Delete ${description}`}>
+              <Feather name="trash-2" size={15} color={colors.destructive} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {billUsers.length > 0 && (
+      {readOnly && billUsers.length > 0 && (
+        <View style={styles.peopleRow}>
+          {hasAnyAssigned ? (
+            billUsers
+              .filter((user) => assignedUserIds.includes(user.id))
+              .map((user) => (
+                <PersonBadge key={user.id} name={user.name} color={user.color} size="sm" selected />
+              ))
+          ) : (
+            <Text style={[styles.unassignedText, { color: colors.mutedForeground }]}>Not assigned yet</Text>
+          )}
+        </View>
+      )}
+
+      {!readOnly && billUsers.length > 0 && (
         <View style={styles.peopleRow}>
           {billUsers.map((user) => (
             <AnimatedPersonBadge
@@ -463,5 +493,6 @@ const styles = StyleSheet.create({
   saveBtn: { paddingHorizontal: SPACING.md, paddingVertical: 7, borderRadius: RADIUS.sm },
   saveBtnText: { color: "#fff", fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
   bulkBtn: { paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderRadius: RADIUS.full, borderWidth: 1, borderStyle: "dashed", justifyContent: "center" },
+  unassignedText: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" }, // TODO: one-off
   bulkBtnText: { fontSize: 11, fontFamily: "Inter_500Medium" }, // TODO: one-off
 });

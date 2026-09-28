@@ -46,7 +46,10 @@ import {
 export default function TotalsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, edit } = useLocalSearchParams<{ id: string; edit?: string }>();
+  // Set by the bill screen when it is in edit mode (always, for the creator).
+  // Without it the tips are shown but not changed, as on the bill itself.
+  const canEdit = edit === "1";
   const billId = parseInt(id!);
   const queryClient = useQueryClient();
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
@@ -350,10 +353,12 @@ export default function TotalsScreen() {
                   <Text style={[styles.breakdownLabel, { color: colors.mutedForeground }]}>Tip ({fmtPct(person.tipPercent)}%)</Text>
                   <View style={styles.tipRow}>
                     <Text style={[styles.breakdownValue, { color: person.tipIsCustom ? colors.primary : colors.foreground }]}>{fmt(person.tipAmount)}</Text>
-                    <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Edit tip">
-                      <Feather name="edit-2" size={13} color={colors.mutedForeground} />
-                    </TouchableOpacity>
-                    {person.tipIsCustom && (
+                    {canEdit && (
+                      <TouchableOpacity onPress={() => handleEditTip(person.billUserId, person.tipPercent)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Edit tip">
+                        <Feather name="edit-2" size={13} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    )}
+                    {canEdit && person.tipIsCustom && (
                       <TouchableOpacity onPress={() => handleResetTip(person.billUserId)} style={styles.editTipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Reset tip">
                         <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
                       </TouchableOpacity>
