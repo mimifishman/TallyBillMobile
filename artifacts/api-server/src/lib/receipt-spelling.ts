@@ -22,8 +22,8 @@
  * never part of the request, so it cannot change.
  *
  * The prompt's example words are on no fixture receipt, on purpose: a real
- * fixture name in a prompt gets copied back and inflates the score (see the
- * note on prompt contamination in receipt-prompt.ts).
+ * fixture name in a prompt gets copied back and inflates the score. The OCR
+ * prompt once held real fixture names, and the model copied a typo from it.
  */
 import type { LineItem } from "./receipt-line-items";
 import { editDistance, foldForVote } from "./receipt-names";
