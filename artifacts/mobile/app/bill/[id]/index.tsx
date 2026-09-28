@@ -717,8 +717,12 @@ export default function BillDetailScreen() {
   // The creator is never asked to press Edit: it is their bill to set up.
   const isCreator = isOwner || isGuestOwner;
   const canEdit = isCreator || editMode;
-  const canEditHeader =
-    canEdit && (isOwner || !!isMember || isGuestOwner || (!user && !!bill.isGuestBill && guestHasBill));
+  // In edit mode, anyone who can open the bill can change all of it: people,
+  // tax, tip, discounts and its details, the same as the web bill. The server
+  // allows exactly that (anyone with the bill's join code). Holding tax, tip,
+  // discount and people back to owners and members left someone who joined
+  // with the code tapping Edit and finding half the bill still locked.
+  const canEditHeader = canEdit;
   const canRemoveFromList = !isOwner && !isGuestOwner && (!!isMember || guestHasBill);
 
   const currencySymbol = getCurrencySymbol(bill.currency);
@@ -1076,7 +1080,7 @@ export default function BillDetailScreen() {
                     color={u.color}
                     size="lg"
                     showName
-                    onPress={isOwner || isGuestOwner ? () => handleBadgePress(u, true) : undefined}
+                    onPress={canEdit ? () => handleBadgePress(u, true) : undefined}
                   />
                 </Animated.View>
               ))}
