@@ -182,6 +182,33 @@ async function askForNames(
   return parseNameLines(completion.choices[0]?.message?.content ?? "");
 }
 
+/**
+ * Names give way to money when the gateway is busy.
+ *
+ * Every model call on this account shares one rate limit. Measured 2026-09-28
+ * at eval pace (six scans a minute, nonstop): the names readings pushed the
+ * gateway into refusing calls (429) on 5 of 60 scans, and on those the money
+ * calls suffered too — a discount second opinion ran out of time, and a main
+ * read retrying past its refusal took 33 seconds. So after any 429 the names
+ * reading is skipped for a minute, and no more than a couple run at once. A
+ * scan without it keeps gpt-4o's names, which is what every scan had before.
+ */
+const RATE_LIMIT_COOL_OFF_MS = 60_000;
+const MAX_NAMES_IN_FLIGHT = 2;
+let rateLimitedAt = 0;
+let namesInFlight = 0;
+
+function noteRateLimit(err: unknown): void {
+  if ((err as { status?: number } | null)?.status === 429) rateLimitedAt = Date.now();
+}
+
+/** Why the names reading should not run now, or null when it may. */
+function namesBlocked(): string | null {
+  if (Date.now() - rateLimitedAt < RATE_LIMIT_COOL_OFF_MS) return "skipped-rate-limited";
+  if (namesInFlight >= MAX_NAMES_IN_FLIGHT) return "skipped-busy";
+  return null;
+}
+
 interface NamesPick {
   lines: NameLine[] | null;
   used: NamesReader | null;
@@ -251,6 +278,7 @@ function readNames(
           },
           (err: unknown) => {
             running--;
+            noteRateLimit(err);
             if (!done) warn(err, `names reading by ${label} failed`);
             failed(`${label}:${failure(err)}`);
           },
@@ -298,7 +326,9 @@ export async function scanReceipt(
   const wholeCall = cropped
     ? settle(askForReceipt(openai, config.model, wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }))
     : null;
-  const namesPick = config.names.length > 0
+  const namesBlock = config.names.length > 0 ? namesBlocked() : null;
+  if (config.names.length > 0 && !namesBlock) namesInFlight++;
+  const namesPick = config.names.length > 0 && !namesBlock
     ? readNames(
         openai,
         receiptStrips(wholePrep.prepared.buffer).catch(() => [] as string[]),
@@ -306,7 +336,7 @@ export async function scanReceipt(
         { startedAt, patienceMs: config.namesPatienceMs, budgetMs: config.namesBudgetMs },
         cancelNames.signal,
         warn,
-      )
+      ).finally(() => { namesInFlight--; })
     : null;
 
   try {
@@ -325,6 +355,7 @@ export async function scanReceipt(
       const settled = await wholeCall;
       let outcome: string;
       if (!settled.ok) {
+        noteRateLimit(settled.error);
         outcome = failure(settled.error);
         warn(settled.error, "uncropped read failed; keeping the cropped reading");
       } else {
@@ -363,6 +394,7 @@ export async function scanReceipt(
           second = parsed ? interpretReceipt(parsed) : null;
           if (!second) secondNote = "no-answer";
         } catch (err) {
+          noteRateLimit(err);
           secondNote = failure(err);
           warn(err, "second opinion failed; keeping the first reading");
         }
@@ -377,6 +409,7 @@ export async function scanReceipt(
 
     // Names last: they attach to whichever lines ended up on the bill, and
     // only their words change.
+    if (namesBlock) notes["X-OCR-Names"] = namesBlock;
     if (namesPick) {
       const { lines, used, skipped } = await namesPick;
       let note = "none-used";

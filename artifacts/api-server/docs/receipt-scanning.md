@@ -272,8 +272,11 @@ total when it was the main reader, and that must never reach a bill again. An
 unmatched line keeps gpt-4o's name.
 
 gpt-5.4 at low reasoning effort reads names best but takes 15-40 s on a long or
-creased receipt; at no effort it takes under 4 s and is a little worse. Both
-start together and the better one is used when it answers in time.
+creased receipt; at no effort it takes under 4 s and is a little worse. The low
+one starts first; the fast one starts only if the low one has not answered by
+8 s, and the first answer wins. Starting both up front was tried first and
+measured worse for MONEY: four calls per scan made gateway calls fail, and the
+discount second opinion ran out of time on 2 of 60 scans.
 
 **How to apply:** check a names complaint against the translator separately
 before touching it — feed it the true text. And when a model misreads small
