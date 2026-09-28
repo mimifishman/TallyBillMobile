@@ -27,7 +27,7 @@ import type OpenAI from "openai";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
-import { applyNames, NAMES_PROMPT, parseNameLines, type NameLine } from "./receipt-names";
+import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
 import {
   closerToReceipt,
   combineReadings,
@@ -49,15 +49,13 @@ export interface ScanConfig {
   secondModel: string | null;
   secondEffort: Effort;
   /**
-   * Readers of item names only, best first. The first starts at once; the
-   * next starts if it has not answered by `namesPatienceMs`, and the first
-   * answer wins. Empty turns the names reading off. See readNames.
+   * Readers of item names only, best first. They all start at once, and each
+   * line's name is voted on by every reader that answered in time, plus the
+   * main reading. Empty turns the names reading off. See readNames.
    */
   names: NamesReader[];
   /** The server's share of the 20-second budget. */
   budgetMs: number;
-  /** When, from the start of the scan, the next names reader starts if none has answered. */
-  namesPatienceMs: number;
   /** How long, from the start of the scan, any names reading may take. */
   namesBudgetMs: number;
   headerCrop: boolean;
@@ -69,7 +67,7 @@ export interface NamesReader {
   effort: Effort | null;
 }
 
-/** "gpt-5.4:low,gpt-5.4:none" -> readers, best first. "off" or empty -> none. */
+/** "claude-sonnet-5,gpt-5.4:none" -> readers, best first. "off" or empty -> none. */
 export function parseNamesReaders(value: string): NamesReader[] {
   const v = value.trim();
   if (v === "" || v === "off") return [];
@@ -243,96 +241,78 @@ function noteRateLimit(err: unknown): void {
 
 /** Why the names reading should not run now, or null when it may. */
 function namesBlocked(): string | null {
-  if (Date.now() - rateLimitedAt < RATE_LIMIT_COOL_OFF_MS) return "skipped-rate-limited";
   if (namesInFlight >= MAX_NAMES_IN_FLIGHT) return "skipped-busy";
   return null;
 }
 
+/**
+ * The readers that may run now. After the OpenAI gateway's 429 its readers sit
+ * out the cool-off; a Claude reader goes to another provider and still runs.
+ */
+function readersAllowed(readers: NamesReader[]): { allowed: NamesReader[]; skipped: string[] } {
+  const cooling = Date.now() - rateLimitedAt < RATE_LIMIT_COOL_OFF_MS;
+  const allowed = readers.filter((r) => !cooling || isClaude(r.model));
+  const skipped = readers.filter((r) => !allowed.includes(r)).map((r) => `${readerLabel(r)}:skipped-rate-limited`);
+  return { allowed, skipped };
+}
+
+interface NamesAnswer {
+  reader: NamesReader;
+  lines: NameLine[];
+}
+
 interface NamesPick {
-  lines: NameLine[] | null;
-  used: NamesReader | null;
-  /** What happened to the readers that were not used. */
+  /** Every reader that answered in time, in the order the readers are listed. */
+  answers: NamesAnswer[];
+  /** What happened to the readers that did not. */
   skipped: string[];
 }
 
 /**
- * The names reading, hedged. Never rejects.
+ * The names readings, all at once. Never rejects.
  *
- * Only the best reader starts at once. If it has not answered by the patience
- * mark, or fails, the next one starts, and whichever answers first is used.
- * Starting every reader up front was measured to cost money on the bill: on
- * 2026-09-28 four calls per scan made gateway calls fail, which took the time
- * the discount second opinion needed on 2 of 60 scans. Most receipts are
- * answered by the best reader well before the patience mark, so most scans
- * make one names call, not two.
+ * Every reader starts together and each gets until the names budget. The
+ * readers go to two providers — Claude through Anthropic, gpt-5.4 through the
+ * OpenAI gateway — so this is one OpenAI call per scan, where the old hedge
+ * (gpt-5.4 low, then gpt-5.4 none after 8 s) often made two.
+ *
+ * Measured 2026-09-28 on the 13 Hebrew fixtures, names right exactly as
+ * printed, of 71: gpt-4o alone 39, gpt-5.4 44, Claude Sonnet 5 53, and the
+ * per-line vote of all three 58 (see voteNames). On the user's 16-line receipt
+ * of 2026-09-27 the vote read 14, gpt-5.4 8 in the same run.
  */
 function readNames(
   openai: OpenAI,
   strips: Promise<string[]>,
   readers: NamesReader[],
-  timing: { startedAt: number; patienceMs: number; budgetMs: number },
+  timing: { startedAt: number; budgetMs: number },
   outer: AbortSignal,
   warn: (err: unknown, message: string) => void,
 ): Promise<NamesPick> {
-  const cancel = new AbortController();
-  outer.addEventListener("abort", () => cancel.abort(), { once: true });
-  const elapsed = () => Date.now() - timing.startedAt;
-  return new Promise<NamesPick>((resolve) => {
-    const skipped: string[] = [];
-    let done = false, running = 0, next = 0;
-    let hedge: ReturnType<typeof setTimeout> | undefined;
-    const finish = (lines: NameLine[] | null, used: NamesReader | null) => {
-      if (done) return;
-      done = true;
-      clearTimeout(hedge);
-      cancel.abort();
-      resolve({ lines, used, skipped: [...skipped] });
-    };
-    const failed = (note: string) => {
-      if (done) return;
-      skipped.push(note);
-      if (next < readers.length) start();
-      else if (running === 0) finish(null, null);
-    };
-    const start = () => {
-      if (done || next >= readers.length) return;
-      const reader = readers[next++]!;
+  const deadlineMs = () => Math.max(1, timing.budgetMs - (Date.now() - timing.startedAt));
+  return Promise.all(
+    readers.map(async (reader): Promise<NamesAnswer | string> => {
       const label = readerLabel(reader);
-      running++;
-      strips
-        .then((urls) =>
-          urls.length === 0
-            ? null
-            : askForNames(openai, reader.model, urls, {
-                effort: reader.effort,
-                deadlineMs: Math.max(1, timing.budgetMs - elapsed()),
-                signal: cancel.signal,
-              }),
-        )
-        .then(
-          (lines) => {
-            running--;
-            if (lines && lines.length > 0) finish(lines, reader);
-            else failed(`${label}:no-answer`);
-          },
-          (err: unknown) => {
-            running--;
-            // Only the OpenAI gateway's 429 is shared with the money reads.
-            if (!isClaude(reader.model)) noteRateLimit(err);
-            if (!done) warn(err, `names reading by ${label} failed`);
-            failed(`${label}:${failure(err)}`);
-          },
-        );
-    };
-    start();
-    if (readers.length > 1) {
-      hedge = setTimeout(() => {
-        if (done) return;
-        skipped.push(`${readerLabel(readers[0]!)}:slow`);
-        start();
-      }, Math.max(0, timing.patienceMs - elapsed()));
-    }
-  });
+      try {
+        const urls = await strips;
+        if (urls.length === 0) return `${label}:no-strips`;
+        const lines = await askForNames(openai, reader.model, urls, {
+          effort: reader.effort,
+          deadlineMs: deadlineMs(),
+          signal: outer,
+        });
+        return lines && lines.length > 0 ? { reader, lines } : `${label}:no-answer`;
+      } catch (err) {
+        // Only the OpenAI gateway's 429 is shared with the money reads.
+        if (!isClaude(reader.model)) noteRateLimit(err);
+        if (!outer.aborted) warn(err, `names reading by ${label} failed`);
+        return `${label}:${failure(err)}`;
+      }
+    }),
+  ).then((results) => ({
+    answers: results.filter((r): r is NamesAnswer => typeof r !== "string"),
+    skipped: results.filter((r): r is string => typeof r === "string"),
+  }));
 }
 
 /**
@@ -366,14 +346,17 @@ export async function scanReceipt(
   const wholeCall = cropped
     ? settle(askForReceipt(openai, config.model, wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }))
     : null;
-  const namesBlock = config.names.length > 0 ? namesBlocked() : null;
-  if (config.names.length > 0 && !namesBlock) namesInFlight++;
-  const namesPick = config.names.length > 0 && !namesBlock
+  const { allowed: nameReaders, skipped: namesSkipped } = readersAllowed(config.names);
+  const namesBlock = config.names.length === 0 ? null
+    : nameReaders.length === 0 ? "skipped-rate-limited"
+    : namesBlocked();
+  if (nameReaders.length > 0 && !namesBlock) namesInFlight++;
+  const namesPick = nameReaders.length > 0 && !namesBlock
     ? readNames(
         openai,
         receiptStrips(wholePrep.prepared.buffer).catch(() => [] as string[]),
-        config.names,
-        { startedAt, patienceMs: config.namesPatienceMs, budgetMs: config.namesBudgetMs },
+        nameReaders,
+        { startedAt, budgetMs: config.namesBudgetMs },
         cancelNames.signal,
         warn,
       ).finally(() => { namesInFlight--; })
@@ -451,14 +434,21 @@ export async function scanReceipt(
     // only their words change.
     if (namesBlock) notes["X-OCR-Names"] = namesBlock;
     if (namesPick) {
-      const { lines, used, skipped } = await namesPick;
-      let note = "none-used";
-      if (lines && used) {
+      const { answers, skipped } = await namesPick;
+      const parts = answers.map(({ reader, lines }) => {
         const named = applyNames(bill.items, lines);
-        bill = { ...bill, items: named.items };
-        note = `${readerLabel(used)}:changed=${named.changed},matched=${named.matched}/${bill.items.length}`;
+        return { label: readerLabel(reader), named };
+      });
+      let note = "none-used";
+      if (parts.length > 0) {
+        const voted = voteNames(bill.items, parts.map((p) => p.named.items));
+        bill = { ...bill, items: voted.items };
+        note = [
+          `vote:changed=${voted.changed}/${bill.items.length}`,
+          ...parts.map((p) => `${p.label}:matched=${p.named.matched}`),
+        ].join(" ");
       }
-      notes["X-OCR-Names"] = [note, ...skipped].join(" ");
+      notes["X-OCR-Names"] = [note, ...namesSkipped, ...skipped].join(" ");
     }
 
     notes["X-OCR-Server-Ms"] = String(Date.now() - startedAt);

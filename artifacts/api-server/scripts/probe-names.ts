@@ -130,7 +130,7 @@ const vote = args.includes("--vote");
 const main = vote
   ? (await scanReceipt(openai, readFileSync(photo), {
       model: "gpt-4o", secondModel: null, secondEffort: "low", names: [],
-      budgetMs: 20_000, namesPatienceMs: 0, namesBudgetMs: 0, headerCrop: true,
+      budgetMs: 20_000, namesBudgetMs: 0, headerCrop: true,
     })).bill.items
   : [];
 const perReader: typeof main[] = [];
