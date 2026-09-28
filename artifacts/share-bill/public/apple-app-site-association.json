@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "333JD84N83.app.tallybill",
+        "appIDs": ["333JD84N83.app.tallybill"],
+        "paths": ["/b/*"],
+        "components": [{ "/": "/b/*" }]
+      }
+    ]
+  }
+}

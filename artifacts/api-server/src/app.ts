@@ -67,12 +67,12 @@ app.use(express.urlencoded({ extended: true }));
 //   - TeamID:           10-character Apple Developer Team ID (find it at
 //                       developer.apple.com → Membership → Team ID).
 //   - BundleIdentifier: must match ios.bundleIdentifier in app.config.ts,
-//                       currently "com.tallybill.mobile".
+//                       currently "app.tallybill".
 //
 // Update APPLE_TEAM_ID below (or set the env var) before submitting to the
 // App Store — the OS will silently reject the file if the Team ID is wrong.
-const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID ?? "XXXXXXXXXX";
-const IOS_BUNDLE_ID = "com.tallybill.mobile";
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID ?? "333JD84N83";
+const IOS_BUNDLE_ID = "app.tallybill";
 
 app.get(
   "/.well-known/apple-app-site-association",

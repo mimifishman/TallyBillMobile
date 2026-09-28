@@ -22,6 +22,11 @@ build = [ "pnpm", "--filter", "@workspace/share-bill", "run", "build" ]
 publicDir = "artifacts/share-bill/dist/public"
 serve = "static"
 
+# iOS reads this file to trust tallybill.app links, so /b/ links open the app.
+[[services.production.rewrites]]
+from = "/.well-known/apple-app-site-association"
+to = "/apple-app-site-association.json"
+
 [[services.production.rewrites]]
 from = "/b/*"
 to = "/app.html"
