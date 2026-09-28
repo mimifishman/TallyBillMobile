@@ -8,6 +8,7 @@
  * name, an invented amount.
  */
 import { applyNames, parseNameLines, voteNames } from "../src/lib/receipt-names.ts";
+import { applySpelling, parseSpelling, spellingRequest } from "../src/lib/receipt-spelling.ts";
 import { normalizeLineItems } from "../src/lib/receipt-line-items.ts";
 
 let failed = 0;
@@ -113,6 +114,35 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   const alone = voteNames(gpt4o, [claude]);
   check("one reader against gpt-4o: the reader wins a tie", alone.items[2]!.description === "מדטים", alone.items[2]);
   check("no readings -> gpt-4o's names", voteNames(gpt4o, []).changed === 0);
+}
+
+{
+  // The closest real word, after the vote.
+  const withNames = (names: string[]) => gpt4o.map((it, i) => ({ ...it, description: names[i] ?? it.description }));
+  const claude = withNames(["עגור קסם", "PAIN KILLER", "מזטים", "לחמה בעג'ין", "ארנטריב מפורק", "מרגד", "טרטר פילה", "שיפוד פטריות", "שיפוד כרוב"]);
+  const gpt54 = withNames(["עגוך קסחם", "PAIN KILLER", "מזטים", "לוחמוה נוג'ין", "אונטריב מפורק", "מזוגז", "טרטר פילה", "שיפוד פטריות", "שיפוד כרוב"]);
+  const vote = voteNames(gpt4o, [claude, gpt54]);
+  const lines = spellingRequest(vote.items, vote.candidates, vote.agreed);
+  const sent = new Set(lines.map((l) => l.id));
+  check("a name two readers spelled the same is not sent (cabbage stays cabbage)", !sent.has(8) && !sent.has(2), [...sent]);
+  check("Latin names are not sent", !sent.has(1));
+  check("a disputed Hebrew name is sent, with every reading and its price",
+    sent.has(5) && lines.find((l) => l.id === 5)!.readings.length === 3 && lines.find((l) => l.id === 5)!.amount === 58,
+    lines.find((l) => l.id === 5));
+
+  const answers = parseSpelling(JSON.stringify({ names: [
+    { id: 3, name: "לחמה בעג'ין" },   // another reader's reading: kept
+    { id: 5, name: "פיצה מרגריטה" },  // nowhere near any reading: refused
+    { id: 4, name: "ארנטריב" },       // drops a word: refused
+  ] }))!;
+  const out = applySpelling(vote.items, lines, answers);
+  check("a correction within two letters of a reading is kept", out.items[3]!.description === "לחמה בעג'ין", out.items[3]);
+  check("a correction far from every reading is refused",
+    out.items[5]!.description === vote.items[5]!.description && out.items[4]!.description === vote.items[4]!.description,
+    out.items.slice(3, 6));
+  check("refusals are counted", out.changed === 1 && out.refused === 2, out);
+  check("the spelling check never touches money", money(out.items) === money(gpt4o));
+  check("spelling parse: no JSON -> null", parseSpelling("sorry") === null);
 }
 
 check("no names -> the bill unchanged", applyNames(gpt4o, []).items === gpt4o);
