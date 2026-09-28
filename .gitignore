@@ -63,3 +63,5 @@ Thumbs.db
 /app_screenshots/
 /app_store_review/
 /Receipts AI/
+# Phone photos shared over WhatsApp can carry personal data. Keep them local.
+/attached_assets/WhatsApp_Image_*
