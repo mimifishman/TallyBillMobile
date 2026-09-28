@@ -166,7 +166,10 @@ async function askClaudeForNames(model: string, strips: string[], opts: CallOpti
     content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
   });
   content.push({ type: "text", text: "Copy every item line's name and amount as JSON." });
-  return parseNameLines(await claudeMessage(model, NAMES_PROMPT, content, opts));
+  // Without thinking: measured 2026-09-28 on the 13 Hebrew fixtures, twice,
+  // Sonnet 5 read 114 of 142 names without it and 109 with it, and its slowest
+  // 10% took 3 s instead of 18 s — with it, 5 scans in 26 ran out of time.
+  return parseNameLines(await claudeMessage(model, NAMES_PROMPT, content, { ...opts, thinking: false }));
 }
 
 /** The spelling check: text only, one request for every Hebrew line. */
