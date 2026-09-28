@@ -1937,6 +1937,10 @@ components:
           type: integer
         description:
           type: string
+        originalDescription:
+          type: string
+          nullable: true
+          description: The item's name as printed on the receipt, when the description is a translation
         lineTotal:
           type: number
           description: The original (full) price of the line item
@@ -1999,6 +2003,10 @@ components:
           type: integer
         description:
           type: string
+        originalDescription:
+          type: string
+          nullable: true
+          description: The item's name as printed on the receipt, when the description is a translation
         total:
           type: number
       required:

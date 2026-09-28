@@ -738,6 +738,7 @@ export default function BillDetailScreen() {
   const discountLines: DiscountLineInput[] = lines.map((l) => ({
     id: l.id,
     description: l.description,
+    originalDescription: l.originalDescription ?? null,
     total: parseFloat(String(l.total)) || 0,
     originalTotal: (l as { originalTotal?: string | null }).originalTotal != null
       ? parseFloat(String((l as { originalTotal?: string | null }).originalTotal))
