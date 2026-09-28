@@ -39,7 +39,8 @@ import {
   type Reading,
 } from "./receipt-reading";
 
-export type Effort = "low" | "medium" | "high";
+/** "none" is a real setting for gpt-5.4: answer without reasoning first. */
+export type Effort = "none" | "low" | "medium" | "high";
 
 export interface ScanConfig {
   /** Reads every receipt, and is the only source of money. */
@@ -47,16 +48,39 @@ export interface ScanConfig {
   /** Asked only about a missed discount. null turns it off. */
   secondModel: string | null;
   secondEffort: Effort;
-  /** Reads item names only. null turns it off. */
-  namesModel: string | null;
-  /** Sent only to a reasoning model; null for gpt-4o, which rejects it. */
-  namesEffort: Effort | null;
+  /**
+   * Readers of item names only, best first. All start at once; the first in
+   * the list is used if it has answered by `namesPatienceMs` (or by the time
+   * the money is read, if that is later), otherwise the next. Empty turns the
+   * names reading off.
+   */
+  names: NamesReader[];
   /** The server's share of the 20-second budget. */
   budgetMs: number;
-  /** How long, from the start of the scan, the names reading may take. */
+  /** How long, from the start of the scan, the preferred names reader is waited for. */
+  namesPatienceMs: number;
+  /** How long, from the start of the scan, any names reading may take. */
   namesBudgetMs: number;
   headerCrop: boolean;
 }
+
+export interface NamesReader {
+  model: string;
+  /** Sent only to a reasoning model; null for gpt-4o, which rejects any. */
+  effort: Effort | null;
+}
+
+/** "gpt-5.4:low,gpt-5.4:none" -> readers, best first. "off" or empty -> none. */
+export function parseNamesReaders(value: string): NamesReader[] {
+  const v = value.trim();
+  if (v === "" || v === "off") return [];
+  return v.split(",").map((part) => part.trim()).filter(Boolean).map((part) => {
+    const [model, effort] = part.split(":").map((x) => x.trim());
+    return { model: model!, effort: effort ? (effort as Effort) : null };
+  });
+}
+
+const readerLabel = (r: NamesReader) => (r.effort ? `${r.model}:${r.effort}` : r.model);
 
 export interface ScanResult {
   bill: Reading;
@@ -70,6 +94,17 @@ const MIN_SECOND_OPINION_MS = 5_000;
 type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 function settle<T>(p: Promise<T>): Promise<Settled<T>> {
   return p.then((value) => ({ ok: true as const, value }), (error: unknown) => ({ ok: false as const, error }));
+}
+
+/** A settled promise, or "late" if it has not settled by `at` (epoch ms). */
+async function until<T>(p: Promise<T>, at: number): Promise<T | "late"> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<"late">((resolve) => { timer = setTimeout(() => resolve("late"), Math.max(0, at - Date.now())); });
+  try {
+    return await Promise.race([p, late]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function failure(err: unknown): string {
@@ -107,7 +142,7 @@ export async function askForReceipt(
     openai,
     {
       model,
-      ...(opts.effort ? { reasoning_effort: opts.effort } : { temperature: 0 }),
+      ...(opts.effort ? { reasoning_effort: opts.effort as OpenAI.ReasoningEffort } : { temperature: 0 }),
       max_completion_tokens: RECEIPT_TOKEN_CEILING,
       response_format: { type: "json_object" },
       messages: [
@@ -143,7 +178,7 @@ async function askForNames(
     openai,
     {
       model,
-      ...(opts.effort ? { reasoning_effort: opts.effort } : { temperature: 0 }),
+      ...(opts.effort ? { reasoning_effort: opts.effort as OpenAI.ReasoningEffort } : { temperature: 0 }),
       max_completion_tokens: RECEIPT_TOKEN_CEILING,
       response_format: { type: "json_object" },
       messages: [
@@ -187,19 +222,22 @@ export async function scanReceipt(
   const wholeCall = cropped
     ? settle(askForReceipt(openai, config.model, wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }))
     : null;
-  const namesCall = config.namesModel
-    ? settle(
-        receiptStrips(wholePrep.prepared.buffer).then((strips) =>
-          strips.length === 0
-            ? null
-            : askForNames(openai, config.namesModel!, strips, {
-                effort: config.namesEffort,
-                deadlineMs: Math.max(1, config.namesBudgetMs - (Date.now() - startedAt)),
-                signal: cancelNames.signal,
-              }),
+  const strips = config.names.length > 0 ? receiptStrips(wholePrep.prepared.buffer) : null;
+  const namesCalls = strips
+    ? config.names.map((reader) =>
+        settle(
+          strips.then((urls) =>
+            urls.length === 0
+              ? null
+              : askForNames(openai, reader.model, urls, {
+                  effort: reader.effort,
+                  deadlineMs: Math.max(1, config.namesBudgetMs - (Date.now() - startedAt)),
+                  signal: cancelNames.signal,
+                }),
+          ),
         ),
       )
-    : null;
+    : [];
 
   try {
     const firstRaw = await askForReceipt(openai, config.model, croppedPrep.dataUrl);
@@ -268,20 +306,37 @@ export async function scanReceipt(
     }
 
     // Names last: they attach to whichever lines ended up on the bill, and
-    // only their words change.
-    if (namesCall) {
-      const settled = await namesCall;
-      if (!settled.ok) {
-        notes["X-OCR-Names"] = `${config.namesModel}:${failure(settled.error)}`;
-        warn(settled.error, "names reading failed; keeping the main reading's names");
-      } else if (!settled.value) {
-        notes["X-OCR-Names"] = `${config.namesModel}:no-answer`;
-      } else {
-        const named = applyNames(bill.items, settled.value);
-        bill = { ...bill, items: named.items };
-        notes["X-OCR-Names"] =
-          `${config.namesModel}:changed=${named.changed},matched=${named.matched}/${bill.items.length}`;
+    // only their words change. The best reader is waited for until the
+    // patience runs out (or the money is read, if that took longer); after
+    // that the next one is taken. The last is waited for up to its deadline.
+    if (namesCalls.length > 0) {
+      const patienceEnd = Math.max(Date.now(), startedAt + config.namesPatienceMs);
+      const skipped: string[] = [];
+      let lines: NameLine[] | null = null;
+      let used: NamesReader | null = null;
+      for (let k = 0; k < namesCalls.length && !lines; k++) {
+        const reader = config.names[k]!;
+        const last = k === namesCalls.length - 1;
+        const settled = last ? await namesCalls[k]! : await until(namesCalls[k]!, patienceEnd);
+        if (settled === "late") {
+          skipped.push(`${readerLabel(reader)}:late`);
+        } else if (!settled.ok) {
+          skipped.push(`${readerLabel(reader)}:${failure(settled.error)}`);
+          warn(settled.error, "names reading failed");
+        } else if (!settled.value) {
+          skipped.push(`${readerLabel(reader)}:no-answer`);
+        } else {
+          lines = settled.value;
+          used = reader;
+        }
       }
+      let note = "none-used";
+      if (lines && used) {
+        const named = applyNames(bill.items, lines);
+        bill = { ...bill, items: named.items };
+        note = `${readerLabel(used)}:changed=${named.changed},matched=${named.matched}/${bill.items.length}`;
+      }
+      notes["X-OCR-Names"] = [note, ...skipped].join(" ");
     }
 
     notes["X-OCR-Server-Ms"] = String(Date.now() - startedAt);

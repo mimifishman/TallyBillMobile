@@ -40,7 +40,8 @@ Rules:
 - When a letter is unclear, choose the letter whose SHAPE matches the ink best, not the letter that makes a more familiar word. Hebrew letters that look alike — ר and ד, כ and ב, ו and ז and ן, ה and ח and ת, ס and ם — must be told apart by looking at the stroke.
 - Keep the original script and the visual character order as printed (Hebrew stays Hebrew, Latin stays Latin).
 - Never put the quantity or a price in "name".
-- "amount" is the money printed at the end of that line, as a number.
+- "amount" is the money printed at the end of that line, as a number. Never move an amount to the line above or below it.
+- Options printed under an item — indented, or marked ">>" — are part of that item, not lines of their own. Leave them out, even when they show a small price inside their text such as ".10 (0.10)".
 - List the lines from top to bottom. Leave out the shop header, subtotals, totals, tax, service, payment and change lines.
 - A line that appears in two strips because of the overlap may be listed twice; that is fine.
 - Return ONLY the JSON object, no markdown fences, no commentary.`;

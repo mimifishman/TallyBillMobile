@@ -55,7 +55,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { basename, extname, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
-import { scanReceipt, type Effort } from "../src/lib/receipt-scan.ts";
+import { parseNamesReaders, scanReceipt, type Effort } from "../src/lib/receipt-scan.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Override to score a different set, e.g. upright copies of the same photos. */
@@ -326,17 +326,15 @@ interface ScanResult {
 async function scanLocally(file: string, model: string | null): Promise<ScanResult> {
   const env = (name: string, fallback: string) => (process.env[name] ?? fallback).trim();
   const second = env("OCR_SECOND_MODEL", "gpt-5.4");
-  const names = env("OCR_NAMES_MODEL", "gpt-5.4");
-  const namesEffort = env("OCR_NAMES_EFFORT", "low");
   const startedAt = Date.now();
   const { bill, notes } = await scanReceipt(openaiClient(), readFileSync(join(RECEIPTS, file)), {
     // Keep in step with the route's defaults, or --local scores a different reader.
     model: model ?? env("OCR_MODEL", "gpt-4o"),
     secondModel: second === "" || second === "off" ? null : second,
     secondEffort: env("OCR_SECOND_EFFORT", "low") as Effort,
-    namesModel: names === "" || names === "off" ? null : names,
-    namesEffort: namesEffort === "" || namesEffort === "none" ? null : (namesEffort as Effort),
+    names: parseNamesReaders(env("OCR_NAMES", "gpt-5.4:low,gpt-5.4:none")),
     budgetMs: Number(env("OCR_BUDGET_MS", "17000")),
+    namesPatienceMs: Number(env("OCR_NAMES_PATIENCE_MS", "8000")),
     namesBudgetMs: Number(env("OCR_NAMES_BUDGET_MS", "14000")),
     headerCrop: env("OCR_HEADER_CROP", "on") !== "off",
   });

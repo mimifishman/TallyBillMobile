@@ -1,7 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { chatCompletion } from "../lib/model-call.js";
-import { scanReceipt, type Effort, type ScanConfig } from "../lib/receipt-scan.js";
+import { parseNamesReaders, scanReceipt, type ScanConfig } from "../lib/receipt-scan.js";
 
 /**
  * Which vision model reads the receipts.
@@ -103,22 +103,29 @@ function budgetFromEnv(value: string | undefined, fallback = 17_000): number {
 const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
 
 /**
- * A reading of the item NAMES only, from full-resolution strips of the photo.
- * It never changes money; see receipt-names.ts. Empty or "off" disables it.
+ * Readers of the item NAMES only, from full-resolution strips of the photo,
+ * best first. They never change money; see receipt-names.ts. "off" disables.
+ *
+ * gpt-5.4 at low effort reads names best, but on a long or creased receipt it
+ * thinks for 15-40 seconds. At no effort it answers in under 4 seconds, a little
+ * less accurately. Both start together; the low one is used when it answers in
+ * time. Measured 2026-09-28 over every fixture, three runs, against gpt-4o's
+ * own names: Hebrew exact 112 -> 151 of 213, English 73 -> 75 of 87, French
+ * 27 -> 56 of 60, money untouched.
  */
-const OCR_NAMES_MODEL = (process.env["OCR_NAMES_MODEL"] ?? "gpt-5.4").trim();
-/** Reasoning effort for the names model; "none" for a model that takes none (gpt-4o). */
-const OCR_NAMES_EFFORT = (process.env["OCR_NAMES_EFFORT"] ?? "low").trim();
-/** How long from the start of a scan the names reading may run. */
+const OCR_NAMES = process.env["OCR_NAMES"] ?? "gpt-5.4:low,gpt-5.4:none";
+/** How long from the start of a scan the best names reader is waited for. */
+const OCR_NAMES_PATIENCE_MS = budgetFromEnv(process.env["OCR_NAMES_PATIENCE_MS"], 8_000);
+/** How long from the start of a scan any names reading may run. */
 const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14_000);
 
 const SCAN_CONFIG: ScanConfig = {
   model: OCR_MODEL,
   secondModel: SECOND_OPINION_ON ? OCR_SECOND_MODEL : null,
   secondEffort: OCR_SECOND_EFFORT,
-  namesModel: OCR_NAMES_MODEL === "" || OCR_NAMES_MODEL === "off" ? null : OCR_NAMES_MODEL,
-  namesEffort: OCR_NAMES_EFFORT === "none" || OCR_NAMES_EFFORT === "" ? null : (OCR_NAMES_EFFORT as Effort),
+  names: parseNamesReaders(OCR_NAMES),
   budgetMs: OCR_BUDGET_MS,
+  namesPatienceMs: Math.min(OCR_NAMES_PATIENCE_MS, OCR_BUDGET_MS),
   namesBudgetMs: Math.min(OCR_NAMES_BUDGET_MS, OCR_BUDGET_MS),
   headerCrop: HEADER_CROP,
 };
