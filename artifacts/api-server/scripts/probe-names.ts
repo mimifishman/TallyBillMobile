@@ -69,7 +69,11 @@ async function askClaude(model: string, strips: string[]): Promise<NameLine[] | 
   const res = await fetch(`${base}/v1/messages`, {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model, max_tokens: 4000, system: NAMES_PROMPT + extra, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({
+      model, max_tokens: 4000, system: NAMES_PROMPT + extra, messages: [{ role: "user", content }],
+      // NO_THINK=1: Claude answers without thinking first (Sonnet 5 thinks by default).
+      ...(process.env["NO_THINK"] === "1" ? { thinking: { type: "disabled" } } : {}),
+    }),
   });
   const body = (await res.json()) as { content?: { type: string; text?: string }[]; error?: { message: string } };
   if (!res.ok) throw new Error(`${res.status} ${body.error?.message ?? ""}`);
