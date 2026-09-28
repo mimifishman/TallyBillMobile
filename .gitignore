@@ -56,3 +56,10 @@ Thumbs.db
 .env.*
 !.env.example
 !artifacts/mobile/.env.development
+
+# Local-only App Store and receipt material. These folders live only on the
+# Mac (backed up outside the repo). They hold real receipt photos and store
+# assets, and this repo is public, so they stay out of git.
+/app_screenshots/
+/app_store_review/
+/Receipts AI/
