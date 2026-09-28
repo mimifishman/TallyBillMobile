@@ -3,9 +3,13 @@
  * caller is. Pure logic: the counters are passed in, so this file can be
  * checked without a database (pnpm run check:ocr-guard).
  *
- * Nobody has to sign in. A guest is counted by network address, a signed-in
- * user by account, and every call also counts toward a daily ceiling for the
- * whole service, which is the hard stop on model spend.
+ * Nobody has to sign in. A guest is counted by the phone it scans from (the
+ * app's own guest id), a signed-in user by account, and every call also counts
+ * toward a daily ceiling for the whole service, which is the hard stop on
+ * model spend. A network address only gets a loose backstop, because many
+ * real people share one: friends on a restaurant's wifi, a whole carrier
+ * behind one address. Counting guests by address locked the developer's own
+ * phone out after a day of testing from the same home connection.
  *
  * No relative imports here: the check script loads this file directly with
  * --experimental-strip-types.
@@ -22,8 +26,14 @@ export interface Allowance {
 export interface Policy {
   /** Plural noun for messages: "scans", "translations". */
   noun: string;
+  /** Per phone, for a guest whose app sent its guest id. */
   guest: Allowance;
   user: Allowance;
+  /**
+   * Per network address, for guests who sent a guest id: a backstop against a
+   * script inventing a new id per call, set far above what one table needs.
+   */
+  network: Allowance;
   /** Calls per UTC day for everyone together. */
   dailyCeiling: number;
   /** Shown when the ceiling is reached. */
@@ -39,9 +49,14 @@ export interface Policy {
  *   developer testing on dev: 4 in an hour, 11 in a day.
  * - A signed-in user gets 15 an hour and 40 a day: two or three times a heavy
  *   day, and far below what a script would want.
- * - A guest gets 10 an hour and 25 a day per network, so "sign in to scan
- *   more" is true. IPv6 is counted per /64 (one phone or home), so only IPv4
- *   callers behind one wifi or carrier address share a count.
+ * - A guest gets 10 an hour and 25 a day per phone, so "sign in to scan more"
+ *   is true. The phone is the app's guest id (X-Guest-Owner-Id), which every
+ *   build already sends.
+ * - A network address gets 60 an hour and 300 a day across all its guests:
+ *   dozens of tables on one wifi or carrier address, and still a hard stop for
+ *   a script that makes up a fresh guest id per call. A guest with no id (not
+ *   the app) is held to the per-phone numbers by address, as before.
+ *   IPv6 is counted per /64.
  * - The daily ceiling is for everyone together and is set for growth, not for
  *   today's traffic: 5,000 scans is roughly 1,000 to 2,000 people splitting a
  *   bill in one day. A scan is up to three model calls (gpt-4o, a gpt-4o
@@ -64,6 +79,7 @@ export function policyFromEnv(env: Record<string, string | undefined>): Record<R
       noun: "scans",
       guest: { hour: n("OCR_GUEST_PER_HOUR", 10), day: n("OCR_GUEST_PER_DAY", 25) },
       user: { hour: n("OCR_USER_PER_HOUR", 15), day: n("OCR_USER_PER_DAY", 40) },
+      network: { hour: n("OCR_NETWORK_PER_HOUR", 60), day: n("OCR_NETWORK_PER_DAY", 300) },
       dailyCeiling: n("OCR_DAILY_CEILING", 5000),
       pausedMessage: "Receipt scanning is paused for today. Try again later, or add the items by hand.",
     },
@@ -71,6 +87,7 @@ export function policyFromEnv(env: Record<string, string | undefined>): Record<R
       noun: "translations",
       guest: { hour: n("TRANSLATE_GUEST_PER_HOUR", 15), day: n("TRANSLATE_GUEST_PER_DAY", 40) },
       user: { hour: n("TRANSLATE_USER_PER_HOUR", 20), day: n("TRANSLATE_USER_PER_DAY", 60) },
+      network: { hour: n("TRANSLATE_NETWORK_PER_HOUR", 90), day: n("TRANSLATE_NETWORK_PER_DAY", 400) },
       dailyCeiling: n("TRANSLATE_DAILY_CEILING", 10000),
       pausedMessage: "Translation is paused for today. Try again later.",
     },
@@ -165,9 +182,19 @@ export function addressKey(address: string): string {
   return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":")}::/64`;
 }
 
+/**
+ * The app's guest id, if it looks like one; anything else counts as no id.
+ * The app makes it as `guest_<time>_<random>` and keeps it on the phone.
+ */
+export function guestDeviceKey(raw: string | undefined): string | null {
+  const id = (raw ?? "").trim();
+  return /^[A-Za-z0-9_-]{8,80}$/.test(id) ? id : null;
+}
+
 export type Caller =
   | { kind: "user"; id: string }
-  | { kind: "guest"; id: string }
+  /** `id` is the network key; `device` the app's guest id, when it sent one. */
+  | { kind: "guest"; id: string; device?: string | null }
   /** A script on the server itself (an eval over localhost). No per-caller limit. */
   | { kind: "local"; id: string };
 
@@ -225,34 +252,47 @@ export async function checkUsage(
   let remaining: number | null = null;
 
   if (caller.kind !== "local") {
-    const allowance = caller.kind === "user" ? policy.user : policy.guest;
-    const who = `${route}:${caller.kind}:${caller.id}`;
-    const hourKey = `${who}:h:${iso.slice(0, 13)}`;
-    const dayKey = `${who}:d:${iso.slice(0, 10)}`;
-    const counts = await bump([
-      { key: hourKey, expiresAt: hourEnd },
-      { key: dayKey, expiresAt: dayEnd },
-    ]);
-    const perHour = counts.get(hourKey) ?? 0;
-    const perDay = counts.get(dayKey) ?? 0;
-    const from = caller.kind === "user" ? "your account" : "this network";
-    const signIn = caller.kind === "guest" ? ", or sign in to scan more" : "";
-    if (perDay > allowance.day) {
-      const wait = secondsTo(dayEnd);
-      return {
-        ok: false, reason: "caller", count: perDay, ceilingJustHit: false, retryAfterSeconds: wait,
-        message: `Too many ${policy.noun} from ${from} today. Try again in ${inWords(wait)}${route === "scan" ? signIn : ""}.`,
-      };
+    // What this call counts against, most personal first. A guest from the
+    // app counts against its phone AND, loosely, its network; anything else
+    // against one thing, as before.
+    const meters: Array<{ who: string; allowance: Allowance; from: string }> =
+      caller.kind === "user"
+        ? [{ who: `${route}:user:${caller.id}`, allowance: policy.user, from: "your account" }]
+        : caller.device
+          ? [
+              { who: `${route}:device:${caller.device}`, allowance: policy.guest, from: "this phone" },
+              { who: `${route}:network:${caller.id}`, allowance: policy.network, from: "this network" },
+            ]
+          : [{ who: `${route}:guest:${caller.id}`, allowance: policy.guest, from: "this network" }];
+    const keys = meters.map((m) => ({ hour: `${m.who}:h:${iso.slice(0, 13)}`, day: `${m.who}:d:${iso.slice(0, 10)}` }));
+    const counts = await bump(keys.flatMap((k) => [
+      { key: k.hour, expiresAt: hourEnd },
+      { key: k.day, expiresAt: dayEnd },
+    ]));
+    const signIn = caller.kind === "guest" && route === "scan" ? ", or sign in to scan more" : "";
+    for (let m = 0; m < meters.length; m++) {
+      const { allowance, from } = meters[m]!;
+      const perHour = counts.get(keys[m]!.hour) ?? 0;
+      const perDay = counts.get(keys[m]!.day) ?? 0;
+      if (perDay > allowance.day) {
+        const wait = secondsTo(dayEnd);
+        return {
+          ok: false, reason: "caller", count: perDay, ceilingJustHit: false, retryAfterSeconds: wait,
+          message: `Too many ${policy.noun} from ${from} today. Try again in ${inWords(wait)}${signIn}.`,
+        };
+      }
+      if (perHour > allowance.hour) {
+        const wait = secondsTo(hourEnd);
+        return {
+          ok: false, reason: "caller", count: perHour, ceilingJustHit: false, retryAfterSeconds: wait,
+          message: `Too many ${policy.noun} from ${from} this hour. Try again in ${inWords(wait)}${signIn}.`,
+        };
+      }
+      if (m === 0) {
+        limit = allowance.hour;
+        remaining = allowance.hour - perHour;
+      }
     }
-    if (perHour > allowance.hour) {
-      const wait = secondsTo(hourEnd);
-      return {
-        ok: false, reason: "caller", count: perHour, ceilingJustHit: false, retryAfterSeconds: wait,
-        message: `Too many ${policy.noun} from ${from} this hour. Try again in ${inWords(wait)}${route === "scan" ? signIn : ""}.`,
-      };
-    }
-    limit = allowance.hour;
-    remaining = allowance.hour - perHour;
   }
 
   const ceilingKey = `${route}:all:d:${iso.slice(0, 10)}`;

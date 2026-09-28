@@ -9,6 +9,7 @@ import {
   addressKey,
   checkUsage,
   clientAddress,
+  guestDeviceKey,
   policyFromEnv,
   translateTooBig,
   type Bump,
@@ -143,6 +144,78 @@ const user: Caller = { kind: "user", id: "user_abc" };
   let last;
   for (let i = 0; i < 100; i++) last = await checkUsage(store, "scan", policy.scan, { kind: "local", id: "127.0.0.1" }, at);
   check("a local eval has no per-caller limit", last!.ok, last);
+}
+
+// ─── Per phone ──────────────────────────────────────────────────────────────
+
+check("default network backstop", policy.scan.network.hour === 60 && policy.scan.network.day === 300 &&
+  policy.translate.network.hour === 90 && policy.translate.network.day === 400, policy.scan.network);
+check("the backstop is far above one phone", policy.scan.network.day >= 10 * policy.scan.guest.day);
+check("an app guest id is accepted", guestDeviceKey("guest_mg4k2x_a1b2c3d4e5f6g7h8") === "guest_mg4k2x_a1b2c3d4e5f6g7h8");
+check("junk is not a guest id", guestDeviceKey("") === null && guestDeviceKey("x") === null &&
+  guestDeviceKey("a b c d e f g h") === null && guestDeviceKey("x".repeat(81)) === null && guestDeviceKey(undefined) === null);
+
+{
+  // The case that locked the developer out: a day of test scans from one home
+  // connection used up that connection's guest allowance, and the phone on
+  // the same wifi could not scan at all.
+  const store = memoryStore();
+  const home = "176.229.21.27";
+  const { hour: H, day: D } = policy.scan.guest;
+  let last;
+  for (let h = 0; h < Math.ceil((D + 1) / H); h++) {
+    for (let i = 0; i < H; i++) {
+      last = await checkUsage(store, "scan", policy.scan, { kind: "guest", id: home, device: "guest_tester_aaaaaaaaaaaa" },
+        new Date(Date.UTC(2026, 8, 27, 8 + h, 5)));
+    }
+  }
+  check("one phone is held to its own day limit", !last!.ok &&
+    /^Too many scans from this phone today\. Try again in \d+ hours, or sign in to scan more\.$/.test(last!.message), last);
+  const phone = await checkUsage(store, "scan", policy.scan, { kind: "guest", id: home, device: "guest_mimi_bbbbbbbbbbbb" },
+    new Date(Date.UTC(2026, 8, 27, 12, 30)));
+  check("another phone on the same wifi can still scan", phone.ok, phone);
+}
+
+{
+  // A whole table, and then a whole restaurant, on one wifi.
+  const store = memoryStore();
+  const results = [];
+  for (let p = 0; p < 12; p++) {
+    for (let i = 0; i < 3; i++) {
+      results.push(await checkUsage(store, "scan", policy.scan,
+        { kind: "guest", id: "5.5.5.5", device: `guest_phone${p}_cccccccccccc` }, at));
+    }
+  }
+  check("12 phones on one wifi, 3 scans each, all go ahead", results.every((r) => r.ok), results.filter((r) => !r.ok));
+}
+
+{
+  // A script inventing a new guest id for every call is stopped by the network.
+  const store = memoryStore();
+  const N = policy.scan.network.hour;
+  let last;
+  for (let i = 0; i < N + 1; i++) {
+    last = await checkUsage(store, "scan", policy.scan, { kind: "guest", id: "6.6.6.6", device: `guest_fake${i}_dddddddddddd` }, at);
+  }
+  check(`a script faking ids is refused after ${N} an hour on one network`, !last!.ok &&
+    /^Too many scans from this network this hour\./.test(last!.message), last);
+}
+
+{
+  // Old clients and scripts that send no id keep the old per-address rule.
+  const store = memoryStore();
+  const G = policy.scan.guest.hour;
+  let last;
+  for (let i = 0; i < G + 1; i++) last = await checkUsage(store, "scan", policy.scan, { kind: "guest", id: "7.7.7.7" }, at);
+  check("no guest id: held to the per-phone numbers by address", !last!.ok &&
+    /^Too many scans from this network this hour\./.test(last!.message), last);
+}
+
+{
+  const store = memoryStore();
+  const ok = await checkUsage(store, "scan", policy.scan, { kind: "guest", id: "8.8.4.4", device: "guest_hdr_eeeeeeeeeeee" }, at);
+  check("a phone's remaining count is its own, not the network's", ok.ok && ok.limit === policy.scan.guest.hour &&
+    ok.remaining === policy.scan.guest.hour - 1, ok);
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nall passed");
