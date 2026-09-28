@@ -40,6 +40,7 @@ export const SPELLING_PROMPT = `You fix OCR misreadings of item names on the rec
 Each line gives one or more readings of the SAME printed name, made by different OCR readers, and the price printed on the line. The first reading is the current best guess. Use the price as a clue to what the item is: a dish that costs 200 is not a cake. The readers confuse Hebrew letters that look alike in receipt fonts — ר and ד and ך, ב and כ, ו and ז and ן and י, ה and ח and ת, ס and ם, ט and מ, ע and צ, ג and נ — and sometimes add or drop a ו or a י.
 
 For each line, return the name that was most likely printed:
+- Israeli menus use uncommon but real words: cuts of meat, French and Italian cooking terms written in Hebrew letters, house names for dishes and cocktails. Never replace a word just because you do not know it; a reading that could be such a word counts as real.
 - If a reading is already a real, sensible menu item — words a restaurant, bar or cafe in Israel would print, including dishes from other cuisines written in Hebrew letters (ניוקי, ברוסקטה, אנטרקוט) and names in Latin letters — return it exactly as written. When more than one reading is, prefer the earlier one.
 - If no reading is a real menu item, return the real menu item closest to the readings, changing at most two letters, and only look-alike letters as above, or adding or dropping one ו or י.
 - If you are not sure, return the first reading unchanged.

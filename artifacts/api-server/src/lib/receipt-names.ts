@@ -238,9 +238,13 @@ export function voteNames(
       const cost = here.reduce((sum, o) => sum + (1 - similarity(foldForVote(c), foldForVote(o))), 0);
       if (cost < bestCost - 1e-9) { best = c; bestCost = cost; }
     }
-    // Every distinct reading, the chosen one first, for the spelling check,
+    // The chosen name and the strip readers' readings, for the spelling check,
     // and whether a second reading spelled the chosen name the same way.
-    candidates.push([...new Set([best, ...here])]);
+    // gpt-4o's own reading is left out of the check: it guesses familiar
+    // dishes, and offered as a choice it turned real but rare menu words
+    // into common ones (טורטליני שייטל -> טורטליני ריקוטה, 2026-09-28).
+    const fromReaders = readings.map((r) => r[i]?.description).filter((d): d is string => !!d);
+    candidates.push([...new Set([best, ...fromReaders])]);
     agreed.push(here.filter((c) => foldForVote(c) === foldForVote(best)).length >= 2);
     if (best === item.description) return item;
     changed++;
