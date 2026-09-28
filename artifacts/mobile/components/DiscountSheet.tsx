@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BottomSheet } from "@/components/BottomSheet";
 import { OriginalName } from "@/components/OriginalName";
 import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
+import { useKeyboardHeight } from "@/hooks/useKeyboardHeight";
 import { formatMoney } from "@/utils/currency";
 import { applyPercent, baseTotalOf, discountRate, parsePercent, percentInput, percentLabel, type DiscountableLine } from "@/utils/discount";
 
@@ -65,6 +66,7 @@ export function DiscountSheet({
   onClose: () => void;
 }) {
   const colors = useColors();
+  const keyboardHeight = useKeyboardHeight();
   const [rateDraft, setRateDraft] = useState("");
   /** The rate applied to each item. An item missing here has no discount. */
   const [rates, setRates] = useState<Map<number, number>>(new Map());
@@ -128,6 +130,7 @@ export function DiscountSheet({
   const allSelected = lines.length > 0 && selected.size === lines.length;
 
   const toggle = (id: number) => {
+    Keyboard.dismiss();
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -137,6 +140,7 @@ export function DiscountSheet({
   };
 
   const toggleAll = () => {
+    Keyboard.dismiss();
     setSelected((prev) => (prev.size === lines.length ? new Set() : new Set(lines.map((l) => l.id))));
   };
 
@@ -146,6 +150,7 @@ export function DiscountSheet({
    * never both.
    */
   const applyToSelected = () => {
+    Keyboard.dismiss();
     if (rate <= 0 || selected.size === 0) return;
     setRates((prev) => {
       const next = new Map(prev);
@@ -166,6 +171,7 @@ export function DiscountSheet({
   };
 
   const clearAll = () => {
+    Keyboard.dismiss();
     setRates(new Map());
     setSelected(new Set());
   };
@@ -200,6 +206,7 @@ export function DiscountSheet({
   };
 
   const handleSave = () => {
+    Keyboard.dismiss();
     onSave(
       lines.map((line) => {
         const { id, originalTotal, discountAmount, total } = applyPercent(line, rates.get(line.id) ?? 0);
@@ -277,7 +284,13 @@ export function DiscountSheet({
         ) : null}
       </View>
 
-      <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+      {/* Shorter while the keyboard is up, so the total and Done stay above it:
+          at full height the list pushed them under a number pad that has no
+          key to close it. */}
+      <ScrollView
+        style={[styles.list, keyboardHeight > 0 && styles.listWithKeyboard]}
+        keyboardShouldPersistTaps="handled"
+      >
         {lines.map((line) => {
           const linePercent = rates.get(line.id);
           const ticked = selected.has(line.id);
@@ -416,6 +429,7 @@ const styles = StyleSheet.create({
   apply: { borderRadius: RADIUS.md, paddingVertical: SPACING.md, alignItems: "center", marginBottom: SPACING.lg },
   applyText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
   list: { maxHeight: 320 },
+  listWithKeyboard: { maxHeight: 132 },
   item: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: SPACING.md, borderBottomWidth: StyleSheet.hairlineWidth },
   itemMain: { flexDirection: "row", alignItems: "center", flex: 1, gap: SPACING.md },
   check: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
