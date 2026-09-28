@@ -7,3 +7,4 @@
 - [Clerk SSO redirect allowlist](clerk-sso-redirect-urls.md) — self-owned instances need exp://…/--/sso-callback allowlisted; prod enforces, dev doesn't (can't verify there).
 - [pnpm shared-context deps](pnpm-shared-context-deps.md) — deps whose React context must match expo-router's copy (e.g. bottom-tabs) must be pinned to its exact resolved version or useContext silently reads undefined.
 - [Expo tsconfig paths](expo-tsconfig-paths.md) — Metro applies tsconfig `paths` at runtime; type-only aliases (react → @types/react) must target the .d.ts FILE or the bundle 500s. tsc passing ≠ bundle builds.
+- [Static Vite build environment](static-vite-build-env.md) — static builds should not require runtime PORT or BASE_PATH when the artifact is mounted at `/`; keep dev-server validation strict.
