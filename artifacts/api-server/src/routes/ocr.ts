@@ -121,6 +121,11 @@ const OCR_NAMES = process.env["OCR_NAMES"] ?? "claude-sonnet-5,gpt-5.4:none";
  * After the vote, one text-only call puts each Hebrew name that came out as no
  * word onto the closest real word, changing at most two look-alike letters.
  * See receipt-spelling.ts. "off" disables.
+ *
+ * Measured 2026-09-28, 13 Hebrew fixtures, twice, a scan every 15 s: names
+ * exact 116 -> 126 of 142, "close" level at 136, totals and tax 26/26 both
+ * ways. Costs about 2 s: p50 9.2 -> 11.1 s, p95 13.5 -> 16.7 s. Opus 5 without
+ * thinking: Sonnet 5 fixed fewer, and with thinking either took up to 30 s.
  */
 const OCR_SPELLING = (process.env["OCR_SPELLING"] ?? "claude-opus-5").trim();
 /** How long from the start of a scan any names reading may run. */
