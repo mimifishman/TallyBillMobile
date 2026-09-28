@@ -335,7 +335,7 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
     names: parseNamesReaders(env("OCR_NAMES", "claude-sonnet-5,gpt-5.4:none")),
     budgetMs: Number(env("OCR_BUDGET_MS", "17000")),
     namesBudgetMs: Number(env("OCR_NAMES_BUDGET_MS", "14000")),
-    spelling: parseNamesReaders(env("OCR_SPELLING", "claude-sonnet-5"))[0] ?? null,
+    spelling: parseNamesReaders(env("OCR_SPELLING", "claude-opus-5"))[0] ?? null,
     headerCrop: env("OCR_HEADER_CROP", "on") !== "off",
   });
   const ms = Date.now() - startedAt;

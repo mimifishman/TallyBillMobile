@@ -178,7 +178,9 @@ export async function askSpelling(
 ): Promise<Map<number, string> | null> {
   const input = JSON.stringify({ lines });
   if (isClaude(reader.model)) {
-    return parseSpelling(await claudeMessage(reader.model, SPELLING_PROMPT, [{ type: "text", text: input }], { ...opts, maxTokens: 2_000 }));
+    return parseSpelling(
+      await claudeMessage(reader.model, SPELLING_PROMPT, [{ type: "text", text: input }], { ...opts, maxTokens: 1_000, thinking: false }),
+    );
   }
   const completion = await chatCompletion(
     openai,

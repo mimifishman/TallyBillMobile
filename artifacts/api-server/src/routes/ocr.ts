@@ -122,7 +122,7 @@ const OCR_NAMES = process.env["OCR_NAMES"] ?? "claude-sonnet-5,gpt-5.4:none";
  * word onto the closest real word, changing at most two look-alike letters.
  * See receipt-spelling.ts. "off" disables.
  */
-const OCR_SPELLING = (process.env["OCR_SPELLING"] ?? "claude-sonnet-5").trim();
+const OCR_SPELLING = (process.env["OCR_SPELLING"] ?? "claude-opus-5").trim();
 /** How long from the start of a scan any names reading may run. */
 const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14_000);
 

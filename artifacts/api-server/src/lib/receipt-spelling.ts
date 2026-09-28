@@ -37,7 +37,7 @@ import { editDistance, foldForVote } from "./receipt-names";
 
 export const SPELLING_PROMPT = `You fix OCR misreadings of item names on the receipt of an Israeli restaurant, bar or cafe. Every name is something on its menu: a dish, a side, a drink, a dessert, or an extra such as a sauce or a topping.
 
-Each line gives one or more readings of the SAME printed name, made by different OCR readers. The first reading is the current best guess. The readers confuse Hebrew letters that look alike in receipt fonts — ר and ד and ך, ב and כ, ו and ז and ן and י, ה and ח and ת, ס and ם, ט and מ, ע and צ, ג and נ — and sometimes add or drop a ו or a י.
+Each line gives one or more readings of the SAME printed name, made by different OCR readers, and the price printed on the line. The first reading is the current best guess. Use the price as a clue to what the item is: a dish that costs 200 is not a cake. The readers confuse Hebrew letters that look alike in receipt fonts — ר and ד and ך, ב and כ, ו and ז and ן and י, ה and ח and ת, ס and ם, ט and מ, ע and צ, ג and נ — and sometimes add or drop a ו or a י.
 
 For each line, return the name that was most likely printed:
 - If a reading is already a real, sensible menu item — words a restaurant, bar or cafe in Israel would print, including dishes from other cuisines written in Hebrew letters (ניוקי, ברוסקטה, אנטרקוט) and names in Latin letters — return it exactly as written. When more than one reading is, prefer the earlier one.
@@ -45,7 +45,7 @@ For each line, return the name that was most likely printed:
 - If you are not sure, return the first reading unchanged.
 - Never translate. Never add or remove a word. Never turn one real dish into a different real dish.
 
-The input is JSON: {"lines":[{"id":0,"readings":["...","..."]}]}
+The input is JSON: {"lines":[{"id":0,"amount":42.5,"readings":["...","..."]}]}
 Return ONLY valid JSON listing just the lines whose first reading you change: {"names":[{"id":0,"name":"..."}]}. If you change none, return {"names":[]}.`;
 
 const HEBREW = /[֐-׿]/;
@@ -53,6 +53,8 @@ const HEBREW = /[֐-׿]/;
 export interface SpellingLine {
   /** Index of the line on the bill. */
   id: number;
+  /** The line's printed price, a clue to what the item is. */
+  amount: number;
   /** Every reading of the line, the voted one first. */
   readings: string[];
 }
@@ -66,7 +68,11 @@ export function spellingRequest(items: LineItem[], candidates: string[][], agree
   items.forEach((item, id) => {
     if (!HEBREW.test(item.description) || agreed[id]) return;
     const readings = candidates[id]?.length ? candidates[id]! : [item.description];
-    lines.push({ id, readings: [item.description, ...readings.filter((r) => r !== item.description)] });
+    lines.push({
+      id,
+      amount: item.originalTotal ?? item.total,
+      readings: [item.description, ...readings.filter((r) => r !== item.description)],
+    });
   });
   return lines;
 }
