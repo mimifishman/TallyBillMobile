@@ -89,7 +89,7 @@ function scriptOf(name: string): "hebrew" | "latin" | "other" {
 }
 
 /** Edit distance by code point. */
-function editDistance(a: string, b: string): number {
+export function editDistance(a: string, b: string): number {
   const x = [...a], y = [...b];
   let prev = Array.from({ length: y.length + 1 }, (_, j) => j);
   for (let i = 1; i <= x.length; i++) {
@@ -203,7 +203,7 @@ export function applyNames(items: LineItem[], lines: NameLine[]): NamesOutcome {
 }
 
 /** Final letter forms and look-alike punctuation folded, for comparing readings. */
-function foldForVote(name: string): string {
+export function foldForVote(name: string): string {
   return name
     .replace(/ך/g, "כ").replace(/ם/g, "מ").replace(/ן/g, "נ").replace(/ף/g, "פ").replace(/ץ/g, "צ")
     .replace(/[׳’`]/g, "'").replace(/[״“”]/g, '"')
@@ -223,19 +223,25 @@ function foldForVote(name: string): string {
  * `base` is gpt-4o's reading of the whole photo and is the last resort.
  * Ties go to the earlier reading.
  */
-export function voteNames(base: LineItem[], readings: LineItem[][]): { items: LineItem[]; changed: number } {
+export function voteNames(
+  base: LineItem[],
+  readings: LineItem[][],
+): { items: LineItem[]; changed: number; candidates: string[][] } {
   let changed = 0;
+  const candidates: string[][] = [];
   const items = base.map((item, i) => {
-    const candidates = [...readings.map((r) => r[i]?.description), item.description]
+    const here = [...readings.map((r) => r[i]?.description), item.description]
       .filter((d): d is string => typeof d === "string" && d.length > 0);
     let best = item.description, bestCost = Infinity;
-    for (const c of candidates) {
-      const cost = candidates.reduce((sum, o) => sum + (1 - similarity(foldForVote(c), foldForVote(o))), 0);
+    for (const c of here) {
+      const cost = here.reduce((sum, o) => sum + (1 - similarity(foldForVote(c), foldForVote(o))), 0);
       if (cost < bestCost - 1e-9) { best = c; bestCost = cost; }
     }
+    // Every distinct reading, the chosen one first, for the spelling check.
+    candidates.push([...new Set([best, ...here])]);
     if (best === item.description) return item;
     changed++;
     return { ...item, description: best };
   });
-  return { items, changed };
+  return { items, changed, candidates };
 }

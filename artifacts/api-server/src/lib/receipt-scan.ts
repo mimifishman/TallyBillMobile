@@ -24,10 +24,11 @@
  * second opinion.
  */
 import type OpenAI from "openai";
-import { chatCompletion, RECEIPT_TOKEN_CEILING } from "./model-call";
+import { chatCompletion, claudeMessage, isClaude, RECEIPT_TOKEN_CEILING } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
 import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
+import { applySpelling, parseSpelling, SPELLING_PROMPT, spellingRequest, type SpellingLine } from "./receipt-spelling";
 import {
   closerToReceipt,
   combineReadings,
@@ -58,6 +59,11 @@ export interface ScanConfig {
   budgetMs: number;
   /** How long, from the start of the scan, any names reading may take. */
   namesBudgetMs: number;
+  /**
+   * Checks each Hebrew name that came out as no word, after the vote. null
+   * turns it off. See receipt-spelling.ts.
+   */
+  spelling: NamesReader | null;
   headerCrop: boolean;
 }
 
@@ -150,16 +156,8 @@ export async function askForReceipt(
   return completion.choices[0]?.message?.content ?? "";
 }
 
-/**
- * The names reading by a Claude model, through Replit's Anthropic integration.
- *
- * No SDK: one POST to the Messages API. Without the integration's credentials
- * it throws at once, and the other readers still vote.
- */
+/** The names reading by a Claude model, through Replit's Anthropic integration. */
 async function askClaudeForNames(model: string, strips: string[], opts: CallOptions): Promise<NameLine[] | null> {
-  const key = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
-  const base = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"]?.replace(/\/$/, "");
-  if (!key || !base) throw new Error("no Anthropic credentials");
   const content: unknown[] = [];
   strips.forEach((url, k) => {
     const [head, data] = url.split(",");
@@ -168,24 +166,39 @@ async function askClaudeForNames(model: string, strips: string[], opts: CallOpti
     content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
   });
   content.push({ type: "text", text: "Copy every item line's name and amount as JSON." });
-  const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
-    .filter((s): s is AbortSignal => s !== undefined);
-  const res = await fetch(`${base}/v1/messages`, {
-    method: "POST",
-    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    // No temperature: the current Claude models refuse one.
-    body: JSON.stringify({ model, max_tokens: 4_000, system: NAMES_PROMPT, messages: [{ role: "user", content }] }),
-    ...(signals.length ? { signal: AbortSignal.any(signals) } : {}),
-  });
-  const body = (await res.json().catch(() => ({}))) as { content?: { text?: string }[]; error?: { message?: string } };
-  if (!res.ok) {
-    // Shaped like the OpenAI client's errors, so failure() reports the status.
-    throw Object.assign(new Error(`Anthropic ${res.status}: ${body.error?.message ?? ""}`), { status: res.status });
-  }
-  return parseNameLines((body.content ?? []).map((c) => c.text ?? "").join(""));
+  return parseNameLines(await claudeMessage(model, NAMES_PROMPT, content, opts));
 }
 
-const isClaude = (model: string) => model.startsWith("claude-");
+/** The spelling check: text only, one request for every Hebrew line. */
+export async function askSpelling(
+  openai: OpenAI,
+  reader: NamesReader,
+  lines: SpellingLine[],
+  opts: CallOptions,
+): Promise<Map<number, string> | null> {
+  const input = JSON.stringify({ lines });
+  if (isClaude(reader.model)) {
+    return parseSpelling(await claudeMessage(reader.model, SPELLING_PROMPT, [{ type: "text", text: input }], { ...opts, maxTokens: 2_000 }));
+  }
+  const completion = await chatCompletion(
+    openai,
+    {
+      model: reader.model,
+      ...(reader.effort ? { reasoning_effort: reader.effort as OpenAI.ReasoningEffort } : { temperature: 0 }),
+      max_completion_tokens: RECEIPT_TOKEN_CEILING,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SPELLING_PROMPT },
+        { role: "user", content: input },
+      ],
+    },
+    requestOptions(opts),
+  );
+  return parseSpelling(completion.choices[0]?.message?.content ?? "");
+}
+
+/** Below this there is no point starting the spelling check. */
+const MIN_SPELLING_MS = 2_500;
 
 /** The names reading: every strip, in order, in one request. */
 async function askForNames(
@@ -434,6 +447,32 @@ export async function scanReceipt(
           `vote:changed=${voted.changed}/${bill.items.length}`,
           ...parts.map((p) => `${p.label}:matched=${p.named.matched}`),
         ].join(" ");
+
+        // Then the closest real word, for the Hebrew names that are no word.
+        const lines = config.spelling ? spellingRequest(bill.items, voted.candidates) : [];
+        if (config.spelling && lines.length > 0) {
+          const label = readerLabel(config.spelling);
+          let outcome: string;
+          if (left() < MIN_SPELLING_MS) {
+            outcome = "skipped-no-time";
+          } else {
+            try {
+              const answers = await askSpelling(openai, config.spelling, lines, { deadlineMs: left() - 500 });
+              if (!answers) {
+                outcome = "no-answer";
+              } else {
+                const spelled = applySpelling(bill.items, lines, answers);
+                bill = { ...bill, items: spelled.items };
+                outcome = `changed=${spelled.changed},refused=${spelled.refused}`;
+              }
+            } catch (err) {
+              noteRateLimit(err);
+              outcome = failure(err);
+              warn(err, "spelling check failed; keeping the voted names");
+            }
+          }
+          notes["X-OCR-Spelling"] = `${label}:${outcome}`;
+        }
       }
       notes["X-OCR-Names"] = [note, ...skipped].join(" ");
     }

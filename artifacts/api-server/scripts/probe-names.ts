@@ -15,7 +15,8 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepareReceipt, receiptStrips } from "../src/lib/receipt-image.ts";
 import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "../src/lib/receipt-names.ts";
-import { scanReceipt } from "../src/lib/receipt-scan.ts";
+import { askSpelling, parseNamesReaders, scanReceipt } from "../src/lib/receipt-scan.ts";
+import { applySpelling, spellingRequest } from "../src/lib/receipt-spelling.ts";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
 import sharp from "sharp";
 
@@ -130,7 +131,7 @@ const vote = args.includes("--vote");
 const main = vote
   ? (await scanReceipt(openai, readFileSync(photo), {
       model: "gpt-4o", secondModel: null, secondEffort: "low", names: [],
-      budgetMs: 20_000, namesBudgetMs: 0, headerCrop: true,
+      budgetMs: 20_000, namesBudgetMs: 0, spelling: null, headerCrop: true,
     })).bill.items
   : [];
 const perReader: typeof main[] = [];
@@ -167,12 +168,36 @@ for (const r of readers) {
 }
 
 if (vote && expected.length) {
-  const voted = voteNames(main, perReader).items;
+  const vote = voteNames(main, perReader);
+  const voted = vote.items;
   console.log(`\nVOTE ${basename(photo)} main=${scoreItems(main)} ` +
     readers.map((r, k) => `${r.label}=${scoreItems(perReader[k] ?? main)}`).join(" ") +
     ` vote=${scoreItems(voted)} of ${expected.length}`);
   for (let i = 0; i < main.length; i++) {
     const names = [main[i]!.description, ...perReader.map((p) => p[i]?.description ?? "-")];
     console.log(`  ${wantAll.includes(fold(voted[i]!.description)) ? " " : "!"} ${voted[i]!.description}   <= ${names.join(" | ")}`);
+  }
+  // --spell a,b: the closest-real-word check after the vote, per model.
+  for (const reader of parseNamesReaders(flag("--spell") ?? "")) {
+    const lines = spellingRequest(voted, vote.candidates);
+    const t0 = Date.now();
+    try {
+      const answers = await askSpelling(openai, reader, lines, {});
+      const spelled = answers ? applySpelling(voted, lines, answers) : { items: voted, changed: 0, refused: 0 };
+      console.log(`SPELL ${basename(photo)} ${reader.model}${reader.effort ? ":" + reader.effort : ""} ${Date.now() - t0} ms ` +
+        `vote=${scoreItems(voted)} spelled=${scoreItems(spelled.items)} of ${expected.length} changed=${spelled.changed} refused=${spelled.refused}`);
+      spelled.items.forEach((it, i) => {
+        if (it.description !== voted[i]!.description) {
+          console.log(`  ${wantAll.includes(fold(it.description)) ? "+" : "-"} ${voted[i]!.description} -> ${it.description}`);
+        }
+      });
+      for (const [id, name] of answers ?? []) {
+        if (name !== voted[id]?.description && spelled.items[id]!.description === voted[id]!.description) {
+          console.log(`  x refused: ${voted[id]!.description} -> ${name}`);
+        }
+      }
+    } catch (err) {
+      console.log(`SPELL ${basename(photo)} ${reader.model} ERROR ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 }

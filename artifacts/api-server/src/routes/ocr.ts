@@ -117,6 +117,12 @@ const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
  * 40 vs 40 of 40). Before: "gpt-5.4:low,gpt-5.4:none", hedged at 8 s.
  */
 const OCR_NAMES = process.env["OCR_NAMES"] ?? "claude-sonnet-5,gpt-5.4:none";
+/**
+ * After the vote, one text-only call puts each Hebrew name that came out as no
+ * word onto the closest real word, changing at most two look-alike letters.
+ * See receipt-spelling.ts. "off" disables.
+ */
+const OCR_SPELLING = (process.env["OCR_SPELLING"] ?? "claude-sonnet-5").trim();
 /** How long from the start of a scan any names reading may run. */
 const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14_000);
 
@@ -127,6 +133,7 @@ const SCAN_CONFIG: ScanConfig = {
   names: parseNamesReaders(OCR_NAMES),
   budgetMs: OCR_BUDGET_MS,
   namesBudgetMs: Math.min(OCR_NAMES_BUDGET_MS, OCR_BUDGET_MS),
+  spelling: parseNamesReaders(OCR_SPELLING)[0] ?? null,
   headerCrop: HEADER_CROP,
 };
 
