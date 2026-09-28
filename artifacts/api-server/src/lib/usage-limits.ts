@@ -33,13 +33,21 @@ export interface Policy {
 /**
  * The numbers, and why:
  *
- * - A dinner is one receipt, two or three scans with a retake. The heaviest
- *   real use on record is the developer testing on dev: 4 scans in an hour,
- *   11 in a day. A guest gets 20 an hour and 60 a day: five times that, with
- *   room for a few people behind one restaurant wifi or carrier address.
- * - Signed-in users get three times more, so "sign in to scan more" is true.
- * - A scan is up to three model calls (gpt-4o, a gpt-4o re-read, gpt-5.4), so
- *   roughly 3 to 10 cents. 1,000 scans a day caps a bad day near $100.
+ * - Real use is small. A meal is one receipt: one scan, two or three with a
+ *   retake. A busy hour (dinner, then drinks) is about five. A heavy day, a
+ *   group trip with four meals, is about ten. The most on record is the
+ *   developer testing on dev: 4 in an hour, 11 in a day.
+ * - A signed-in user gets 15 an hour and 40 a day: two or three times a heavy
+ *   day, and far below what a script would want.
+ * - A guest gets 10 an hour and 25 a day per network, so "sign in to scan
+ *   more" is true. IPv6 is counted per /64 (one phone or home), so only IPv4
+ *   callers behind one wifi or carrier address share a count.
+ * - The daily ceiling is for everyone together and is set for growth, not for
+ *   today's traffic: 5,000 scans is roughly 1,000 to 2,000 people splitting a
+ *   bill in one day. A scan is up to three model calls (gpt-4o, a gpt-4o
+ *   re-read, gpt-5.4), about 3 to 10 cents, so it caps a runaway day near
+ *   $150 to $500. Raise OCR_DAILY_CEILING when the "DAILY CEILING REACHED" log
+ *   line shows up on a normal day.
  * - Translate is one short text call per tap, used once or twice per scan.
  *
  * Every number can be changed without a code change, via the env names in
@@ -54,16 +62,16 @@ export function policyFromEnv(env: Record<string, string | undefined>): Record<R
   return {
     scan: {
       noun: "scans",
-      guest: { hour: n("OCR_GUEST_PER_HOUR", 20), day: n("OCR_GUEST_PER_DAY", 60) },
-      user: { hour: n("OCR_USER_PER_HOUR", 60), day: n("OCR_USER_PER_DAY", 200) },
-      dailyCeiling: n("OCR_DAILY_CEILING", 1000),
+      guest: { hour: n("OCR_GUEST_PER_HOUR", 10), day: n("OCR_GUEST_PER_DAY", 25) },
+      user: { hour: n("OCR_USER_PER_HOUR", 15), day: n("OCR_USER_PER_DAY", 40) },
+      dailyCeiling: n("OCR_DAILY_CEILING", 5000),
       pausedMessage: "Receipt scanning is paused for today. Try again later, or add the items by hand.",
     },
     translate: {
       noun: "translations",
-      guest: { hour: n("TRANSLATE_GUEST_PER_HOUR", 30), day: n("TRANSLATE_GUEST_PER_DAY", 100) },
-      user: { hour: n("TRANSLATE_USER_PER_HOUR", 100), day: n("TRANSLATE_USER_PER_DAY", 300) },
-      dailyCeiling: n("TRANSLATE_DAILY_CEILING", 2000),
+      guest: { hour: n("TRANSLATE_GUEST_PER_HOUR", 15), day: n("TRANSLATE_GUEST_PER_DAY", 40) },
+      user: { hour: n("TRANSLATE_USER_PER_HOUR", 20), day: n("TRANSLATE_USER_PER_DAY", 60) },
+      dailyCeiling: n("TRANSLATE_DAILY_CEILING", 10000),
       pausedMessage: "Translation is paused for today. Try again later.",
     },
   };
