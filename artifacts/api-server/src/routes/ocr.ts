@@ -103,21 +103,20 @@ function budgetFromEnv(value: string | undefined, fallback = 17_000): number {
 const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
 
 /**
- * Readers of the item NAMES only, from full-resolution strips of the photo,
- * best first. They never change money; see receipt-names.ts. "off" disables.
+ * Readers of the item NAMES only, from full-resolution strips of the photo.
+ * They never change money; see receipt-names.ts. "off" disables.
  *
- * gpt-5.4 at low effort reads names best, but on a long or creased receipt it
- * thinks for 15-40 seconds. At no effort it answers in under 4 seconds, a little
- * less accurately. The low one starts first; the fast one starts only if it has
- * not answered by OCR_NAMES_PATIENCE_MS, and the first answer wins.
+ * All of them start at once, and each line's name is voted on by every reader
+ * that answered in time plus gpt-4o's own reading (voteNames). Claude goes
+ * through Replit's Anthropic integration; without its credentials that reader
+ * fails at once and the others still vote.
  *
- * Measured 2026-09-28, every fixture, three runs each, names right exactly as
- * printed: Hebrew 112 -> 149 of 213, English 73 -> 82 of 87, French 27 -> 57
- * of 60. Hebrew totals 39/39 and tax 39/39 in the same run.
+ * Measured 2026-09-28 on the 13 Hebrew fixtures, names right exactly as
+ * printed, of 71: gpt-4o 39, gpt-5.4 44, Claude Sonnet 5 53, the vote 58.
+ * English and French were level between the two readers (52 vs 50 of 58,
+ * 40 vs 40 of 40). Before: "gpt-5.4:low,gpt-5.4:none", hedged at 8 s.
  */
-const OCR_NAMES = process.env["OCR_NAMES"] ?? "gpt-5.4:low,gpt-5.4:none";
-/** When, from the start of a scan, the fallback names reader is started. */
-const OCR_NAMES_PATIENCE_MS = budgetFromEnv(process.env["OCR_NAMES_PATIENCE_MS"], 8_000);
+const OCR_NAMES = process.env["OCR_NAMES"] ?? "claude-sonnet-5,gpt-5.4:none";
 /** How long from the start of a scan any names reading may run. */
 const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14_000);
 
@@ -127,7 +126,6 @@ const SCAN_CONFIG: ScanConfig = {
   secondEffort: OCR_SECOND_EFFORT,
   names: parseNamesReaders(OCR_NAMES),
   budgetMs: OCR_BUDGET_MS,
-  namesPatienceMs: Math.min(OCR_NAMES_PATIENCE_MS, OCR_BUDGET_MS),
   namesBudgetMs: Math.min(OCR_NAMES_BUDGET_MS, OCR_BUDGET_MS),
   headerCrop: HEADER_CROP,
 };

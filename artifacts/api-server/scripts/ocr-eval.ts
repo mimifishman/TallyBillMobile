@@ -332,9 +332,8 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
     model: model ?? env("OCR_MODEL", "gpt-4o"),
     secondModel: second === "" || second === "off" ? null : second,
     secondEffort: env("OCR_SECOND_EFFORT", "low") as Effort,
-    names: parseNamesReaders(env("OCR_NAMES", "gpt-5.4:low,gpt-5.4:none")),
+    names: parseNamesReaders(env("OCR_NAMES", "claude-sonnet-5,gpt-5.4:none")),
     budgetMs: Number(env("OCR_BUDGET_MS", "17000")),
-    namesPatienceMs: Number(env("OCR_NAMES_PATIENCE_MS", "8000")),
     namesBudgetMs: Number(env("OCR_NAMES_BUDGET_MS", "14000")),
     headerCrop: env("OCR_HEADER_CROP", "on") !== "off",
   });

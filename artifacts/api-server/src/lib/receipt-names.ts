@@ -201,3 +201,41 @@ export function applyNames(items: LineItem[], lines: NameLine[]): NamesOutcome {
   });
   return { items: out, matched, changed };
 }
+
+/** Final letter forms and look-alike punctuation folded, for comparing readings. */
+function foldForVote(name: string): string {
+  return name
+    .replace(/ך/g, "כ").replace(/ם/g, "מ").replace(/ן/g, "נ").replace(/ף/g, "פ").replace(/ץ/g, "צ")
+    .replace(/[׳’`]/g, "'").replace(/[״“”]/g, '"')
+    .replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Several readings of the same lines, one name chosen per line by agreement.
+ *
+ * Every reader misreads a different few lines. On the fixtures of 2026-09-28
+ * Claude Sonnet 5 read the user's long receipt 16/16 where gpt-5.4 read 12/16,
+ * but read קולה as קורבה on a faded one that gpt-5.4 read perfectly. A wrong
+ * letter from one reader is rarely the same wrong letter from another, so the
+ * name kept is the one closest to all the others (the medoid) — two readers
+ * agreeing outvote the third. `readings` are the bill's own lines after
+ * applyNames, best reader first, so they differ from `base` only in words;
+ * `base` is gpt-4o's reading of the whole photo and is the last resort.
+ * Ties go to the earlier reading.
+ */
+export function voteNames(base: LineItem[], readings: LineItem[][]): { items: LineItem[]; changed: number } {
+  let changed = 0;
+  const items = base.map((item, i) => {
+    const candidates = [...readings.map((r) => r[i]?.description), item.description]
+      .filter((d): d is string => typeof d === "string" && d.length > 0);
+    let best = item.description, bestCost = Infinity;
+    for (const c of candidates) {
+      const cost = candidates.reduce((sum, o) => sum + (1 - similarity(foldForVote(c), foldForVote(o))), 0);
+      if (cost < bestCost - 1e-9) { best = c; bestCost = cost; }
+    }
+    if (best === item.description) return item;
+    changed++;
+    return { ...item, description: best };
+  });
+  return { items, changed };
+}

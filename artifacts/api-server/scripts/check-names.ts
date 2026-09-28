@@ -7,7 +7,7 @@
  * lines repeated by the strip overlap, lines missed, a quantity left in the
  * name, an invented amount.
  */
-import { applyNames, parseNameLines } from "../src/lib/receipt-names.ts";
+import { applyNames, parseNameLines, voteNames } from "../src/lib/receipt-names.ts";
 import { normalizeLineItems } from "../src/lib/receipt-line-items.ts";
 
 let failed = 0;
@@ -95,6 +95,24 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   const out = applyNames(items, [{ name: "DRAFT IPA", amount: 16 }]);
   check("a line printed at its full price still gets its name",
     out.items[0]!.description === "DRAFT IPA" && out.items[0]!.total === 8 && out.items[0]!.originalTotal === 16, out.items[0]);
+}
+
+{
+  // The vote, with the real readings of 2026-09-28 (gpt-4o, Claude, gpt-5.4).
+  const withNames = (names: string[]) => gpt4o.map((it, i) => ({ ...it, description: names[i] ?? it.description }));
+  const claude = withNames(["עגור קסם", "PAIN KILLER", "מדטים", "לחמה בעג'ין", "ארנטריב מפורק", "חרגז"]);
+  const gpt54 = withNames(["עגור קסם", "PAIN KILLER", "חזעים", "לוחמה בנג'ין", "אונטריב מפרוק", "מרגד"]);
+  const out = voteNames(gpt4o, [claude, gpt54]);
+  const names = out.items.map((it) => it.description);
+  check("two readers agreeing outvote the third", names[0] === "עגור קסם", names[0]);
+  check("with three different names, the one closest to the others wins",
+    names[2] === "מזטים" && names[4] === "ארנטריב מפורק" && names[5] === "מרגז", names.slice(0, 6));
+  check("the vote never touches money", money(out.items) === money(gpt4o));
+  check("final letter forms count as the same letter",
+    voteNames(withNames(["שעועית ירוקה"]), [withNames(["שעועית ירוקה"]), withNames(["שעועית ירוקא"])]).items[0]!.description === "שעועית ירוקה");
+  const alone = voteNames(gpt4o, [claude]);
+  check("one reader against gpt-4o: the reader wins a tie", alone.items[2]!.description === "מדטים", alone.items[2]);
+  check("no readings -> gpt-4o's names", voteNames(gpt4o, []).changed === 0);
 }
 
 check("no names -> the bill unchanged", applyNames(gpt4o, []).items === gpt4o);

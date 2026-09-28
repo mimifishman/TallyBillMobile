@@ -27,7 +27,7 @@ import type OpenAI from "openai";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
-import { applyNames, NAMES_PROMPT, parseNameLines, type NameLine } from "./receipt-names";
+import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
 import {
   closerToReceipt,
   combineReadings,
@@ -49,15 +49,13 @@ export interface ScanConfig {
   secondModel: string | null;
   secondEffort: Effort;
   /**
-   * Readers of item names only, best first. The first starts at once; the
-   * next starts if it has not answered by `namesPatienceMs`, and the first
-   * answer wins. Empty turns the names reading off. See readNames.
+   * Readers of item names only, best first. They all start at once, and each
+   * line's name is voted on by every reader that answered in time, plus the
+   * main reading. Empty turns the names reading off. See readNames.
    */
   names: NamesReader[];
   /** The server's share of the 20-second budget. */
   budgetMs: number;
-  /** When, from the start of the scan, the next names reader starts if none has answered. */
-  namesPatienceMs: number;
   /** How long, from the start of the scan, any names reading may take. */
   namesBudgetMs: number;
   headerCrop: boolean;
@@ -69,7 +67,7 @@ export interface NamesReader {
   effort: Effort | null;
 }
 
-/** "gpt-5.4:low,gpt-5.4:none" -> readers, best first. "off" or empty -> none. */
+/** "claude-sonnet-5,gpt-5.4:none" -> readers, best first. "off" or empty -> none. */
 export function parseNamesReaders(value: string): NamesReader[] {
   const v = value.trim();
   if (v === "" || v === "off") return [];
@@ -152,6 +150,43 @@ export async function askForReceipt(
   return completion.choices[0]?.message?.content ?? "";
 }
 
+/**
+ * The names reading by a Claude model, through Replit's Anthropic integration.
+ *
+ * No SDK: one POST to the Messages API. Without the integration's credentials
+ * it throws at once, and the other readers still vote.
+ */
+async function askClaudeForNames(model: string, strips: string[], opts: CallOptions): Promise<NameLine[] | null> {
+  const key = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
+  const base = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"]?.replace(/\/$/, "");
+  if (!key || !base) throw new Error("no Anthropic credentials");
+  const content: unknown[] = [];
+  strips.forEach((url, k) => {
+    const [head, data] = url.split(",");
+    const mediaType = /^data:([^;]+)/.exec(head ?? "")?.[1] ?? "image/jpeg";
+    content.push({ type: "text", text: `Strip ${k + 1} of ${strips.length}:` });
+    content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
+  });
+  content.push({ type: "text", text: "Copy every item line's name and amount as JSON." });
+  const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
+    .filter((s): s is AbortSignal => s !== undefined);
+  const res = await fetch(`${base}/v1/messages`, {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    // No temperature: the current Claude models refuse one.
+    body: JSON.stringify({ model, max_tokens: 4_000, system: NAMES_PROMPT, messages: [{ role: "user", content }] }),
+    ...(signals.length ? { signal: AbortSignal.any(signals) } : {}),
+  });
+  const body = (await res.json().catch(() => ({}))) as { content?: { text?: string }[]; error?: { message?: string } };
+  if (!res.ok) {
+    // Shaped like the OpenAI client's errors, so failure() reports the status.
+    throw Object.assign(new Error(`Anthropic ${res.status}: ${body.error?.message ?? ""}`), { status: res.status });
+  }
+  return parseNameLines((body.content ?? []).map((c) => c.text ?? "").join(""));
+}
+
+const isClaude = (model: string) => model.startsWith("claude-");
+
 /** The names reading: every strip, in order, in one request. */
 async function askForNames(
   openai: OpenAI,
@@ -159,6 +194,7 @@ async function askForNames(
   strips: string[],
   opts: CallOptions,
 ): Promise<NameLine[] | null> {
+  if (isClaude(model)) return askClaudeForNames(model, strips, opts);
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
   strips.forEach((url, k) => {
     content.push({ type: "text", text: `Strip ${k + 1} of ${strips.length}:` });
@@ -209,90 +245,64 @@ function namesBlocked(): string | null {
   return null;
 }
 
+interface NamesAnswer {
+  reader: NamesReader;
+  lines: NameLine[];
+}
+
 interface NamesPick {
-  lines: NameLine[] | null;
-  used: NamesReader | null;
-  /** What happened to the readers that were not used. */
+  /** Every reader that answered in time, in the order the readers are listed. */
+  answers: NamesAnswer[];
+  /** What happened to the readers that did not. */
   skipped: string[];
 }
 
 /**
- * The names reading, hedged. Never rejects.
+ * The names readings, all at once. Never rejects.
  *
- * Only the best reader starts at once. If it has not answered by the patience
- * mark, or fails, the next one starts, and whichever answers first is used.
- * Starting every reader up front was measured to cost money on the bill: on
- * 2026-09-28 four calls per scan made gateway calls fail, which took the time
- * the discount second opinion needed on 2 of 60 scans. Most receipts are
- * answered by the best reader well before the patience mark, so most scans
- * make one names call, not two.
+ * Every reader starts together and each gets until the names budget. That is
+ * two names calls per scan; the old hedge (gpt-5.4 low, then gpt-5.4 none if
+ * low had not answered by 8 s) made two on most long receipts as well.
+ *
+ * Measured 2026-09-28 on the 13 Hebrew fixtures, names right exactly as
+ * printed, of 71: gpt-4o alone 39, gpt-5.4 44, Claude Sonnet 5 53, and the
+ * per-line vote of all three 58 (see voteNames). On the user's 16-line receipt
+ * of 2026-09-27 the vote read 14, gpt-5.4 8 in the same run.
  */
 function readNames(
   openai: OpenAI,
   strips: Promise<string[]>,
   readers: NamesReader[],
-  timing: { startedAt: number; patienceMs: number; budgetMs: number },
+  timing: { startedAt: number; budgetMs: number },
   outer: AbortSignal,
   warn: (err: unknown, message: string) => void,
 ): Promise<NamesPick> {
-  const cancel = new AbortController();
-  outer.addEventListener("abort", () => cancel.abort(), { once: true });
-  const elapsed = () => Date.now() - timing.startedAt;
-  return new Promise<NamesPick>((resolve) => {
-    const skipped: string[] = [];
-    let done = false, running = 0, next = 0;
-    let hedge: ReturnType<typeof setTimeout> | undefined;
-    const finish = (lines: NameLine[] | null, used: NamesReader | null) => {
-      if (done) return;
-      done = true;
-      clearTimeout(hedge);
-      cancel.abort();
-      resolve({ lines, used, skipped: [...skipped] });
-    };
-    const failed = (note: string) => {
-      if (done) return;
-      skipped.push(note);
-      if (next < readers.length) start();
-      else if (running === 0) finish(null, null);
-    };
-    const start = () => {
-      if (done || next >= readers.length) return;
-      const reader = readers[next++]!;
+  const deadlineMs = () => Math.max(1, timing.budgetMs - (Date.now() - timing.startedAt));
+  return Promise.all(
+    readers.map(async (reader): Promise<NamesAnswer | string> => {
       const label = readerLabel(reader);
-      running++;
-      strips
-        .then((urls) =>
-          urls.length === 0
-            ? null
-            : askForNames(openai, reader.model, urls, {
-                effort: reader.effort,
-                deadlineMs: Math.max(1, timing.budgetMs - elapsed()),
-                signal: cancel.signal,
-              }),
-        )
-        .then(
-          (lines) => {
-            running--;
-            if (lines && lines.length > 0) finish(lines, reader);
-            else failed(`${label}:no-answer`);
-          },
-          (err: unknown) => {
-            running--;
-            noteRateLimit(err);
-            if (!done) warn(err, `names reading by ${label} failed`);
-            failed(`${label}:${failure(err)}`);
-          },
-        );
-    };
-    start();
-    if (readers.length > 1) {
-      hedge = setTimeout(() => {
-        if (done) return;
-        skipped.push(`${readerLabel(readers[0]!)}:slow`);
-        start();
-      }, Math.max(0, timing.patienceMs - elapsed()));
-    }
-  });
+      try {
+        const urls = await strips;
+        if (urls.length === 0) return `${label}:no-strips`;
+        const lines = await askForNames(openai, reader.model, urls, {
+          effort: reader.effort,
+          deadlineMs: deadlineMs(),
+          signal: outer,
+        });
+        return lines && lines.length > 0 ? { reader, lines } : `${label}:no-answer`;
+      } catch (err) {
+        // Replit's Anthropic integration answered 429 at the same moments as
+        // the OpenAI gateway (eval of 2026-09-28), so it counts as the same
+        // limit: any 429 rests the names readings.
+        noteRateLimit(err);
+        if (!outer.aborted) warn(err, `names reading by ${label} failed`);
+        return `${label}:${failure(err)}`;
+      }
+    }),
+  ).then((results) => ({
+    answers: results.filter((r): r is NamesAnswer => typeof r !== "string"),
+    skipped: results.filter((r): r is string => typeof r === "string"),
+  }));
 }
 
 /**
@@ -333,7 +343,7 @@ export async function scanReceipt(
         openai,
         receiptStrips(wholePrep.prepared.buffer).catch(() => [] as string[]),
         config.names,
-        { startedAt, patienceMs: config.namesPatienceMs, budgetMs: config.namesBudgetMs },
+        { startedAt, budgetMs: config.namesBudgetMs },
         cancelNames.signal,
         warn,
       ).finally(() => { namesInFlight--; })
@@ -411,12 +421,19 @@ export async function scanReceipt(
     // only their words change.
     if (namesBlock) notes["X-OCR-Names"] = namesBlock;
     if (namesPick) {
-      const { lines, used, skipped } = await namesPick;
-      let note = "none-used";
-      if (lines && used) {
+      const { answers, skipped } = await namesPick;
+      const parts = answers.map(({ reader, lines }) => {
         const named = applyNames(bill.items, lines);
-        bill = { ...bill, items: named.items };
-        note = `${readerLabel(used)}:changed=${named.changed},matched=${named.matched}/${bill.items.length}`;
+        return { label: readerLabel(reader), named };
+      });
+      let note = "none-used";
+      if (parts.length > 0) {
+        const voted = voteNames(bill.items, parts.map((p) => p.named.items));
+        bill = { ...bill, items: voted.items };
+        note = [
+          `vote:changed=${voted.changed}/${bill.items.length}`,
+          ...parts.map((p) => `${p.label}:matched=${p.named.matched}`),
+        ].join(" ");
       }
       notes["X-OCR-Names"] = [note, ...skipped].join(" ");
     }

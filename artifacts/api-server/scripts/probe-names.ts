@@ -14,7 +14,8 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepareReceipt, receiptStrips } from "../src/lib/receipt-image.ts";
-import { NAMES_PROMPT, parseNameLines, type NameLine } from "../src/lib/receipt-names.ts";
+import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "../src/lib/receipt-names.ts";
+import { scanReceipt } from "../src/lib/receipt-scan.ts";
 import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
 import sharp from "sharp";
 
@@ -67,7 +68,7 @@ async function askClaude(model: string, strips: string[]): Promise<NameLine[] | 
   const res = await fetch(`${base}/v1/messages`, {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model, max_tokens: 4000, temperature: 0, system: NAMES_PROMPT + extra, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model, max_tokens: 4000, system: NAMES_PROMPT + extra, messages: [{ role: "user", content }] }),
   });
   const body = (await res.json()) as { content?: { type: string; text?: string }[]; error?: { message: string } };
   if (!res.ok) throw new Error(`${res.status} ${body.error?.message ?? ""}`);
@@ -123,6 +124,27 @@ if (saveDir) {
   strips.forEach((s, k) => writeFileSync(join(saveDir, `strip-${k + 1}.jpg`), Buffer.from(s.split(",")[1]!, "base64")));
 }
 
+// --vote: also read the bill as the route does (gpt-4o), put each reader's
+// names on it, and score each reader alone against the per-line vote.
+const vote = args.includes("--vote");
+const main = vote
+  ? (await scanReceipt(openai, readFileSync(photo), {
+      model: "gpt-4o", secondModel: null, secondEffort: "low", names: [],
+      budgetMs: 20_000, namesBudgetMs: 0, headerCrop: true,
+    })).bill.items
+  : [];
+const perReader: typeof main[] = [];
+const wantAll = expected.map(fold);
+const scoreItems = (items: typeof main) => {
+  const left = [...wantAll];
+  let n = 0;
+  for (const it of items) {
+    const k = left.indexOf(fold(it.description));
+    if (k >= 0) { left.splice(k, 1); n++; }
+  }
+  return n;
+};
+
 for (const r of readers) {
   const t0 = Date.now();
   let lines: NameLine[] = [];
@@ -141,4 +163,16 @@ for (const r of readers) {
   const exact = new Set(lines.map((l) => fold(l.name)).filter((n) => want.has(n)));
   console.log(`\n${r.label}: ${lines.length} lines, ${ms} ms${expected.length ? `, exact ${exact.size}/${expected.length}` : ""}`);
   for (const l of lines) console.log(`  ${want.has(fold(l.name)) ? " " : "!"} ${l.amount.toFixed(2).padStart(8)}  ${l.name}`);
+  if (vote) perReader.push(applyNames(main, lines).items);
+}
+
+if (vote && expected.length) {
+  const voted = voteNames(main, perReader).items;
+  console.log(`\nVOTE ${basename(photo)} main=${scoreItems(main)} ` +
+    readers.map((r, k) => `${r.label}=${scoreItems(perReader[k] ?? main)}`).join(" ") +
+    ` vote=${scoreItems(voted)} of ${expected.length}`);
+  for (let i = 0; i < main.length; i++) {
+    const names = [main[i]!.description, ...perReader.map((p) => p[i]?.description ?? "-")];
+    console.log(`  ${wantAll.includes(fold(voted[i]!.description)) ? " " : "!"} ${voted[i]!.description}   <= ${names.join(" | ")}`);
+  }
 }
