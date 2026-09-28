@@ -1,0 +1,26 @@
+{
+  "items": 16,
+  "total": 1270.0,
+  "currency": "ILS",
+  "taxAmount": null,
+  "note": "Long receipt, 16 lines, printed total 1270.00, no tax line. The shop header is only the top ~11% of the photo, so the blind 25% header crop cuts lines 1-4 (210 + 62 + 54 + 32 = 358.00). Photo is the user's own scan from 2026-09-27, sent as the app sends it: 1800 wide, JPEG q85.",
+  "itemDescriptions": [
+    "עגור קסם",
+    "PAIN KILLER",
+    "מזטים",
+    "לחמה בעג'ין",
+    "ארנטריב מפורק",
+    "מרגז",
+    "טרטר פילה",
+    "שיפוד פטריות",
+    "שיפוד כרוב",
+    "שיפוד פרגית",
+    "סמאש בורגר",
+    "שניצל עגל",
+    "פיקניה צלויה פרוסה",
+    "צ'יפס",
+    "שעועית ירוקה",
+    "פירה תפו\"א"
+  ],
+  "descriptionsNote": "Read off the full-resolution photo by eye, 2026-09-28. Every line is clear print; nothing guessed."
+}

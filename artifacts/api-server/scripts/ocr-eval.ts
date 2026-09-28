@@ -55,10 +55,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { basename, extname, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
-import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../src/lib/model-call.ts";
-import { receiptDataUrl } from "../src/lib/receipt-image.ts";
-import { interpretReceipt, parseModelJson } from "../src/lib/receipt-reading.ts";
-import { OCR_PROMPT } from "../src/lib/receipt-prompt.ts";
+import { parseNamesReaders, scanReceipt, type Effort } from "../src/lib/receipt-scan.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Override to score a different set, e.g. upright copies of the same photos. */
@@ -320,48 +317,45 @@ interface ScanResult {
   secondOpinion?: string | null;
 }
 
-/** The model call the route makes, with this repo's prompt and parsing. */
+/**
+ * The whole scan the route makes — the same function, so the uncropped read,
+ * the second opinion and the names reading all run exactly as on the server.
+ * Settings come from the same environment variables the route reads, with the
+ * route's defaults; `--models` replaces only the main reader.
+ */
 async function scanLocally(file: string, model: string | null): Promise<ScanResult> {
-  // The same preparation the route applies — rotation and crop — through the
-  // same function, or a model comparison scores sideways receipts.
-  const { dataUrl } = await receiptDataUrl(readFileSync(join(RECEIPTS, file)));
-
+  const env = (name: string, fallback: string) => (process.env[name] ?? fallback).trim();
+  const second = env("OCR_SECOND_MODEL", "gpt-5.4");
   const startedAt = Date.now();
-  const completion = await chatCompletion(openaiClient(), {
-    // Keep in step with the route's default, or --local scores a different reader.
-    model: model ?? process.env["OCR_MODEL"] ?? "gpt-4o",
-    temperature: 0,
-    max_completion_tokens: RECEIPT_TOKEN_CEILING,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: OCR_PROMPT },
-      {
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
-          { type: "text", text: "Extract the line items, tax, tip, and currency from this receipt as JSON." },
-        ],
-      },
-    ],
+  const { bill, notes } = await scanReceipt(openaiClient(), readFileSync(join(RECEIPTS, file)), {
+    // Keep in step with the route's defaults, or --local scores a different reader.
+    model: model ?? env("OCR_MODEL", "gpt-4o"),
+    secondModel: second === "" || second === "off" ? null : second,
+    secondEffort: env("OCR_SECOND_EFFORT", "low") as Effort,
+    names: parseNamesReaders(env("OCR_NAMES", "gpt-5.4:low,gpt-5.4:none")),
+    budgetMs: Number(env("OCR_BUDGET_MS", "17000")),
+    namesPatienceMs: Number(env("OCR_NAMES_PATIENCE_MS", "8000")),
+    namesBudgetMs: Number(env("OCR_NAMES_BUDGET_MS", "14000")),
+    headerCrop: env("OCR_HEADER_CROP", "on") !== "off",
   });
   const ms = Date.now() - startedAt;
-
-  const parsed = parseModelJson(completion.choices[0]?.message?.content ?? "");
-  if (!parsed) throw new Error("no JSON in model response");
-
-  // Interpreted by the SAME function the route uses. Before this, --local took
-  // the model's billDiscount at face value while the route only applies one
-  // the printed total agrees with — so a sweep scored US layout 3 as passing
-  // on every model when the real scanner dropped its discount every time.
-  // (Only the second opinion is route-only: --local measures one model.)
-  const reading = interpretReceipt(parsed);
   return {
     ms,
-    items: reading.items as unknown as OcrItem[],
-    currency: reading.currency,
-    taxAmount: reading.taxAmount,
-    billDiscount: reading.billDiscount,
+    items: bill.items as unknown as OcrItem[],
+    currency: bill.currency,
+    taxAmount: bill.taxAmount,
+    billDiscount: bill.billDiscount,
+    secondOpinion: describeNotes((name) => notes[name] ?? null),
   };
+}
+
+/** The route's X-OCR-* notes, shortened for one line of the report. */
+function describeNotes(get: (name: string) => string | null): string | null {
+  return [
+    get("X-OCR-Uncropped") ? `whole:${get("X-OCR-Uncropped")}` : null,
+    get("X-OCR-Second-Opinion") ? `2nd:${get("X-OCR-Second-Opinion")}` : null,
+    get("X-OCR-Names") ? `names:${get("X-OCR-Names")}` : null,
+  ].filter(Boolean).join(" ") || null;
 }
 
 async function scanOnce(file: string, model: string | null): Promise<ScanResult> {
@@ -387,10 +381,7 @@ async function scanOnce(file: string, model: string | null): Promise<ScanResult>
   return {
     ms, items: parsed.items ?? [], currency: parsed.currency ?? null,
     taxAmount: parsed.taxAmount ?? null, billDiscount: parsed.billDiscount ?? null,
-    secondOpinion: [
-      res.headers.get("x-ocr-uncropped") ? `whole:${res.headers.get("x-ocr-uncropped")}` : null,
-      res.headers.get("x-ocr-second-opinion") ? `2nd:${res.headers.get("x-ocr-second-opinion")}` : null,
-    ].filter(Boolean).join(" ") || null,
+    secondOpinion: describeNotes((name) => res.headers.get(name)),
   };
 }
 

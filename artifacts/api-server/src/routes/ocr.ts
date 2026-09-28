@@ -1,18 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import { OCR_PROMPT } from "../lib/receipt-prompt.js";
-import { receiptDataUrl } from "../lib/receipt-image.js";
-import { chatCompletion, RECEIPT_TOKEN_CEILING } from "../lib/model-call.js";
-import {
-  closerToReceipt,
-  combineReadings,
-  interpretReceipt,
-  judgeReadings,
-  looksCutOff,
-  parseModelJson,
-  wantsSecondOpinion,
-  type Reading,
-} from "../lib/receipt-reading.js";
+import { chatCompletion } from "../lib/model-call.js";
+import { parseNamesReaders, scanReceipt, type ScanConfig } from "../lib/receipt-scan.js";
 
 /**
  * Which vision model reads the receipts.
@@ -99,9 +88,9 @@ const OCR_BUDGET_MS = budgetFromEnv(process.env["OCR_BUDGET_MS"]);
  * check pass silently and the second call run unbounded, past the budget the
  * user was promised. Anything that is not a sensible number is the default.
  */
-function budgetFromEnv(value: string | undefined): number {
+function budgetFromEnv(value: string | undefined, fallback = 17_000): number {
   const n = Number(value);
-  return Number.isFinite(n) && n >= 1_000 && n <= 60_000 ? n : 17_000;
+  return Number.isFinite(n) && n >= 1_000 && n <= 60_000 ? n : fallback;
 }
 
 /**
@@ -113,8 +102,35 @@ function budgetFromEnv(value: string | undefined): number {
  */
 const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
 
-/** Below this there is no point starting a second read; it cannot finish. */
-const MIN_SECOND_OPINION_MS = 5_000;
+/**
+ * Readers of the item NAMES only, from full-resolution strips of the photo,
+ * best first. They never change money; see receipt-names.ts. "off" disables.
+ *
+ * gpt-5.4 at low effort reads names best, but on a long or creased receipt it
+ * thinks for 15-40 seconds. At no effort it answers in under 4 seconds, a little
+ * less accurately. The low one starts first; the fast one starts only if it has
+ * not answered by OCR_NAMES_PATIENCE_MS, and the first answer wins.
+ *
+ * Measured 2026-09-28, every fixture, three runs each, names right exactly as
+ * printed: Hebrew 112 -> 149 of 213, English 73 -> 82 of 87, French 27 -> 57
+ * of 60. Hebrew totals 39/39 and tax 39/39 in the same run.
+ */
+const OCR_NAMES = process.env["OCR_NAMES"] ?? "gpt-5.4:low,gpt-5.4:none";
+/** When, from the start of a scan, the fallback names reader is started. */
+const OCR_NAMES_PATIENCE_MS = budgetFromEnv(process.env["OCR_NAMES_PATIENCE_MS"], 8_000);
+/** How long from the start of a scan any names reading may run. */
+const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14_000);
+
+const SCAN_CONFIG: ScanConfig = {
+  model: OCR_MODEL,
+  secondModel: SECOND_OPINION_ON ? OCR_SECOND_MODEL : null,
+  secondEffort: OCR_SECOND_EFFORT,
+  names: parseNamesReaders(OCR_NAMES),
+  budgetMs: OCR_BUDGET_MS,
+  namesPatienceMs: Math.min(OCR_NAMES_PATIENCE_MS, OCR_BUDGET_MS),
+  namesBudgetMs: Math.min(OCR_NAMES_BUDGET_MS, OCR_BUDGET_MS),
+  headerCrop: HEADER_CROP,
+};
 
 const router = Router();
 
@@ -154,7 +170,7 @@ router.post("/translate", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are a translator specializing in restaurant menu and receipt items. Translate each item description into ${targetLanguage}. Preserve the meaning and keep translations concise (similar length to original). Return ONLY valid JSON with this exact structure: {"translations": ["translated item 1", "translated item 2", ...]}. The output array must have exactly the same number of items as the input, in the same order.`,
+          content: `You are a translator specializing in restaurant menu and receipt items. Translate each item description into ${targetLanguage}. Preserve the meaning and keep translations concise (similar length to original). Translate the words that are written, never a different dish you think was meant: if a word is not one you know, or is a dish or brand name, transliterate it into ${targetLanguage}'s alphabet instead of guessing a meaning. Return ONLY valid JSON with this exact structure: {"translations": ["translated item 1", "translated item 2", ...]}. The output array must have exactly the same number of items as the input, in the same order.`,
         },
         {
           role: "user",
@@ -195,44 +211,6 @@ router.post("/translate", async (req, res) => {
   }
 });
 
-/**
- * Put a prepared receipt to a model and return its raw reply.
- *
- * `effort` is only sent to the second model: a reasoning model accepts it and
- * gpt-4o rejects it. `deadlineMs` bounds the call and turns off the client's
- * automatic retries, which would otherwise spend the budget twice over.
- */
-async function askForReceipt(
-  openai: OpenAI,
-  model: string,
-  dataUrl: string,
-  opts: { effort?: "low" | "medium" | "high"; deadlineMs?: number } = {},
-): Promise<string> {
-  const completion = await chatCompletion(
-    openai,
-    {
-      model,
-      // The second model is a reasoning model and accepts no temperature;
-      // leaving it out saves the refused call chatCompletion would retry past.
-      ...(opts.effort ? { reasoning_effort: opts.effort } : { temperature: 0 }),
-      max_completion_tokens: RECEIPT_TOKEN_CEILING,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: OCR_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
-            { type: "text", text: "Extract the line items, tax, tip, and currency from this receipt as JSON." },
-          ],
-        },
-      ],
-    },
-    opts.deadlineMs ? { timeout: opts.deadlineMs, maxRetries: 0 } : undefined,
-  );
-  return completion.choices[0]?.message?.content ?? "";
-}
-
 router.post("/", async (req, res) => {
   const { imageBase64 } = req.body;
   if (!imageBase64) {
@@ -240,94 +218,15 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const startedAt = Date.now();
   try {
     const openai = getOpenAIClient();
-
-    // Turn the photo the right way up before the model sees it. Phones record
-    // rotation in an EXIF tag rather than in the pixels, and the model does not
-    // honour it, so a receipt shot sideways is read sideways.
     const photo = Buffer.from(imageBase64, "base64");
-    const { dataUrl: croppedUrl, prepared } = await receiptDataUrl(photo, { crop: HEADER_CROP });
-    // The image the reading on the bill came from. The second opinion must look
-    // at the SAME picture: after an uncropped re-read wins, the cropped one is
-    // missing the very lines being judged.
-    let dataUrl = croppedUrl;
-
-    res.setHeader("X-OCR-Model", OCR_MODEL);
-    const firstRaw = await askForReceipt(openai, OCR_MODEL, croppedUrl);
-    if (!firstRaw) {
-      res.status(500).json({ error: "AI model returned an empty response." });
-      return;
-    }
-    const firstParsed = parseModelJson(firstRaw);
-    if (!firstParsed) {
-      res.status(500).json({ error: "Could not parse receipt: the model did not return valid JSON." });
-      return;
-    }
-    let first = interpretReceipt(firstParsed);
-
-    // The header crop assumes the top quarter is the shop's name and address.
-    // On a photo framed tight on the items it is items, and they are simply
-    // gone. When the receipt says items are missing AND a crop happened, read
-    // the photo again whole, with the same model, and keep whichever reading
-    // the printed total agrees with more. See looksCutOff.
-    if (prepared.croppedTop > 0 && looksCutOff(first)) {
-      const left = OCR_BUDGET_MS - (Date.now() - startedAt);
-      let outcome = "skipped-no-time";
-      if (left >= MIN_SECOND_OPINION_MS) {
-        try {
-          const whole = await receiptDataUrl(photo, { crop: false });
-          const raw = await askForReceipt(openai, OCR_MODEL, whole.dataUrl, { deadlineMs: left });
-          const parsed = raw ? parseModelJson(raw) : null;
-          if (!parsed) {
-            outcome = "no-answer";
-          } else {
-            const uncropped = interpretReceipt(parsed);
-            const better = closerToReceipt(first, uncropped);
-            outcome = better === uncropped ? "used" : "not-closer";
-            if (better === uncropped) dataUrl = whole.dataUrl;
-            first = better;
-          }
-        } catch (err) {
-          outcome = err instanceof Error && /timed? ?out|abort/i.test(err.message) ? "timeout" : "error";
-          req.log?.warn({ err }, "uncropped re-read failed; keeping the cropped reading");
-        }
-      }
-      res.setHeader("X-OCR-Uncropped", outcome);
-    }
-
-    // A second opinion, only when the receipt says the first reading is wrong
-    // and only inside the time budget. Any failure here leaves the first
-    // reading exactly as it would have been without this.
-    let second: Reading | null = null;
-    let secondNote: string | null = null;
-    if (SECOND_OPINION_ON && wantsSecondOpinion(first)) {
-      const left = OCR_BUDGET_MS - (Date.now() - startedAt);
-      if (left < MIN_SECOND_OPINION_MS) {
-        secondNote = "skipped-no-time";
-      } else {
-        try {
-          const raw = await askForReceipt(openai, OCR_SECOND_MODEL, dataUrl, {
-            effort: OCR_SECOND_EFFORT,
-            deadlineMs: left,
-          });
-          const parsed = raw ? parseModelJson(raw) : null;
-          second = parsed ? interpretReceipt(parsed) : null;
-          if (!second) secondNote = "no-answer";
-        } catch (err) {
-          secondNote = err instanceof Error && /timed? ?out|abort/i.test(err.message) ? "timeout" : "error";
-          req.log?.warn({ err, model: OCR_SECOND_MODEL }, "second opinion failed; keeping the first reading");
-        }
-      }
-    }
-    const verdict = judgeReadings(first, second);
-    const bill = combineReadings(first, second, verdict);
-    if (SECOND_OPINION_ON && wantsSecondOpinion(first)) {
-      // Visible to the eval harness, so a run can say how often it happened.
-      const outcome = verdict.use === "second" ? "used" : secondNote ?? verdict.why;
-      res.setHeader("X-OCR-Second-Opinion", `${OCR_SECOND_MODEL}:${outcome}`);
-    }
+    // Every model call, its order and its time limits live in scanReceipt, so
+    // the eval's --local mode runs the same thing. See receipt-scan.ts.
+    const { bill, notes } = await scanReceipt(openai, photo, SCAN_CONFIG, (err, message) =>
+      req.log?.warn({ err }, message),
+    );
+    for (const [name, value] of Object.entries(notes)) res.setHeader(name, value);
 
     res.json({
       items: bill.items,

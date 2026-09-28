@@ -245,6 +245,43 @@ is true in. If the answer is one country, the rule is a case, not a rule — giv
 the model the arithmetic test that distinguishes the cases instead. And pin the
 field in the fixtures the same day.
 
+## 14. Names are a resolution problem; money is not
+
+A user's 16-line Hebrew receipt (2026-09-27, fixture `he-ticho-long`) showed
+two separate failures.
+
+**The header crop took four items, and the fix for that ran out of time.** The
+shop header on that receipt is the top 11% of the photo, so the 25% cut took
+lines 1-4 (358.00). The uncropped re-read caught it, but it started only after
+the cropped read had finished; at about 9 seconds a read, the pair came to
+18-20 seconds and the re-read timed out on 2 of 3 dev scans, leaving the bill
+358.00 short. Both reads now start together (`receipt-scan.ts`) and the whole-
+photo one is cancelled as soon as it is not needed.
+
+**The names were misread, and the translation faithfully translated the
+misreading.** gpt-4o shrinks a photo to 768 px wide before reading it; a Hebrew
+letter on a long receipt is then ~15 px tall and ר/ד, כ/ב, ו/ז blur. So שיפוד
+כרוב (cabbage) came back as שיפוד כבד (liver). The translator was not at fault:
+given the true Hebrew it translated all 16 correctly, twice.
+
+The fix reads the names a second time from **horizontal strips** of the photo,
+each short enough that the model keeps it at full resolution, and puts those
+words onto gpt-4o's lines by lining up the printed amounts
+(`receipt-names.ts`). Money is never taken from it — gpt-5.4 invented a printed
+total when it was the main reader, and that must never reach a bill again. An
+unmatched line keeps gpt-4o's name.
+
+gpt-5.4 at low reasoning effort reads names best but takes 15-40 s on a long or
+creased receipt; at no effort it takes under 4 s and is a little worse. The low
+one starts first; the fast one starts only if the low one has not answered by
+8 s, and the first answer wins. Starting both up front was tried first and
+measured worse for MONEY: four calls per scan made gateway calls fail, and the
+discount second opinion ran out of time on 2 of 60 scans.
+
+**How to apply:** check a names complaint against the translator separately
+before touching it — feed it the true text. And when a model misreads small
+print, first ask what size the model actually saw it at.
+
 ## Where it stands
 
 **Reliable receipts: 2 of 6 → 6 of 6** on totals and item counts. Scans run

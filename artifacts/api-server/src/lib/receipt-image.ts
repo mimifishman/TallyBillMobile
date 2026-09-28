@@ -283,3 +283,57 @@ export async function receiptDataUrl(
   const dataUrl = `data:${imageMimeType(prepared.buffer)};base64,${prepared.buffer.toString("base64")}`;
   return { dataUrl, prepared };
 }
+
+/**
+ * The widest a names strip is sent. At 1536 pixels a printed letter on a phone
+ * photo is about twice the height the model sees in the whole-photo reading.
+ */
+const STRIP_WIDTH = 1536;
+/**
+ * The tallest a strip can be and still reach the model at full resolution: with
+ * detail "high" it shrinks an image until its SHORTER side is 768.
+ */
+const STRIP_HEIGHT = 736;
+/** Enough for a whole printed line to sit inside at least one strip. */
+const STRIP_OVERLAP = 128;
+/** A very long receipt gets taller (slightly shrunk) strips, not more of them. */
+const MAX_STRIPS = 10;
+
+/**
+ * An already-prepared receipt, cut into overlapping HORIZONTAL strips for the
+ * names reading (see receipt-names.ts).
+ *
+ * Horizontal only, always. A receipt line is a name at one edge and a price at
+ * the other; in Hebrew the name is on the right. A vertical cut would put a
+ * name in one piece and its price in another.
+ *
+ * Takes the output of prepareReceipt, which is already upright, so no EXIF
+ * rotation is applied again here.
+ */
+export async function receiptStrips(prepared: Buffer): Promise<string[]> {
+  const meta = await sharp(prepared, { failOn: "none" }).metadata();
+  const w0 = meta.width ?? 0, h0 = meta.height ?? 0;
+  if (!w0 || !h0) return [];
+  const scale = Math.min(1, STRIP_WIDTH / w0);
+  const width = Math.round(w0 * scale);
+  const height = Math.round(h0 * scale);
+  const resized = scale < 1
+    ? await sharp(prepared, { failOn: "none" }).resize({ width }).toBuffer()
+    : prepared;
+
+  const wanted = Math.max(1, Math.ceil((height - STRIP_OVERLAP) / (STRIP_HEIGHT - STRIP_OVERLAP)));
+  const count = Math.min(MAX_STRIPS, wanted);
+  const stripHeight = Math.min(height, Math.ceil((height + (count - 1) * STRIP_OVERLAP) / count));
+  const step = count > 1 ? (height - stripHeight) / (count - 1) : 0;
+
+  const strips: string[] = [];
+  for (let k = 0; k < count; k++) {
+    const top = Math.round(k * step);
+    const buffer = await sharp(resized, { failOn: "none" })
+      .extract({ left: 0, top, width, height: Math.min(stripHeight, height - top) })
+      .jpeg({ quality: 90, chromaSubsampling: "4:4:4" })
+      .toBuffer();
+    strips.push(`data:image/jpeg;base64,${buffer.toString("base64")}`);
+  }
+  return strips;
+}
