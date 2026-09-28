@@ -152,6 +152,44 @@ export async function askForReceipt(
   return completion.choices[0]?.message?.content ?? "";
 }
 
+/**
+ * The names reading by a Claude model, through Replit's Anthropic integration.
+ *
+ * A separate provider from the OpenAI gateway, so it neither waits on nor adds
+ * to that gateway's rate limit. No SDK: one POST to the Messages API. Without
+ * the integration's credentials it throws at once, and the next reader starts.
+ */
+async function askClaudeForNames(model: string, strips: string[], opts: CallOptions): Promise<NameLine[] | null> {
+  const key = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
+  const base = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"]?.replace(/\/$/, "");
+  if (!key || !base) throw new Error("no Anthropic credentials");
+  const content: unknown[] = [];
+  strips.forEach((url, k) => {
+    const [head, data] = url.split(",");
+    const mediaType = /^data:([^;]+)/.exec(head ?? "")?.[1] ?? "image/jpeg";
+    content.push({ type: "text", text: `Strip ${k + 1} of ${strips.length}:` });
+    content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
+  });
+  content.push({ type: "text", text: "Copy every item line's name and amount as JSON." });
+  const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
+    .filter((s): s is AbortSignal => s !== undefined);
+  const res = await fetch(`${base}/v1/messages`, {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    // No temperature: the current Claude models refuse one.
+    body: JSON.stringify({ model, max_tokens: 4_000, system: NAMES_PROMPT, messages: [{ role: "user", content }] }),
+    ...(signals.length ? { signal: AbortSignal.any(signals) } : {}),
+  });
+  const body = (await res.json().catch(() => ({}))) as { content?: { text?: string }[]; error?: { message?: string } };
+  if (!res.ok) {
+    // Shaped like the OpenAI client's errors, so failure() reports the status.
+    throw Object.assign(new Error(`Anthropic ${res.status}: ${body.error?.message ?? ""}`), { status: res.status });
+  }
+  return parseNameLines((body.content ?? []).map((c) => c.text ?? "").join(""));
+}
+
+const isClaude = (model: string) => model.startsWith("claude-");
+
 /** The names reading: every strip, in order, in one request. */
 async function askForNames(
   openai: OpenAI,
@@ -159,6 +197,7 @@ async function askForNames(
   strips: string[],
   opts: CallOptions,
 ): Promise<NameLine[] | null> {
+  if (isClaude(model)) return askClaudeForNames(model, strips, opts);
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
   strips.forEach((url, k) => {
     content.push({ type: "text", text: `Strip ${k + 1} of ${strips.length}:` });
@@ -278,7 +317,8 @@ function readNames(
           },
           (err: unknown) => {
             running--;
-            noteRateLimit(err);
+            // Only the OpenAI gateway's 429 is shared with the money reads.
+            if (!isClaude(reader.model)) noteRateLimit(err);
             if (!done) warn(err, `names reading by ${label} failed`);
             failed(`${label}:${failure(err)}`);
           },
