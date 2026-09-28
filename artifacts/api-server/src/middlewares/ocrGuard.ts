@@ -6,6 +6,7 @@ import {
   addressKey,
   checkUsage,
   clientAddress,
+  guestDeviceKey,
   policyFromEnv,
   translateTooBig,
   type Bump,
@@ -16,8 +17,9 @@ import {
 /**
  * Meters POST /api/ocr and POST /api/ocr/translate. Guests are NOT refused:
  * the App Store listing promises scanning with no account. They are limited
- * by network address instead, signed-in users by account, and everyone
- * together by a daily ceiling. See lib/usage-limits.ts for the numbers.
+ * per phone (the app's X-Guest-Owner-Id) with a loose per-network backstop,
+ * signed-in users by account, and everyone together by a daily ceiling. See
+ * lib/usage-limits.ts for the numbers.
  *
  * Counters live in Postgres, not in memory: the deployment is autoscale, so
  * there can be several copies of this server, and each one starts empty.
@@ -105,7 +107,10 @@ function whoIsCalling(req: Request): Caller {
     chainLogged = true;
     logger.info({ forwarded, picked: address, publicHops: PUBLIC_HOPS }, "ocr-guard: client address");
   }
-  return local ? { kind: "local", id: address } : { kind: "guest", id: addressKey(address) };
+  if (local) return { kind: "local", id: address };
+  const rawDevice = req.headers["x-guest-owner-id"];
+  const device = guestDeviceKey(Array.isArray(rawDevice) ? rawDevice[0] : rawDevice);
+  return { kind: "guest", id: addressKey(address), device };
 }
 
 export function ocrGuard(req: Request, res: Response, next: NextFunction): void {
