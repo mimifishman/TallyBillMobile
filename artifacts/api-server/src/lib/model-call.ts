@@ -88,3 +88,44 @@ export function resetTemperatureCache(): void {
 export function modelsRefusingTemperature(): string[] {
   return [...refusesTemperature].sort();
 }
+
+/**
+ * One Claude message through Replit's Anthropic integration. No SDK: one POST
+ * to the Messages API. Throws at once without the integration's credentials,
+ * and on an HTTP error throws with `status` set, like the OpenAI client does,
+ * so a 429 is recognised the same way.
+ */
+export async function claudeMessage(
+  model: string,
+  system: string,
+  content: unknown[],
+  opts: { deadlineMs?: number; signal?: AbortSignal; maxTokens?: number; thinking?: boolean } = {},
+): Promise<string> {
+  const key = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
+  const base = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"]?.replace(/\/$/, "");
+  if (!key || !base) throw new Error("no Anthropic credentials");
+  const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
+    .filter((s): s is AbortSignal => s !== undefined);
+  const res = await fetch(`${base}/v1/messages`, {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    // No temperature: the current Claude models refuse one.
+    body: JSON.stringify({
+      model,
+      max_tokens: opts.maxTokens ?? 4_000,
+      // Sonnet 5 thinks by default: 20 s on a six-line text task, and at times
+      // it spent the whole token allowance thinking and answered nothing.
+      ...(opts.thinking === false ? { thinking: { type: "disabled" } } : {}),
+      system,
+      messages: [{ role: "user", content }],
+    }),
+    ...(signals.length ? { signal: AbortSignal.any(signals) } : {}),
+  });
+  const body = (await res.json().catch(() => ({}))) as { content?: { text?: string }[]; error?: { message?: string } };
+  if (!res.ok) {
+    throw Object.assign(new Error(`Anthropic ${res.status}: ${body.error?.message ?? ""}`), { status: res.status });
+  }
+  return (body.content ?? []).map((c) => c.text ?? "").join("");
+}
+
+export const isClaude = (model: string) => model.startsWith("claude-");

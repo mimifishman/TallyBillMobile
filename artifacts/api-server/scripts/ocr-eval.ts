@@ -74,6 +74,12 @@ function arg(flag: string): string | undefined {
 const only = arg("--only");
 const local = process.argv.includes("--local");
 const repeat = Number(arg("--repeat") ?? 1);
+/**
+ * --pause SECONDS between scans. Nonstop scans (about six a minute) make the
+ * model gateway answer 429, which skips the names readings and blurs a names
+ * comparison; real use is far lighter. Seen 2026-09-28.
+ */
+const pauseMs = Number(arg("--pause") ?? 0) * 1000;
 /** Candidate models to compare; `--local` only. One entry means the default. */
 const models = (arg("--models") ?? process.env["OCR_MODEL"] ?? "")
   .split(",").map((m) => m.trim()).filter(Boolean);
@@ -335,6 +341,7 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
     names: parseNamesReaders(env("OCR_NAMES", "claude-sonnet-5,gpt-5.4:none")),
     budgetMs: Number(env("OCR_BUDGET_MS", "17000")),
     namesBudgetMs: Number(env("OCR_NAMES_BUDGET_MS", "14000")),
+    spelling: parseNamesReaders(env("OCR_SPELLING", "claude-opus-5"))[0] ?? null,
     headerCrop: env("OCR_HEADER_CROP", "on") !== "off",
   });
   const ms = Date.now() - startedAt;
@@ -354,6 +361,7 @@ function describeNotes(get: (name: string) => string | null): string | null {
     get("X-OCR-Uncropped") ? `whole:${get("X-OCR-Uncropped")}` : null,
     get("X-OCR-Second-Opinion") ? `2nd:${get("X-OCR-Second-Opinion")}` : null,
     get("X-OCR-Names") ? `names:${get("X-OCR-Names")}` : null,
+    get("X-OCR-Spelling") ? `spell:${get("X-OCR-Spelling")}` : null,
   ].filter(Boolean).join(" ") || null;
 }
 
@@ -410,6 +418,7 @@ async function run(): Promise<void> {
 
     for (const model of sweep) {
     for (let run = 1; run <= repeat; run++) {
+      if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
       const label = (model ? `${file} [${model}]` : file) + (repeat > 1 ? ` #${run}` : "");
       try {
         const { ms, items, currency, taxAmount, billDiscount, secondOpinion } = await scanOnce(file, model);
