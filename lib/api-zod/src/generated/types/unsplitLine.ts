@@ -9,5 +9,7 @@
 export interface UnsplitLine {
   id: number;
   description: string;
+  /** The item's name as printed on the receipt, when the description is a translation */
+  originalDescription?: string | null;
   total: number;
 }

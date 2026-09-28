@@ -19,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
 import { AutoFocusTextInput } from "./AutoFocusTextInput";
+import { OriginalName } from "./OriginalName";
 import { getCurrencySymbol } from "@/utils/currency";
 import { discountRate, percentInput, percentLabel } from "@/utils/discount";
 import { PersonBadge } from "./PersonBadge";
@@ -253,6 +254,9 @@ export function LineItemRow({
               placeholderTextColor={colors.mutedForeground}
               autoFocus
             />
+            {/* Kept in view while the name is being corrected, so a wrong
+                translation can be fixed against what the receipt says. */}
+            <OriginalName description={editDesc} original={originalDescription} style={styles.editOriginal} />
           </View>
           <View style={styles.editRow}>
             <View style={styles.editQtyWrap}>
@@ -341,11 +345,7 @@ export function LineItemRow({
                 {description}
               </Text>
             </View>
-            {!!originalDescription && (
-              <Text style={[styles.originalDescription, { color: colors.mutedForeground }]} numberOfLines={1}>
-                {originalDescription}
-              </Text>
-            )}
+            <OriginalName description={description} original={originalDescription} style={styles.originalDescription} />
             <Text style={[styles.itemTotal, { color: colors.mutedForeground }]}>
               {/* The old price stays beside the new one, struck through: a
                   number that dropped without saying why reads as a mistake. */}
@@ -442,7 +442,8 @@ const styles = StyleSheet.create({
   qtyBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
   desc: { flex: 1, gap: 2 },
   itemName: { fontSize: 14, fontFamily: "Inter_500Medium", lineHeight: 20, flexShrink: 1 }, // TODO: one-off
-  originalDescription: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, paddingLeft: 28 }, // TODO: one-off
+  originalDescription: { paddingLeft: 28, marginTop: 1 },
+  editOriginal: { marginTop: 4, paddingHorizontal: 2 },
   itemTotal: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_400Regular" },
   unitPrice: { fontSize: 12, fontFamily: "Inter_400Regular" }, // TODO: one-off
   wasPrice: { fontSize: 12, fontFamily: "Inter_400Regular", textDecorationLine: "line-through" }, // TODO: one-off

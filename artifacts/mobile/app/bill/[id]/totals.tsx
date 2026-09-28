@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { OriginalName } from "@/components/OriginalName";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
@@ -262,6 +263,7 @@ export default function TotalsScreen() {
                 >
                   <View style={styles.itemLeft}>
                     <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>{line.description}</Text>
+                    <OriginalName description={line.description} original={line.originalDescription} />
                   </View>
                   <Text style={[styles.itemShare, { color: colors.foreground }]}>{fmt(line.total)}</Text>
                 </View>
@@ -325,6 +327,7 @@ export default function TotalsScreen() {
                       <View key={item.billLineId} style={styles.itemRow}>
                         <View style={styles.itemLeft}>
                           <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>{item.description}</Text>
+                          <OriginalName description={item.description} original={item.originalDescription} />
                           <Text style={[styles.itemSubtitle, { color: colors.mutedForeground }]}>{fmt(item.lineTotal)} · {splitLabel}</Text>
                         </View>
                         <Text style={[styles.itemShare, { color: colors.foreground }]}>{fmt(item.share)}</Text>

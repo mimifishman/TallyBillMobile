@@ -29,6 +29,7 @@ import {
   discountRate,
   fmtPct,
   getInitials,
+  originalNameToShow,
   parsePercent,
   percentInput,
   percentLabel,
@@ -385,6 +386,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const discountLines: DiscountLine[] = lines.map((l) => ({
     id: l.id,
     description: l.description,
+    originalDescription: l.originalDescription ?? null,
     total: num(l.total),
     originalTotal: l.originalTotal != null ? num(l.originalTotal) : null,
   }));
@@ -525,6 +527,8 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
       billId,
       data: {
         description: line.description,
+        // The receipt's own wording goes with both halves, as in the app.
+        originalDescription: line.originalDescription ?? null,
         quantity: splitQty,
         unitPrice: lineUnitPrice,
         total: splitTotal,
@@ -870,6 +874,12 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
         const currentQty = line ? parseFloat(String(line.quantity)) : 0;
         return (
           <Modal title="Split item" onClose={() => { setSplitLineId(null); setSplitError(""); }}>
+            {line && (
+              <div>
+                <div className="text-sm font-medium text-foreground break-words" dir="auto">{line.description}</div>
+                <OriginalName description={line.description} original={line.originalDescription} />
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">
               How many units to split off?{" "}
               <span className="font-medium text-foreground">
@@ -1083,6 +1093,37 @@ function HeaderEditable({
   );
 }
 
+/* ─── Original name ─────────────────────────────────────────────────── */
+
+/**
+ * The item's name as the receipt printed it, under its translated name — the
+ * same look as the app everywhere an item is listed. A translation can be
+ * wrong, and only the original lets someone check it against the paper.
+ * `dir="auto"` so a Hebrew or Arabic original reads right to left.
+ */
+function OriginalName({
+  description,
+  original,
+  className = "",
+}: {
+  description: string | null | undefined;
+  original: string | null | undefined;
+  className?: string;
+}) {
+  const shown = originalNameToShow(description, original);
+  if (!shown) return null;
+  return (
+    <span
+      className={`flex items-center gap-1 min-w-0 text-xs text-muted-foreground ${className}`}
+      title={`On the receipt: ${shown}`}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span className="sr-only">On the receipt: </span>
+      <span className="truncate" dir="auto">{shown}</span>
+    </span>
+  );
+}
+
 /* ─── Section header ────────────────────────────────────────────────── */
 
 function SectionHeader({
@@ -1255,9 +1296,13 @@ function LineRow({
           <div className="flex-1 space-y-2">
             <input
               value={desc}
+              dir="auto"
+              aria-label="Item name"
               onChange={(e) => setDesc(e.target.value)}
               className="w-full border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
             />
+            {/* In view while a translation is being corrected. */}
+            <OriginalName description={desc} original={line.originalDescription} className="px-1" />
             <div className="flex gap-2">
               <input
                 value={qty}
@@ -1304,9 +1349,10 @@ function LineRow({
             onClick={() => setEditing(true)}
             className="flex-1 min-w-0 text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
-            <span className="font-medium text-foreground break-words">
+            <span className="font-medium text-foreground break-words" dir="auto">
               {line.description}
             </span>
+            <OriginalName description={line.description} original={line.originalDescription} className="mt-0.5" />
             <div className="mt-0.5 flex items-baseline gap-x-1.5 flex-wrap">
               <span className="inline-flex items-center bg-muted text-muted-foreground text-[11px] font-semibold rounded px-1.5 py-0.5 shrink-0 self-center">
                 ×{lineQty}
@@ -1528,9 +1574,10 @@ function PersonTotalRow({
               return (
                 <div key={item.billLineId} className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-foreground font-medium truncate">
+                    <div className="text-sm text-foreground font-medium truncate" dir="auto">
                       {item.description}
                     </div>
+                    <OriginalName description={item.description} original={item.originalDescription} />
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {fmt(item.lineTotal)} · {splitLabel}
                     </div>
@@ -1647,7 +1694,7 @@ function TappableRow({
 
 /* ─── Discount ──────────────────────────────────────────────────────── */
 
-type DiscountLine = DiscountableLine & { description: string };
+type DiscountLine = DiscountableLine & { description: string; originalDescription?: string | null };
 type DiscountResultRow = { id: number; originalTotal: number | null; total: number };
 
 /**
@@ -1822,7 +1869,10 @@ function DiscountModal({
                   onChange={() => toggle(line.id)}
                   className="w-5 h-5 accent-[hsl(var(--primary))] shrink-0"
                 />
-                <span className="text-sm text-foreground truncate">{line.description}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm text-foreground truncate" dir="auto">{line.description}</span>
+                  <OriginalName description={line.description} original={line.originalDescription} />
+                </span>
               </label>
               {editing === line.id ? (
                 <span className="flex items-center gap-0.5 border-2 border-primary rounded-md px-1.5">

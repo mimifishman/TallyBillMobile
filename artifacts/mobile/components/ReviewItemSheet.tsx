@@ -6,6 +6,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
 import { discountRate, percentInput } from "@/utils/discount";
+import { OriginalName } from "@/components/OriginalName";
 
 export interface ReviewItemValues {
   name: string;
@@ -28,6 +29,8 @@ interface ReviewItemSheetProps {
   mode: "add" | "edit";
   /** Prefilled values when editing; ignored in add mode. */
   initial: ReviewItemValues | null;
+  /** The receipt's own wording, when the name being edited is a translation. */
+  originalName?: string | null;
   onSave: (values: ReviewItemValues) => void;
   onClose: () => void;
 }
@@ -36,7 +39,7 @@ interface ReviewItemSheetProps {
  * Unified editor for a scanned receipt item — name, quantity, and price in
  * one sheet. Also used by "Add item" to enter a new item in one step.
  */
-export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: ReviewItemSheetProps) {
+export function ReviewItemSheet({ visible, mode, initial, originalName, onSave, onClose }: ReviewItemSheetProps) {
   const colors = useColors();
 
   const [name, setName] = useState("");
@@ -152,6 +155,8 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
             autoFocus={mode === "add"}
             returnKeyType="done"
           />
+          {/* In view while a translation is being corrected. */}
+          <OriginalName description={name} original={originalName} style={styles.original} />
         </View>
 
         <View style={styles.fieldsRow}>
@@ -266,6 +271,7 @@ export function ReviewItemSheet({ visible, mode, initial, onSave, onClose }: Rev
 }
 
 const styles = StyleSheet.create({
+  original: { marginTop: 2, paddingHorizontal: 2 },
   content: { gap: SPACING.lg },
   flex: { flex: 1 },
   fieldsRow: { flexDirection: "row", gap: SPACING.md },

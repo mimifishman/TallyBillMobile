@@ -35,6 +35,7 @@ import { TaxTipField } from "@/components/TaxTipField";
 import { amountFromPercent, toPercent, type MoneyMode } from "@/utils/taxTip";
 import { applyAmount, applyPercent, discountRate, inferDiscountSelection, percentLabel } from "@/utils/discount";
 import { DiscountSheet } from "@/components/DiscountSheet";
+import { OriginalName } from "@/components/OriginalName";
 
 const THUMBNAIL_HEIGHT = 300;
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
@@ -511,9 +512,12 @@ export default function ScanScreen() {
           const nameChanged = values.name !== displayName;
           return {
             ...item,
-            // Renaming replaces the translated name, so drop the original.
-            description: nameChanged ? values.name : item.description,
-            translatedDescription: nameChanged ? undefined : item.translatedDescription,
+            // Renaming a translated item corrects the translation, and keeps
+            // what the receipt printed: a doubtful translation is exactly when
+            // someone needs to see the original. An untranslated item has no
+            // original, so its name is simply replaced.
+            description: nameChanged && !item.translatedDescription ? values.name : item.description,
+            translatedDescription: nameChanged && item.translatedDescription ? values.name : item.translatedDescription,
             quantity: values.quantity,
             total: values.total,
             unitPrice,
@@ -860,11 +864,7 @@ export default function ScanScreen() {
                     <Text style={[styles.reviewItemName, { color: colors.foreground }]} numberOfLines={2}>
                       {displayName}
                     </Text>
-                    {originalName && showOriginals && (
-                      <Text style={[styles.reviewItemOriginal, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {originalName}
-                      </Text>
-                    )}
+                    {showOriginals && <OriginalName description={displayName} original={originalName} />}
                   </View>
                   <View style={styles.reviewItemPrices}>
                     {priced.was !== null ? (
@@ -932,6 +932,7 @@ export default function ScanScreen() {
         lines={scan.items.map((item, index) => ({
           id: index,
           description: item.translatedDescription ?? item.description,
+          originalDescription: item.translatedDescription ? item.description : null,
           total: itemDiscounts.get(index)
             ? Math.round((itemDiscounts.get(index)!.originalTotal - itemDiscounts.get(index)!.amount) * 100) / 100
             : item.total,
@@ -958,6 +959,11 @@ export default function ScanScreen() {
         visible={editor !== null}
         mode={editor?.mode ?? "edit"}
         initial={editorInitial}
+        originalName={
+          editor?.mode === "edit" && scan.items[editor.index]?.translatedDescription
+            ? scan.items[editor.index]!.description
+            : null
+        }
         onSave={handleEditorSave}
         onClose={() => setEditor(null)}
       />
@@ -1062,7 +1068,6 @@ const styles = StyleSheet.create({
   receiptGapText: { flex: 1, fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold", lineHeight: 18 }, // TODO: one-off
   reviewItemNameCol: { flex: 1, gap: 2 },
   reviewItemName: { fontSize: 14, fontFamily: "Inter_500Medium" }, // TODO: one-off
-  reviewItemOriginal: { fontSize: 11, fontFamily: "Inter_400Regular" }, // TODO: one-off
   editIconBtn: { width: 28, height: 28, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center" },
   reviewItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold" }, // TODO: one-off
   addItemRow: {

@@ -25,7 +25,7 @@ router.get("/", async (req, res) => {
   const billTipPercent = parseFloat(String(bill.tipPercent)) || 0;
 
   const personSubtotals = new Map<number, number>();
-  const personItems = new Map<number, Array<{ billLineId: number; description: string; lineTotal: number; share: number; splitWithNames: string[] }>>();
+  const personItems = new Map<number, Array<{ billLineId: number; description: string; originalDescription: string | null; lineTotal: number; share: number; splitWithNames: string[] }>>();
   const memberNameById = new Map<number, string>();
   for (const member of billMembers) {
     personSubtotals.set(member.id, 0);
@@ -48,6 +48,9 @@ router.get("/", async (req, res) => {
       personItems.get(assignment.billMemberId)!.push({
         billLineId: line.id,
         description: line.description,
+        // The name as the receipt printed it, when the item was translated, so
+        // a doubtful translation can be checked against the paper.
+        originalDescription: line.originalDescription ?? null,
         lineTotal: Math.round(lineTotal * 100) / 100,
         share: Math.round(share * 100) / 100,
         splitWithNames,
@@ -102,6 +105,7 @@ router.get("/", async (req, res) => {
     .map((l) => ({
       id: l.id,
       description: l.description,
+      originalDescription: l.originalDescription ?? null,
       total: Math.round((parseFloat(String(l.total)) || 0) * 100) / 100,
     }));
 

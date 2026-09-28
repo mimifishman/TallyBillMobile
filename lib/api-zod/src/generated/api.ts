@@ -987,6 +987,12 @@ export const GetBillTotalsResponse = zod.object({
         zod.object({
           billLineId: zod.number(),
           description: zod.string(),
+          originalDescription: zod
+            .string()
+            .nullish()
+            .describe(
+              "The item's name as printed on the receipt, when the description is a translation",
+            ),
           lineTotal: zod
             .number()
             .describe("The original (full) price of the line item"),
@@ -1010,6 +1016,12 @@ export const GetBillTotalsResponse = zod.object({
       zod.object({
         id: zod.number(),
         description: zod.string(),
+        originalDescription: zod
+          .string()
+          .nullish()
+          .describe(
+            "The item's name as printed on the receipt, when the description is a translation",
+          ),
         total: zod.number(),
       }),
     )

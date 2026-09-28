@@ -244,6 +244,8 @@ export interface OcrTranslateResponse {
 export interface PersonTotalItem {
   billLineId: number;
   description: string;
+  /** The item's name as printed on the receipt, when the description is a translation */
+  originalDescription?: string | null;
   /** The original (full) price of the line item */
   lineTotal: number;
   /** This person's share of the line item */
@@ -268,6 +270,8 @@ export interface PersonTotal {
 export interface UnsplitLine {
   id: number;
   description: string;
+  /** The item's name as printed on the receipt, when the description is a translation */
+  originalDescription?: string | null;
   total: number;
 }
 

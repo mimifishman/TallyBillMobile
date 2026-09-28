@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BottomSheet } from "@/components/BottomSheet";
+import { OriginalName } from "@/components/OriginalName";
 import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { useColors } from "@/hooks/useColors";
@@ -10,6 +11,8 @@ import { applyPercent, baseTotalOf, discountRate, parsePercent, percentInput, pe
 
 export interface DiscountLineInput extends DiscountableLine {
   description: string;
+  /** The receipt's own wording, when `description` is a translation. */
+  originalDescription?: string | null;
 }
 
 /** What one line should become once the sheet is saved. */
@@ -297,9 +300,12 @@ export function DiscountSheet({
                 >
                   {ticked ? <Text style={styles.checkMark}>✓</Text> : null}
                 </View>
-                <Text numberOfLines={1} style={[styles.itemName, { color: colors.foreground }]}>
-                  {line.description}
-                </Text>
+                <View style={styles.itemNameCol}>
+                  <Text numberOfLines={1} style={[styles.itemNameText, { color: colors.foreground }]}>
+                    {line.description}
+                  </Text>
+                  <OriginalName description={line.description} original={line.originalDescription} />
+                </View>
               </TouchableOpacity>
 
               <View style={styles.itemRight}>
@@ -414,7 +420,8 @@ const styles = StyleSheet.create({
   itemMain: { flexDirection: "row", alignItems: "center", flex: 1, gap: SPACING.md },
   check: { width: 22, height: 22, borderRadius: RADIUS.sm, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   checkMark: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" }, // TODO: one-off
-  itemName: { flex: 1, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
+  itemNameCol: { flex: 1, minWidth: 0, gap: 1 },
+  itemNameText: { fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
   itemRight: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 5 },
   chipText: { fontSize: FONT_SIZE.caption, fontFamily: "Inter_600SemiBold" },
