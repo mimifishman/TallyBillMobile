@@ -28,7 +28,7 @@ import { chatCompletion, claudeMessage, isClaude, RECEIPT_TOKEN_CEILING } from "
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
 import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
-import { recoverMissedLines } from "./receipt-recover";
+import { recoverMissedLines, reorderByReaders } from "./receipt-recover";
 import { applySpelling, parseSpelling, SPELLING_PROMPT, spellingRequest, type SpellingLine } from "./receipt-spelling";
 import {
   closerToReceipt,
@@ -451,6 +451,14 @@ export async function scanReceipt(
           notes["X-OCR-Recovered"] = `${readerLabel(reader)}:added=${found.added}`;
           break;
         }
+      }
+
+      // Then each price on the row both readers saw it on.
+      const reordered = reorderByReaders(bill.items, answers.map((a) => a.lines));
+      if (reordered) {
+        const moved = reordered.filter((item, i) => item !== bill.items[i]).length;
+        bill = { ...bill, items: reordered };
+        notes["X-OCR-Reordered"] = `moved=${moved}`;
       }
 
       const parts = answers.map(({ reader, lines }) => {

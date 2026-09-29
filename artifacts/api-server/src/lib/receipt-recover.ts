@@ -25,7 +25,7 @@ import {
   type LineItem,
   type ReceiptCheck,
 } from "./receipt-line-items";
-import type { NameLine } from "./receipt-names";
+import { foldForVote, similarity, type NameLine } from "./receipt-names";
 
 /** More than this and it is a different reading of the receipt, not a missed line. */
 const MAX_RECOVERED = 3;
@@ -86,4 +86,56 @@ export function recoverMissedLines(
   const recheck = checkAgainstPrintedTotal(out, check.printedTotal, billDiscount, taxAmount);
   if (recheck.reconciled !== true || Math.abs(recheck.difference ?? Infinity) >= CENT) return null;
   return { items: out, check: recheck, added: missing.length };
+}
+
+/**
+ * gpt-4o's lines put in the order both names readers saw them, when gpt-4o put
+ * a price on the wrong line.
+ *
+ * On the same photo gpt-4o read מרגז 58.00 / טרטר פילה 68.00 as מרגז 68.00 /
+ * a 58.00 line: right amounts, wrong rows. The total still matched, so no
+ * check caught it, and the names vote could not fix it either, because names
+ * are matched to lines by amount in order. Both names readers had the rows
+ * right.
+ *
+ * So when one names reader lists exactly gpt-4o's amounts in a different
+ * order, and every other reader that answered — at least one — has those same
+ * amounts in that same order, gpt-4o's lines are put in that order. Each line
+ * keeps all of gpt-4o's money (quantity, price, total, discount); only its
+ * place changes, so the names that follow attach to the right price. One
+ * reader alone is not enough to move anything. "Has them in that order" allows
+ * extra lines in between, because gpt-5.4 at times lists a run of lines twice
+ * where two strips overlap (it did on this very photo); what it may not do is
+ * put two of the amounts the other way round.
+ */
+export function reorderByReaders(items: LineItem[], readings: NameLine[][]): LineItem[] | null {
+  if (readings.length < 2 || items.length < 2) return null;
+  const order = readings.find((r) => r.length === items.length);
+  if (!order) return null;
+  // Is `seq` a subsequence of `r`, by amount?
+  const within = (seq: NameLine[], r: NameLine[]) => {
+    let k = 0;
+    for (const l of r) if (k < seq.length && Math.abs(l.amount - seq[k]!.amount) < CENT) k++;
+    return k === seq.length;
+  };
+  if (!readings.every((r) => r === order || within(order, r))) return null;
+  // The readers' names for each row, from the readers that listed it once.
+  const rowNames = readings.filter((r) => r.length === order.length);
+
+  const used = new Array<boolean>(items.length).fill(false);
+  const out: LineItem[] = [];
+  for (let k = 0; k < order.length; k++) {
+    // Among gpt-4o's lines with this amount, the one whose name is most like
+    // the readers' name for this row, so equal prices do not trade names.
+    let best = -1, bestLike = -1;
+    items.forEach((item, i) => {
+      if (used[i] || !fits(item, order[k]!.amount)) return;
+      const like = Math.max(...rowNames.map((r) => similarity(foldForVote(item.description), foldForVote(r[k]!.name))));
+      if (like > bestLike) { best = i; bestLike = like; }
+    });
+    if (best < 0) return null;
+    used[best] = true;
+    out.push(items[best]!);
+  }
+  return out.every((item, i) => item === items[i]) ? null : out;
 }
