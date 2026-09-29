@@ -228,6 +228,20 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   const out = applyNames(bill, lines);
   check("a printed 0.00 never names a line discounted down to 0.00",
     out.items[2]!.description === "שיקק פאי" && out.items[0]!.description === "אגרול", out.items.map((i) => i.description));
+  // Gemini, 1 scan in 4: the options came back as items of their own.
+  const split = normalizeLineItems([
+    { description: "אגרול", quantity: 1, total: 0 },
+    { description: "עוף <<", quantity: 1, total: 45 },
+    { description: "פד תאי הונג קונג", quantity: 1, total: 73 },
+    { description: ">> בקר", quantity: 1, total: 8 },
+    { description: "לא חריף <<", quantity: 1, total: 0 },
+    { description: "שיקן פאי", quantity: 1, total: 0, originalTotal: 36 },
+  ]);
+  check("options returned as lines are added to the item above, free item included",
+    JSON.stringify(split.map((i) => [i.description, i.total])) ===
+      JSON.stringify([["אגרול", 45], ["פד תאי הונג קונג", 81], ["שיקן פאי", 0]]), split.map((i) => [i.description, i.total]));
+  check("a free line with nothing added to it still goes",
+    normalizeLineItems([{ description: "מים", quantity: 1, total: 0 }, { description: "קולה", quantity: 1, total: 12 }]).length === 1);
   const free = [{ description: "מים", quantity: 1, unitPrice: 0, total: 0, originalTotal: null, discountLabel: null }];
   check("but it still names a line that was free as printed",
     applyNames(free, [{ name: "מים מינרליים", amount: 0 }]).items[0]!.description === "מים מינרליים");

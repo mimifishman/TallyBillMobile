@@ -102,9 +102,27 @@ function itemName(raw: string): string {
   return first.replace(/^(<<|>>)\s*/, "").trim();
 }
 
+/**
+ * Is this line one of the ">>"/"<<" options printed under an item?
+ *
+ * The prompt says to add a priced option to the item above, and gemini-3.5-flash
+ * usually does — but on 1 scan in 4 of the 306 receipt it listed "עוף <<" 45.00
+ * and "בקר <<" 8.00 as items of their own, so the lines and names shifted and a
+ * 45.00 egg roll became a dish called "chicken". The marker is on either end:
+ * in right-to-left text it can come back last.
+ */
+function isOptionLine(raw: string): boolean {
+  const t = raw.trim();
+  return /^(<<|>>)/.test(t) || /(<<|>>)$/.test(t);
+}
+
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {
-  return (items ?? []).reduce<LineItem[]>((acc, item) => {
-    const description = typeof item.description === "string" ? itemName(item.description) : "";
+  // Free lines are kept until the end: an option priced under a free item
+  // (אגרול 0.00, then ">> עוף 45.00") is added to it, and only a line still at
+  // zero with no original price behind it is dropped.
+  const kept = (items ?? []).reduce<LineItem[]>((acc, item) => {
+    const raw = typeof item.description === "string" ? item.description : "";
+    const description = itemName(raw);
     if (!description) return acc;
 
     const quantity = positiveNumber(item.quantity) ?? 1;
@@ -119,23 +137,35 @@ export function normalizeLineItems(items: RawLineItem[] | undefined | null): Lin
     // item that was genuinely ordered and is genuinely free, and dropping it
     // both hides it from the people splitting and, worse, silently loses the
     // discount that made it free. Zero with no original price behind it is just
-    // a line with no price, and still goes.
+    // a line with no price, and still goes (below).
     const charged = nonNegativeNumber(item.total) ?? positiveNumber(item.unitPrice);
-    const total = charged === 0 && originalTotal === null ? null : charged;
-    if (total === null) return acc;
-    const wasDiscounted = originalTotal !== null && originalTotal > total;
+    if (charged === null) return acc;
+
+    const previous = acc[acc.length - 1];
+    if (isOptionLine(raw) && previous) {
+      // An option returned as a line of its own: its price joins the item above.
+      if (charged > 0) {
+        previous.total = round2(previous.total + charged);
+        if (previous.originalTotal !== null) previous.originalTotal = round2(previous.originalTotal + charged);
+        previous.unitPrice = round2(previous.total / previous.quantity);
+      }
+      return acc;
+    }
+
+    const wasDiscounted = originalTotal !== null && originalTotal > charged;
     const label = typeof item.discountLabel === "string" ? item.discountLabel.trim() : "";
 
     acc.push({
       description,
       quantity,
-      unitPrice: total === 0 ? 0 : round2(total / quantity),
-      total: round2(total),
+      unitPrice: charged === 0 ? 0 : round2(charged / quantity),
+      total: round2(charged),
       originalTotal: wasDiscounted ? round2(originalTotal) : null,
       discountLabel: wasDiscounted && label ? label : null,
     });
     return acc;
   }, []);
+  return kept.filter((item) => item.total > 0 || item.originalTotal !== null);
 }
 
 /** A discount printed against the whole bill rather than against one item. */
