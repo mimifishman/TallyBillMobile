@@ -146,9 +146,7 @@ export async function geminiGenerate(
   parts: unknown[],
   opts: { deadlineMs?: number; signal?: AbortSignal; thinking?: boolean; json?: boolean } = {},
 ): Promise<string> {
-  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
-  const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
-  if (!key || !base) throw new Error("no Gemini credentials");
+  const { key, base } = geminiAccess();
   const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
     .filter((s): s is AbortSignal => s !== undefined);
   const res = await fetch(`${base}/models/${model}:generateContent`, {
@@ -176,6 +174,21 @@ export async function geminiGenerate(
 }
 
 export const isGemini = (model: string) => model.startsWith("gemini-");
+
+/**
+ * Our own Google AI Studio key (GEMINI_API_KEY) when there is one, else
+ * Replit's Gemini integration. Replit's is shared and rate-limited per
+ * project: scans failed with 429s at a few scans a minute on 2026-09-29, on
+ * every provider at the same moments. Our own key has its own, higher limits.
+ */
+function geminiAccess(): { key: string; base: string } {
+  const own = process.env["GEMINI_API_KEY"]?.trim();
+  if (own) return { key: own, base: "https://generativelanguage.googleapis.com/v1beta" };
+  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+  const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
+  if (!key || !base) throw new Error("no Gemini credentials");
+  return { key, base };
+}
 
 /** An image data URL as Gemini's inline part. */
 export function geminiImage(dataUrl: string): unknown {

@@ -168,7 +168,7 @@ if (saveDir) {
 const vote = args.includes("--vote");
 const main = vote
   ? (await scanReceipt(openai, readFileSync(photo), {
-      model: "gpt-4o", secondModel: null, secondEffort: "low", names: [],
+      model: "gpt-4o", fallbackModel: null, secondModel: null, secondEffort: "low", names: [],
       budgetMs: 20_000, namesBudgetMs: 0, spelling: null, headerCrop: true,
     })).bill.items
   : [];

@@ -153,6 +153,8 @@ const OCR_NAMES_BUDGET_MS = budgetFromEnv(process.env["OCR_NAMES_BUDGET_MS"], 14
 
 const SCAN_CONFIG: ScanConfig = {
   model: OCR_MODEL,
+  // gpt-4o reads when Gemini fails (a 429 failed a whole scan, 2026-09-29).
+  fallbackModel: (process.env["OCR_FALLBACK_MODEL"] ?? "gpt-4o").trim() || null,
   secondModel: SECOND_OPINION_ON ? OCR_SECOND_MODEL : null,
   secondEffort: OCR_SECOND_EFFORT,
   names: parseNamesReaders(OCR_NAMES),
