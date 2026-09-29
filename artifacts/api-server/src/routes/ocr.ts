@@ -31,7 +31,22 @@ import { parseNamesReaders, scanReceipt, type ScanConfig } from "../lib/receipt-
  * switches every safety net off at once, however good its item names are
  * (gpt-5.4's were far better: 142 vs ~115 of 165 recognisable Hebrew names).
  */
-const OCR_MODEL = process.env["OCR_MODEL"] ?? "gpt-4o";
+/**
+ * 2026-09-29: gemini-3.5-flash without thinking replaced gpt-4o as the reader
+ * of money. All 20 fixtures, twice, a scan every 12 s, names readings off:
+ *
+ *                     Hebrew count  totals  tax    French totals  en discount  he p50
+ *   gpt-4o            20/22         26/26   23/26  2/4            10/10        8.3 s
+ *   gemini-3.5-flash  21/22         26/26   26/26  4/4            9/9          6.6 s
+ *
+ * Checked for the gpt-5.4 failure above: on the user's receipt with two item
+ * lines cut out of the photo, it returned the printed 1270.00 as printedTotal
+ * 4 times of 4, never the sum of what it saw. It needed one prompt rule: with
+ * a bill discount and only a taxed TOTAL after it, it took the pre-discount
+ * subtotal and the discount was refused (en-ny-bottom-discount).
+ * "gpt-4o" still works here as a setting, to roll back.
+ */
+const OCR_MODEL = process.env["OCR_MODEL"] ?? "gemini-3.5-flash:none";
 const OCR_TRANSLATE_MODEL = process.env["OCR_TRANSLATE_MODEL"] ?? "gpt-4o";
 
 /**
