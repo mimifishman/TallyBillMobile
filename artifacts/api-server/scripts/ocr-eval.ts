@@ -335,7 +335,7 @@ async function scanLocally(file: string, model: string | null): Promise<ScanResu
   const startedAt = Date.now();
   const { bill, notes } = await scanReceipt(openaiClient(), readFileSync(join(RECEIPTS, file)), {
     // Keep in step with the route's defaults, or --local scores a different reader.
-    model: model ?? env("OCR_MODEL", "gpt-4o"),
+    model: model ?? env("OCR_MODEL", "gemini-3.5-flash:none"),
     secondModel: second === "" || second === "off" ? null : second,
     secondEffort: env("OCR_SECOND_EFFORT", "low") as Effort,
     names: parseNamesReaders(env("OCR_NAMES", "gemini-3.5-flash:none,claude-sonnet-5")),
