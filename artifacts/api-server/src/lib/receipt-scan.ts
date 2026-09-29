@@ -134,6 +134,14 @@ export async function askForReceipt(
   dataUrl: string,
   opts: CallOptions = {},
 ): Promise<string> {
+  // "gemini-3.5-flash:none" reads without thinking; plain "gemini-..." thinks.
+  if (isGemini(model)) {
+    const [id, effort] = model.split(":");
+    return geminiGenerate(id!, OCR_PROMPT, [
+      geminiImage(dataUrl),
+      { text: "Extract the line items, tax, tip, and currency from this receipt as JSON." },
+    ], { ...opts, thinking: effort !== "none" });
+  }
   const completion = await chatCompletion(
     openai,
     {
