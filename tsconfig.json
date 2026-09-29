@@ -14,6 +14,9 @@
     },
     {
       "path": "./lib/utils"
+    },
+    {
+      "path": "./lib/integrations-gemini-ai"
     }
   ]
 }
