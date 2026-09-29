@@ -80,7 +80,41 @@ async function askClaude(model: string, strips: string[]): Promise<NameLine[] | 
   return parseNameLines((body.content ?? []).map((c) => c.text ?? "").join(""));
 }
 
+/** Gemini, through Replit's Gemini integration (REST, no SDK). */
+async function askGemini(model: string, effort: string | null, strips: string[]): Promise<NameLine[] | null> {
+  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+  const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
+  if (!key || !base) throw new Error("no Gemini credentials");
+  const parts: unknown[] = [];
+  strips.forEach((url, k) => {
+    parts.push({ text: `Strip ${k + 1} of ${strips.length}:` });
+    parts.push({ inlineData: { mimeType: "image/jpeg", data: url.split(",")[1] } });
+  });
+  parts.push({ text: "Copy every item line's name and amount as JSON." });
+  const res = await fetch(`${base}/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": key, "content-type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: NAMES_PROMPT + extra }] },
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0,
+        // gemini:none -> no thinking (a budget of 0), gemini:low -> a small one.
+        ...(effort ? { thinkingConfig: { thinkingBudget: effort === "none" ? 0 : 1024 } } : {}),
+        ...(process.env["MEDIA_RES"] ? { mediaResolution: process.env["MEDIA_RES"] } : {}),
+      },
+    }),
+  });
+  const body = (await res.json().catch(() => ({}))) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[]; error?: { message?: string };
+  };
+  if (!res.ok) throw new Error(`${res.status} ${body.error?.message ?? ""}`.slice(0, 200));
+  return parseNameLines((body.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join(""));
+}
+
 async function ask(model: string, effort: string | null, strips: string[]): Promise<NameLine[] | null> {
+  if (model.startsWith("gemini-")) return askGemini(model, effort, strips);
   if (model.startsWith("claude-")) return askClaude(model, strips);
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
   strips.forEach((url, k) => {
