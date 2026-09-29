@@ -28,6 +28,7 @@ import { chatCompletion, claudeMessage, isClaude, RECEIPT_TOKEN_CEILING } from "
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
 import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
+import { recoverMissedLines } from "./receipt-recover";
 import { applySpelling, parseSpelling, SPELLING_PROMPT, spellingRequest, type SpellingLine } from "./receipt-spelling";
 import {
   closerToReceipt,
@@ -440,6 +441,18 @@ export async function scanReceipt(
     if (namesBlock) notes["X-OCR-Names"] = namesBlock;
     if (namesPick) {
       const { answers, skipped } = await namesPick;
+
+      // A line gpt-4o missed, put back only when the printed total proves it.
+      // Before the names go on, so the new line gets its name voted like any other.
+      for (const { reader, lines } of answers) {
+        const found = recoverMissedLines(bill.items, bill.check, bill.billDiscount, bill.taxAmount, lines);
+        if (found) {
+          bill = { ...bill, items: found.items, check: found.check };
+          notes["X-OCR-Recovered"] = `${readerLabel(reader)}:added=${found.added}`;
+          break;
+        }
+      }
+
       const parts = answers.map(({ reader, lines }) => {
         const named = applyNames(bill.items, lines);
         return { label: readerLabel(reader), named };

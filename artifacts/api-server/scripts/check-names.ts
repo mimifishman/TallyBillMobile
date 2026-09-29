@@ -9,6 +9,8 @@
  */
 import { applyNames, parseNameLines, voteNames } from "../src/lib/receipt-names.ts";
 import { applySpelling, parseSpelling, spellingRequest } from "../src/lib/receipt-spelling.ts";
+import { recoverMissedLines } from "../src/lib/receipt-recover.ts";
+import { checkAgainstPrintedTotal } from "../src/lib/receipt-line-items.ts";
 import { normalizeLineItems } from "../src/lib/receipt-line-items.ts";
 
 let failed = 0;
@@ -143,6 +145,35 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   check("refusals are counted", out.changed === 1 && out.refused === 2, out);
   check("the spelling check never touches money", money(out.items) === money(gpt4o));
   check("spelling parse: no JSON -> null", parseSpelling("sorry") === null);
+}
+
+{
+  // A missed line put back (the user's photo of 2026-09-29): gpt-4o read 15 of
+  // 16 lines, two of them in the wrong order, and came to 1212.00 of 1270.00.
+  const read = normalizeLineItems([210, 62, 54, 32, 64, 68, 58, 55, 68, 124, 105, 136, 64, 56, 56]
+    .map((total, k) => ({ description: `line ${k}`, quantity: 1, total })));
+  const short = checkAgainstPrintedTotal(read, 1270, null, null);
+  const reader = [210, 62, 54, 32, 64, 58, 68, 55, 58, 68, 124, 105, 136, 64, 56, 56]
+    .map((amount, k) => ({ name: k === 8 ? "שיפוד כרוב" : `name ${k}`, amount }));
+  const got = recoverMissedLines(read, short, null, null, reader);
+  check("a missed line comes back when it makes the printed total",
+    !!got && got.added === 1 && got.check.reconciled === true && got.items.length === 16, got?.check);
+  check("it goes where the reader saw it", got?.items[8]?.description === "שיפוד כרוב", got?.items.map((i) => i.description));
+  check("gpt-4o's own lines keep their money",
+    !!got && JSON.stringify(got.items.filter((i) => i.description !== "שיפוד כרוב").map((i) => i.total)) === JSON.stringify(read.map((i) => i.total)));
+
+  check("nothing comes back when a line does not close the gap",
+    recoverMissedLines(read, short, null, null, reader.map((l, k) => (k === 8 ? { ...l, amount: 57 } : l))) === null);
+  check("nothing comes back when the reader lacks one of gpt-4o's amounts",
+    recoverMissedLines(read, short, null, null, reader.filter((_, k) => k !== 0)) === null);
+  check("nothing comes back from a reader that repeated lines from a strip overlap",
+    recoverMissedLines(read, short, null, null, [...reader, reader[3]!]) === null);
+  check("nothing is added to a bill that already agrees with its total",
+    recoverMissedLines(read, checkAgainstPrintedTotal(read, 1212, null, null), null, null, reader) === null);
+  check("nothing is added to a bill that is over its total (that is a missed discount)",
+    recoverMissedLines(read, checkAgainstPrintedTotal(read, 1100, null, null), null, null, reader) === null);
+  const four = recoverMissedLines(read.slice(4), checkAgainstPrintedTotal(read.slice(4), 1270, null, null), null, null, reader);
+  check("more than three missing lines is a different reading, not a missed line", four === null);
 }
 
 check("no names -> the bill unchanged", applyNames(gpt4o, []).items === gpt4o);

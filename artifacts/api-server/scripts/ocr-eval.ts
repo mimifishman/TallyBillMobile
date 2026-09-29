@@ -362,6 +362,7 @@ function describeNotes(get: (name: string) => string | null): string | null {
     get("X-OCR-Second-Opinion") ? `2nd:${get("X-OCR-Second-Opinion")}` : null,
     get("X-OCR-Names") ? `names:${get("X-OCR-Names")}` : null,
     get("X-OCR-Spelling") ? `spell:${get("X-OCR-Spelling")}` : null,
+    get("X-OCR-Recovered") ? `recovered:${get("X-OCR-Recovered")}` : null,
   ].filter(Boolean).join(" ") || null;
 }
 
