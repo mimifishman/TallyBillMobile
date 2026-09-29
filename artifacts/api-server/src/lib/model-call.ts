@@ -129,3 +129,57 @@ export async function claudeMessage(
 }
 
 export const isClaude = (model: string) => model.startsWith("claude-");
+
+/**
+ * One Gemini call through Replit's Gemini integration. REST, no SDK: the
+ * integration's base URL takes `/models/{id}:generateContent` directly. Throws
+ * at once without the integration's credentials, and on an HTTP error throws
+ * with `status` set, like the OpenAI client, so a 429 is recognised the same way.
+ *
+ * `thinking: false` sets a thinking budget of 0. Measured 2026-09-29 reading
+ * Hebrew names: gemini-3.5-flash without thinking read 118 of 128 exactly with
+ * its slowest 10% at 3.4 s.
+ */
+export async function geminiGenerate(
+  model: string,
+  system: string,
+  parts: unknown[],
+  opts: { deadlineMs?: number; signal?: AbortSignal; thinking?: boolean; json?: boolean } = {},
+): Promise<string> {
+  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+  const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
+  if (!key || !base) throw new Error("no Gemini credentials");
+  const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
+    .filter((s): s is AbortSignal => s !== undefined);
+  const res = await fetch(`${base}/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": key, "content-type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        temperature: 0,
+        ...(opts.json === false ? {} : { responseMimeType: "application/json" }),
+        ...(opts.thinking === false ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+      },
+    }),
+    ...(signals.length ? { signal: AbortSignal.any(signals) } : {}),
+  });
+  const body = (await res.json().catch(() => ({}))) as {
+    candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw Object.assign(new Error(`Gemini ${res.status}: ${body.error?.message ?? ""}`), { status: res.status });
+  }
+  return (body.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join("");
+}
+
+export const isGemini = (model: string) => model.startsWith("gemini-");
+
+/** An image data URL as Gemini's inline part. */
+export function geminiImage(dataUrl: string): unknown {
+  const [head, data] = dataUrl.split(",");
+  const mimeType = /^data:([^;]+)/.exec(head ?? "")?.[1] ?? "image/jpeg";
+  return { inlineData: { mimeType, data } };
+}

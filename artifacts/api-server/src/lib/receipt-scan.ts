@@ -24,7 +24,7 @@
  * second opinion.
  */
 import type OpenAI from "openai";
-import { chatCompletion, claudeMessage, isClaude, RECEIPT_TOKEN_CEILING } from "./model-call";
+import { chatCompletion, claudeMessage, geminiGenerate, geminiImage, isClaude, isGemini, RECEIPT_TOKEN_CEILING } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
 import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
@@ -206,6 +206,17 @@ export async function askSpelling(
 /** Below this there is no point starting the spelling check. */
 const MIN_SPELLING_MS = 2_500;
 
+/** The names reading by a Gemini model, through Replit's Gemini integration. */
+async function askGeminiForNames(model: string, effort: Effort | null, strips: string[], opts: CallOptions): Promise<NameLine[] | null> {
+  const parts: unknown[] = [];
+  strips.forEach((url, k) => {
+    parts.push({ text: `Strip ${k + 1} of ${strips.length}:` });
+    parts.push(geminiImage(url));
+  });
+  parts.push({ text: "Copy every item line's name and amount as JSON." });
+  return parseNameLines(await geminiGenerate(model, NAMES_PROMPT, parts, { ...opts, thinking: effort !== "none" }));
+}
+
 /** The names reading: every strip, in order, in one request. */
 async function askForNames(
   openai: OpenAI,
@@ -214,6 +225,7 @@ async function askForNames(
   opts: CallOptions,
 ): Promise<NameLine[] | null> {
   if (isClaude(model)) return askClaudeForNames(model, strips, opts);
+  if (isGemini(model)) return askGeminiForNames(model, opts.effort ?? null, strips, opts);
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
   strips.forEach((url, k) => {
     content.push({ type: "text", text: `Strip ${k + 1} of ${strips.length}:` });

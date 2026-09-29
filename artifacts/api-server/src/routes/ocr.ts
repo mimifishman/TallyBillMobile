@@ -115,8 +115,13 @@ const HEADER_CROP = (process.env["OCR_HEADER_CROP"] ?? "on").trim() !== "off";
  * printed, of 71: gpt-4o 39, gpt-5.4 44, Claude Sonnet 5 53, the vote 58.
  * English and French were level between the two readers (52 vs 50 of 58,
  * 40 vs 40 of 40). Before: "gpt-5.4:low,gpt-5.4:none", hedged at 8 s.
+ *
+ * 2026-09-29: gemini-3.5-flash without thinking replaced gpt-5.4, the weakest
+ * of the three. Alone, on 14 Hebrew photos twice: Gemini 118 of 128 names
+ * exact, Claude Sonnet 5 102 of 132, gpt-5.4 lower still; Gemini's slowest 10%
+ * took 3.4 s. It goes through Replit's Gemini integration.
  */
-const OCR_NAMES = process.env["OCR_NAMES"] ?? "claude-sonnet-5,gpt-5.4:none";
+const OCR_NAMES = process.env["OCR_NAMES"] ?? "gemini-3.5-flash:none,claude-sonnet-5";
 /**
  * After the vote, one text-only call puts each Hebrew name that came out as no
  * word onto the closest real word, changing at most two look-alike letters.
