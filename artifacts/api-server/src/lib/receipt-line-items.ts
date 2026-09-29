@@ -89,9 +89,22 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * The quantity has to come from the receipt's own column, which means the scan
  * reading it — see the item-name and model work rather than a pattern here.
  */
+/**
+ * An item's name on one line, without the options printed under it.
+ *
+ * Gemini sometimes returns the item and its ">>"/"<<" option lines as one
+ * name — "אגרול\n<< עוף" — which the app shows on two lines and the names
+ * readers, which leave options out, can never agree with. The first line is
+ * the item.
+ */
+function itemName(raw: string): string {
+  const first = raw.split(/\r?\n/).map((l) => l.trim()).find((l) => l.replace(/^(<<|>>)\s*/, "") !== "") ?? "";
+  return first.replace(/^(<<|>>)\s*/, "").trim();
+}
+
 export function normalizeLineItems(items: RawLineItem[] | undefined | null): LineItem[] {
   return (items ?? []).reduce<LineItem[]>((acc, item) => {
-    const description = typeof item.description === "string" ? item.description.trim() : "";
+    const description = typeof item.description === "string" ? itemName(item.description) : "";
     if (!description) return acc;
 
     const quantity = positiveNumber(item.quantity) ?? 1;

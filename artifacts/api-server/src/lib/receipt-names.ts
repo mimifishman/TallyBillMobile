@@ -110,8 +110,13 @@ export function similarity(a: string, b: string): number {
 const CENT = 0.005;
 
 /** Could this printed amount be this item's line? Any of its own figures will do. */
-function amountFits(item: LineItem, amount: number): boolean {
+export function amountFits(item: LineItem, amount: number): boolean {
   const near = (v: number | null) => v !== null && Math.abs(v - amount) < CENT;
+  // A printed 0.00 is a line that was free as printed. It is not a line
+  // discounted down to nothing: that one prints its full price, and matching
+  // them put the name of the free first line of the 306 receipt (אגרול 0.00)
+  // on its last, 100%-discounted one (שיקן פאי, 36.00 -> 0.00), 2026-09-29.
+  if (Math.abs(amount) < CENT) return item.originalTotal === null && Math.abs(item.total) < CENT;
   return near(item.total) || near(item.originalTotal) || (item.quantity > 1 && near(item.unitPrice));
 }
 

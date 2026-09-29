@@ -215,6 +215,24 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
     reorderByReaders(read, [[claude[1]!, claude[0]!, claude[2]!, claude[3]!], [gpt54[1]!, gpt54[0]!, gpt54[2]!, gpt54[3]!]]) === null);
 }
 
+{
+  // The 306 receipt: a free first line (אגרול 0.00, its chicken option 45.00
+  // folded in) and a last line discounted 100% (שיקן פאי 36.00 -> 0.00).
+  const bill = normalizeLineItems([
+    { description: "אגרול\n<< עוף", quantity: 1, total: 45 },
+    { description: "בקר צ'ילי קראנץ'", quantity: 1, total: 59 },
+    { description: "שיקן פאי", quantity: 1, total: 0, originalTotal: 36, discountLabel: "הנחה 100.00%" },
+  ]);
+  check("an item's option lines are not part of its name", bill[0]!.description === "אגרול", bill[0]);
+  const lines = [{ name: "אגרול", amount: 0 }, { name: "בקר צ'ילי קראנץ'", amount: 59 }, { name: "שיקק פאי", amount: 36 }];
+  const out = applyNames(bill, lines);
+  check("a printed 0.00 never names a line discounted down to 0.00",
+    out.items[2]!.description === "שיקק פאי" && out.items[0]!.description === "אגרול", out.items.map((i) => i.description));
+  const free = [{ description: "מים", quantity: 1, unitPrice: 0, total: 0, originalTotal: null, discountLabel: null }];
+  check("but it still names a line that was free as printed",
+    applyNames(free, [{ name: "מים מינרליים", amount: 0 }]).items[0]!.description === "מים מינרליים");
+}
+
 check("no names -> the bill unchanged", applyNames(gpt4o, []).items === gpt4o);
 check("parse: reads lines, amounts as text, drops blanks",
   JSON.stringify(parseNameLines('{"lines":[{"name":" מרגז ","amount":"58.00"},{"name":"","amount":1},{"name":"x","amount":"n/a"}]}'))

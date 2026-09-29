@@ -25,17 +25,13 @@ import {
   type LineItem,
   type ReceiptCheck,
 } from "./receipt-line-items";
-import { foldForVote, similarity, type NameLine } from "./receipt-names";
+import { amountFits, foldForVote, similarity, type NameLine } from "./receipt-names";
 
 /** More than this and it is a different reading of the receipt, not a missed line. */
 const MAX_RECOVERED = 3;
 const CENT = 0.005;
 
-/** Could this printed amount be this item's line? */
-function fits(item: LineItem, amount: number): boolean {
-  const near = (v: number | null) => v !== null && Math.abs(v - amount) < CENT;
-  return near(item.total) || near(item.originalTotal) || (item.quantity > 1 && near(item.unitPrice));
-}
+const fits = amountFits;
 
 export interface Recovery {
   items: LineItem[];

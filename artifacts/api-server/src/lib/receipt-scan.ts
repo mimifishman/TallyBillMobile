@@ -47,6 +47,11 @@ export type Effort = "none" | "low" | "medium" | "high";
 export interface ScanConfig {
   /** Reads every receipt, and is the only source of money. */
   model: string;
+  /**
+   * Reads instead when `model` fails (a 429, a timeout, an outage). null: the
+   * scan fails with it. See readMoney.
+   */
+  fallbackModel: string | null;
   /** Asked only about a missed discount. null turns it off. */
   secondModel: string | null;
   secondEffort: Effort;
@@ -370,10 +375,30 @@ export async function scanReceipt(
   // missing the very lines being judged.
   let dataUrl = croppedPrep.dataUrl;
 
+  /**
+   * The money reading, by the fallback model when the main one fails.
+   *
+   * On 2026-09-29 a scan on dev failed outright — HTTP 500 to the app — on one
+   * Gemini 429: the main read had no second chance. The OpenAI client retries
+   * a 429 by itself; the Gemini call does not. So on any failure of the main
+   * model the fallback (gpt-4o) reads the same picture, and the scan says so.
+   */
+  const readMoney = async (url: string, opts: CallOptions, note: string): Promise<string> => {
+    try {
+      return await askForReceipt(openai, config.model, url, opts);
+    } catch (err) {
+      if (!config.fallbackModel || config.fallbackModel === config.model || opts.signal?.aborted) throw err;
+      noteRateLimit(err);
+      warn(err, `${config.model} failed; reading with ${config.fallbackModel}`);
+      notes[note] = `${config.fallbackModel}:${failure(err)}`;
+      return askForReceipt(openai, config.fallbackModel, url, { ...opts, ...(opts.deadlineMs ? { deadlineMs: left() } : {}) });
+    }
+  };
+
   const cancelWhole = new AbortController();
   const cancelNames = new AbortController();
   const wholeCall = cropped
-    ? settle(askForReceipt(openai, config.model, wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }))
+    ? settle(readMoney(wholePrep.dataUrl, { deadlineMs: left(), signal: cancelWhole.signal }, "X-OCR-Uncropped-Fallback"))
     : null;
   const namesBlock = config.names.length > 0 ? namesBlocked() : null;
   if (config.names.length > 0 && !namesBlock) namesInFlight++;
@@ -389,7 +414,7 @@ export async function scanReceipt(
     : null;
 
   try {
-    const firstRaw = await askForReceipt(openai, config.model, croppedPrep.dataUrl);
+    const firstRaw = await readMoney(croppedPrep.dataUrl, {}, "X-OCR-Fallback");
     if (!firstRaw) throw new Error("AI model returned an empty response.");
     const firstParsed = parseModelJson(firstRaw);
     if (!firstParsed) throw new Error("Could not parse receipt: the model did not return valid JSON.");
