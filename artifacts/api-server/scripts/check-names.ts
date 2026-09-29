@@ -9,7 +9,7 @@
  */
 import { applyNames, parseNameLines, voteNames } from "../src/lib/receipt-names.ts";
 import { applySpelling, parseSpelling, spellingRequest } from "../src/lib/receipt-spelling.ts";
-import { recoverMissedLines } from "../src/lib/receipt-recover.ts";
+import { recoverMissedLines, reorderByReaders } from "../src/lib/receipt-recover.ts";
 import { checkAgainstPrintedTotal } from "../src/lib/receipt-line-items.ts";
 import { normalizeLineItems } from "../src/lib/receipt-line-items.ts";
 
@@ -174,6 +174,45 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
     recoverMissedLines(read, checkAgainstPrintedTotal(read, 1100, null, null), null, null, reader) === null);
   const four = recoverMissedLines(read.slice(4), checkAgainstPrintedTotal(read.slice(4), 1270, null, null), null, null, reader);
   check("more than three missing lines is a different reading, not a missed line", four === null);
+}
+
+{
+  // A price on the wrong row (same photo): gpt-4o read מרגז 68 and the 68
+  // line's neighbour at 58; both readers had מרגז 58 then טרטר פילה 68.
+  const read = normalizeLineItems([
+    { description: "מרגז", quantity: 1, total: 68 },
+    { description: "טורטו פיזה", quantity: 1, total: 58 },
+    { description: "שיפוד פטריות", quantity: 1, total: 55 },
+    { description: "סמאש בורגר", quantity: 2, total: 124 },
+  ]);
+  const claude = [
+    { name: "מרגז", amount: 58 }, { name: "טרטר פילה", amount: 68 },
+    { name: "שיפוד פטריות", amount: 55 }, { name: "סמאש בורגר", amount: 124 },
+  ];
+  const gpt54 = [
+    { name: "מרגד", amount: 58 }, { name: "פורטו פילו", amount: 68 },
+    { name: "שיפוד פטריות", amount: 55 }, { name: "סמאש בורגר", amount: 124 },
+  ];
+  const out = reorderByReaders(read, [claude, gpt54]);
+  check("both readers agreeing on the rows put each price on its row",
+    JSON.stringify(out?.map((i) => i.total)) === JSON.stringify([58, 68, 55, 124]), out);
+  check("each line keeps gpt-4o's money (quantity 2 stays 2)", out?.[3]?.quantity === 2 && out?.[3]?.total === 124);
+  const named = voteNames(out ?? [], [applyNames(out ?? [], claude).items, applyNames(out ?? [], gpt54).items]).items;
+  check("and then the names land on the right prices",
+    named[0]?.total === 58 && named[1]?.total === 68 && /טרטר|פורטו/.test(named[1]!.description) && !/טרטר|פורטו/.test(named[0]!.description),
+    named.map((i) => `${i.description}=${i.total}`));
+  check("one reader alone moves nothing", reorderByReaders(read, [claude]) === null);
+  check("readers that disagree on the order move nothing",
+    reorderByReaders(read, [claude, [gpt54[1]!, gpt54[0]!, gpt54[2]!, gpt54[3]!]]) === null);
+  const repeated = [gpt54[0]!, gpt54[1]!, gpt54[0]!, gpt54[1]!, gpt54[2]!, gpt54[3]!];
+  check("a reader that repeated rows from a strip overlap still confirms the order",
+    JSON.stringify(reorderByReaders(read, [claude, repeated])?.map((i) => i.total)) === JSON.stringify([58, 68, 55, 124]));
+  check("but one that puts two amounts the other way round does not",
+    reorderByReaders(read, [claude, [gpt54[1]!, gpt54[0]!, gpt54[2]!, gpt54[3]!, gpt54[0]!]]) === null);
+  check("amounts gpt-4o does not have move nothing",
+    reorderByReaders(read, [claude.map((l, k) => (k === 0 ? { ...l, amount: 57 } : l)), gpt54]) === null);
+  check("rows already in the readers' order are left as they are",
+    reorderByReaders(read, [[claude[1]!, claude[0]!, claude[2]!, claude[3]!], [gpt54[1]!, gpt54[0]!, gpt54[2]!, gpt54[3]!]]) === null);
 }
 
 check("no names -> the bill unchanged", applyNames(gpt4o, []).items === gpt4o);

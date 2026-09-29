@@ -102,7 +102,7 @@ export function editDistance(a: string, b: string): number {
   return prev[y.length]!;
 }
 
-function similarity(a: string, b: string): number {
+export function similarity(a: string, b: string): number {
   const longest = Math.max([...a].length, [...b].length);
   return longest === 0 ? 1 : 1 - editDistance(a, b) / longest;
 }
