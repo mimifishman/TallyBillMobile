@@ -15,6 +15,7 @@ import {
   looksCutOff,
   closerToReceipt,
 } from "../src/lib/receipt-reading.ts";
+import { hedged } from "../src/lib/receipt-scan.ts";
 
 let failed = 0;
 function check(name: string, ok: boolean, got?: unknown) {
@@ -271,6 +272,23 @@ check("broken JSON is null, not a throw", parseModelJson("{ items: [ }") === nul
     invented.check.reconciled === false && invented.check.printedTotal === 330, invented.check);
   const short = interpretReceipt({ items: items.slice(1), printedTotal: 104, billDiscount: 15.6, taxAmount: 7.85, totalPayable: 96.25 });
   check("a bill missing a line still does not agree", short.check.reconciled === false, short.check);
+}
+
+{
+  // Racing a slow Gemini read on the other route.
+  const wait = (ms: number, v: string, fail = false) => new Promise<string>((res, rej) => setTimeout(() => (fail ? rej(new Error(v)) : res(v)), ms));
+  const log: string[] = [];
+  const fast = await hedged((r) => { log.push(r); return wait(20, `${r}-answer`); }, ["own", "replit"], { limitMs: 1000, hedgeMs: 100 }, () => log.push("hedge-won"));
+  check("a quick answer on the first route starts nothing else", fast === "own-answer" && log.join() === "own", log);
+  const log2: string[] = [];
+  const slow = await hedged((r) => { log2.push(r); return wait(r === "own" ? 400 : 20, `${r}-answer`); }, ["own", "replit"], { limitMs: 1000, hedgeMs: 100 }, (r) => log2.push(`won:${r}`));
+  check("a slow first route: the second starts at the hedge mark and its answer is used", slow === "replit-answer" && log2.join() === "own,replit,won:replit", log2);
+  const t0 = Date.now();
+  const failed1 = await hedged((r) => (r === "own" ? wait(5, "401", true) : wait(10, "replit-answer")), ["own", "replit"], { limitMs: 1000, hedgeMs: 500 }, () => {});
+  check("a route that fails outright hands over at once", failed1 === "replit-answer" && Date.now() - t0 < 200, Date.now() - t0);
+  let rejected = "";
+  await hedged(() => wait(5, "down", true), ["own", "replit"], { limitMs: 1000, hedgeMs: 500 }, () => {}).catch((e: Error) => { rejected = e.message; });
+  check("both routes failing rejects, so gpt-4o can read", rejected === "down", rejected);
 }
 
 console.log(failed === 0 ? "\nall good" : `\n${failed} failing`);
