@@ -263,6 +263,12 @@ check("broken JSON is null, not a throw", parseModelJson("{ items: [ }") === nul
     printedTotal: 100, billDiscount: 20, taxAmount: 8, totalPayable: 108,
   });
   check("a footer that restates line discounts is still not taken twice", restated.billDiscount === null, restated.billDiscount);
+  const invented = interpretReceipt({
+    items: [45, 59, 67, 81].map((total, k) => ({ description: `dish ${k}`, quantity: 1, total })),
+    printedTotal: 330, billDiscount: null, taxAmount: null, totalPayable: 252,
+  });
+  check("a final amount due that is just the items' own sum never marks a short bill as agreeing",
+    invented.check.reconciled === false && invented.check.printedTotal === 330, invented.check);
   const short = interpretReceipt({ items: items.slice(1), printedTotal: 104, billDiscount: 15.6, taxAmount: 7.85, totalPayable: 96.25 });
   check("a bill missing a line still does not agree", short.check.reconciled === false, short.check);
 }
