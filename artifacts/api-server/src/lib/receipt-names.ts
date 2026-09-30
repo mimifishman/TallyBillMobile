@@ -207,6 +207,11 @@ export function applyNames(items: LineItem[], lines: NameLine[]): NamesOutcome {
   return { items: out, matched, changed };
 }
 
+/** How like the main reading's name a lone reader's name must be to be a spelling fix. */
+const LONE_READER_LIKE = 0.5;
+/** How like each other two readers' names must be to back each other. */
+const BACKED_LIKE = 0.8;
+
 /** Final letter forms and look-alike punctuation folded, for comparing readings. */
 export function foldForVote(name: string): string {
   return name
@@ -236,8 +241,17 @@ export function voteNames(
   const candidates: string[][] = [];
   const agreed: boolean[] = [];
   const items = base.map((item, i) => {
-    const here = [...readings.map((r) => r[i]?.description), item.description]
-      .filter((d): d is string => typeof d === "string" && d.length > 0);
+    const raw = readings.map((r) => r[i]?.description).filter((d): d is string => typeof d === "string" && d.length > 0);
+    // A reader's name that looks nothing like the main reading's, with no
+    // other reader backing it, is not a spelling fix: it is a different line.
+    // On the curled 306 photo (2026-09-30) one strip reader was a row off and
+    // garbled, so rowShifted could not match its names; alone against the main
+    // reading it won the tie on every line. The main reading is gemini on the
+    // whole photo now, not the gpt-4o that readers were first brought in to fix.
+    const like = (a: string, b: string) => similarity(foldForVote(a), foldForVote(b));
+    const backed = raw.filter((c, k) =>
+      like(c, item.description) >= LONE_READER_LIKE || raw.some((o, m) => m !== k && like(c, o) >= BACKED_LIKE));
+    const here = [...backed, item.description];
     let best = item.description, bestCost = Infinity;
     for (const c of here) {
       const cost = here.reduce((sum, o) => sum + (1 - similarity(foldForVote(c), foldForVote(o))), 0);

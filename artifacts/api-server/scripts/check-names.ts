@@ -116,6 +116,11 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   const alone = voteNames(gpt4o, [claude]);
   check("one reader against gpt-4o: the reader wins a tie", alone.items[2]!.description === "מדטים", alone.items[2]);
   check("no readings -> gpt-4o's names", voteNames(gpt4o, []).changed === 0);
+  const garbled = withNames(["בקוך צי'ר' קראנצ'"]);
+  check("a lone reader's name that looks nothing like the line's is not taken",
+    voteNames(gpt4o, [garbled]).items[0]!.description === gpt4o[0]!.description, voteNames(gpt4o, [garbled]).items[0]);
+  const fix = withNames(["עגור קסם"]);
+  check("a lone reader's spelling fix still is", voteNames(gpt4o, [fix]).items[0]!.description === "עגור קסם");
 }
 
 {

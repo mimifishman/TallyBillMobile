@@ -131,7 +131,11 @@ export function reorderByReaders(items: LineItem[], readings: NameLine[][]): Lin
     });
     if (best < 0) return null;
     used[best] = true;
-    out.push(items[best]!);
+    // A line that moved takes the readers' name for its new row: its old name
+    // came with the wrong price, and the names vote protects the main
+    // reading's name against a lone reader that looks nothing like it.
+    const name = rowNames[0]?.[k]?.name;
+    out.push(best !== k && name ? { ...items[best]!, description: name } : items[best]!);
   }
   return out.every((item, i) => item === items[i]) ? null : out;
 }
