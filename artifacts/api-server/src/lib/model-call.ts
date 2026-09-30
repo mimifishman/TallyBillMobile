@@ -176,6 +176,15 @@ export async function geminiGenerate(
 
 export const isGemini = (model: string) => model.startsWith("gemini-");
 
+/** Which way Gemini calls go — "own" key, "replit" gateway, or "none" — for the X-OCR-Gemini note. */
+export function geminiRoute(): "own" | "replit" | "none" {
+  try {
+    return geminiAccess().base.startsWith("https://generativelanguage.googleapis.com") ? "own" : "replit";
+  } catch {
+    return "none";
+  }
+}
+
 /**
  * Replit's Gemini integration, or our own Google AI Studio key
  * (GEMINI_API_KEY). Replit's is shared and rate-limited per project: scans
@@ -183,14 +192,14 @@ export const isGemini = (model: string) => model.startsWith("gemini-");
  * at the same moments. An own key on a paid tier has its own, higher limits.
  */
 function geminiAccess(): { base: string; headers: Record<string, string> } {
-  // Our own key only when chosen (OCR_GEMINI_SOURCE=own) or when Replit's
-  // integration is missing. Measured 2026-09-30: the free-tier AI Studio key
-  // took 9-17 s for a two-word answer (Google's own server-timing said so),
-  // against about 1 s through Replit's gateway.
+  // Our own key whenever it is set, unless OCR_GEMINI_SOURCE=replit. On the
+  // free tier it took 9-17 s for a two-word answer; on the paid tier, from
+  // 2026-09-30, about 1 s, and all 20 fixtures scored the same both ways
+  // (money all right; Hebrew names 137 vs 136 of 142; p95 11.0 vs 11.7 s).
   const own = process.env["GEMINI_API_KEY"]?.trim();
   const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
   const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
-  const useOwn = own && ((process.env["OCR_GEMINI_SOURCE"] ?? "").trim() === "own" || !key || !base);
+  const useOwn = own && ((process.env["OCR_GEMINI_SOURCE"] ?? "").trim() !== "replit" || !key || !base);
   if (useOwn) return { base: "https://generativelanguage.googleapis.com/v1beta", headers: { "x-goog-api-key": own } };
   if (!key || !base) throw new Error("no Gemini credentials");
   // Replit's proxy adds Google credentials of its own. From 2026-09-30 it

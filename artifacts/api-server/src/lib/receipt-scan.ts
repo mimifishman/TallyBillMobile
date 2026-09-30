@@ -24,7 +24,7 @@
  * second opinion.
  */
 import type OpenAI from "openai";
-import { chatCompletion, claudeMessage, geminiGenerate, geminiImage, isClaude, isGemini, RECEIPT_TOKEN_CEILING } from "./model-call";
+import { chatCompletion, claudeMessage, geminiGenerate, geminiImage, geminiRoute, isClaude, isGemini, RECEIPT_TOKEN_CEILING } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
 import { applyNames, NAMES_PROMPT, parseNameLines, rowShifted, voteNames, type NameLine } from "./receipt-names";
@@ -389,6 +389,7 @@ export async function scanReceipt(
   const startedAt = Date.now();
   const left = () => config.budgetMs - (Date.now() - startedAt);
   const notes: Record<string, string> = { "X-OCR-Model": config.model };
+  if (isGemini(config.model) || config.names.some((r) => isGemini(r.model))) notes["X-OCR-Gemini"] = geminiRoute();
 
   // Both preparations at once. The whole photo is needed anyway for the
   // names strips, and — when a header is cut — for the uncropped read.
