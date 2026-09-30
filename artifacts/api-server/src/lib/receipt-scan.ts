@@ -276,9 +276,11 @@ export function hedged<T>(
 /**
  * How long a cropped reading that agrees with its receipt waits for the
  * whole-photo one, already running, to check it (see scanReceipt). Both start
- * together and take about the same time, so it is usually already there.
+ * together and take about the same time, so it is usually already there. It
+ * was 3 s; on dev, 2026-09-30, one scan in 3 of the curled 306 photo gave up
+ * on it and kept the cropped reading's made-up total.
  */
-const WHOLE_GRACE_MS = 3_000;
+const WHOLE_GRACE_MS = 6_000;
 
 /** How long the other names readers may take once one has answered. */
 const STRAGGLER_GRACE_MS = 3_000;
