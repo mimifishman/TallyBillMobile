@@ -10,7 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, inArray, asc, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth, type AuthRequest } from "../middlewares/auth.js";
-import { requireBillAccess, type BillAccessRequest } from "../middlewares/billAccess.js";
+import { requireBillAccess } from "../middlewares/billAccess.js";
 import { generateJoinCode } from "../lib/auth.js";
 import { subscribe, unsubscribe, notifyBillChanged } from "../lib/sseManager.js";
 import { ObjectStorageService } from "../lib/objectStorage.js";
@@ -352,13 +352,9 @@ router.patch("/:billId", requireBillAccess, async (req: AuthRequest, res) => {
     res.status(404).json({ error: "Bill not found" });
     return;
   }
-  if (!bill.isGuestBill) {
-    const via = (req as BillAccessRequest).billAccess?.via;
-    if (via !== "owner" && via !== "member") {
-      res.status(403).json({ error: "Only bill members can edit bill details" });
-      return;
-    }
-  }
+  // Anyone who can open the bill may change its details, as with PUT (which
+  // the web bill uses) and every line route: someone who joined with the code
+  // and tapped Edit gets the whole bill. Deleting it stays the owner's alone.
   const { title, date, currency, taxPercent, tipPercent, discountPercent, receiptImagePath } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {
     res.status(400).json({ error: "title cannot be empty" });
