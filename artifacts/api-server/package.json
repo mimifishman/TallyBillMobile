@@ -17,6 +17,7 @@
     "stress:discount": "node --experimental-strip-types scripts/stress-discount.ts",
     "check:discount": "node --experimental-strip-types scripts/check-discount.ts",
     "check:ocr-guard": "node --experimental-strip-types scripts/check-ocr-guard.ts",
+    "check:bill-access": "node --experimental-strip-types scripts/check-bill-access.ts",
     "eval:ocr": "node --experimental-strip-types --import ./scripts/register-ts.mjs scripts/ocr-eval.ts",
     "probe:models": "node --experimental-strip-types scripts/probe-models.ts",
     "prep:fixtures": "node --experimental-strip-types scripts/prep-fixtures.ts"

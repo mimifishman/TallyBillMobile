@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { billsTable, billUsersTable, usersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import type { AuthRequest } from "./auth.js";
+import { decideBillAccess, type BillAccessVia } from "../lib/bill-access.js";
 
 const JOIN_CODE_HEADER = "x-join-code";
 
@@ -11,7 +12,7 @@ export interface BillAccessRequest extends AuthRequest {
   billAccess?: {
     billId: number;
     joinCode: string;
-    via: "owner" | "member" | "joinCode" | "guestBill";
+    via: BillAccessVia;
   };
 }
 
@@ -21,6 +22,9 @@ export interface BillAccessRequest extends AuthRequest {
  *   - the bill is a guest bill (isGuestBill = true, ownerUserId IS NULL)
  *   - the request carries an `X-Join-Code` header matching the bill's joinCode
  *   - the request is authenticated and the user is the bill's owner or member
+ *
+ * A signed-in owner or member is recognised as such even when they also send
+ * the code (the app sends it after its Share screen); see decideBillAccess.
  *
  * The route MUST include a `:billId` parameter.
  */
@@ -48,64 +52,56 @@ export function requireBillAccess(
         return;
       }
 
-      if (bill.isGuestBill && !bill.ownerUserId) {
-        req.billAccess = { billId, joinCode: bill.joinCode, via: "guestBill" };
-        next();
-        return;
-      }
-
-      const rawCode =
+      const code =
         String(req.headers[JOIN_CODE_HEADER] ?? "").trim() ||
         String((req.query as Record<string, string | undefined>)["joinCode"] ?? "").trim();
-      const headerCode = rawCode.toUpperCase();
-      if (headerCode) {
-        if (headerCode === bill.joinCode.toUpperCase()) {
-          req.billAccess = { billId, joinCode: bill.joinCode, via: "joinCode" };
-          next();
-          return;
+
+      // Who the caller is, when they are signed in, whether or not they also
+      // sent the code: see decideBillAccess.
+      let caller: { userId: number; isMember: boolean } | null = null;
+      if (!(bill.isGuestBill && !bill.ownerUserId)) {
+        const auth = getAuth(req);
+        if (auth.userId) {
+          const [user] = await db
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.clerkId, auth.userId))
+            .limit(1);
+          if (user) {
+            req.user = {
+              userId: user.id,
+              email: user.email,
+              firstName: user.firstName ?? null,
+              lastName: user.lastName ?? null,
+            };
+            let isMember = false;
+            if (bill.ownerUserId !== user.id) {
+              const [member] = await db
+                .select()
+                .from(billUsersTable)
+                .where(
+                  and(
+                    eq(billUsersTable.billId, billId),
+                    eq(billUsersTable.userId, user.id),
+                  ),
+                )
+                .limit(1);
+              isMember = !!member;
+            }
+            caller = { userId: user.id, isMember };
+          }
         }
-        res.status(404).json({ error: "Bill not found" });
+      }
+
+      const decision = decideBillAccess(bill, code, caller);
+      if (!decision.ok) {
+        res
+          .status(decision.status)
+          .json({ error: decision.status === 404 ? "Bill not found" : "Forbidden" });
         return;
       }
-
-      const auth = getAuth(req);
-      if (auth.userId) {
-        const [user] = await db
-          .select()
-          .from(usersTable)
-          .where(eq(usersTable.clerkId, auth.userId))
-          .limit(1);
-        if (user) {
-          req.user = {
-            userId: user.id,
-            email: user.email,
-            firstName: user.firstName ?? null,
-            lastName: user.lastName ?? null,
-          };
-          if (bill.ownerUserId === user.id) {
-            req.billAccess = { billId, joinCode: bill.joinCode, via: "owner" };
-            next();
-            return;
-          }
-          const [member] = await db
-            .select()
-            .from(billUsersTable)
-            .where(
-              and(
-                eq(billUsersTable.billId, billId),
-                eq(billUsersTable.userId, user.id),
-              ),
-            )
-            .limit(1);
-          if (member) {
-            req.billAccess = { billId, joinCode: bill.joinCode, via: "member" };
-            next();
-            return;
-          }
-        }
-      }
-
-      res.status(403).json({ error: "Forbidden" });
+      req.billAccess = { billId, joinCode: bill.joinCode, via: decision.via };
+      next();
     } catch {
       res.status(500).json({ error: "Server error" });
     }
