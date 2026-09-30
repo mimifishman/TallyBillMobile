@@ -7,7 +7,7 @@
  * lines repeated by the strip overlap, lines missed, a quantity left in the
  * name, an invented amount.
  */
-import { applyNames, parseNameLines, voteNames } from "../src/lib/receipt-names.ts";
+import { applyNames, parseNameLines, rowShifted, voteNames } from "../src/lib/receipt-names.ts";
 import { applySpelling, parseSpelling, spellingRequest } from "../src/lib/receipt-spelling.ts";
 import { recoverMissedLines, reorderByReaders } from "../src/lib/receipt-recover.ts";
 import { checkAgainstPrintedTotal } from "../src/lib/receipt-line-items.ts";
@@ -245,6 +245,36 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   const free = [{ description: "מים", quantity: 1, unitPrice: 0, total: 0, originalTotal: null, discountLabel: null }];
   check("but it still names a line that was free as printed",
     applyNames(free, [{ name: "מים מינרליים", amount: 0 }]).items[0]!.description === "מים מינרליים");
+}
+
+{
+  // The curled 306 photo, 2026-09-30: main reading right, both readers one row off.
+  const main = normalizeLineItems([
+    { description: "אגרול", quantity: 1, total: 45 },
+    { description: "בקר צ'ילי קראנץ'", quantity: 1, total: 59 },
+    { description: "קונג פאו צ'יקן", quantity: 1, total: 78 },
+    { description: "באו עוף", quantity: 1, total: 67 },
+    { description: "פאד תאי בסגנון הונג קונג", quantity: 1, total: 81 },
+    { description: "שיק פאי", quantity: 1, total: 0, originalTotal: 36 },
+  ]);
+  const gem = [
+    { name: "אגרול", amount: 0 }, { name: "בקר צ'ילי קראנץ'", amount: 45 }, { name: "קונג פאו צ'יקן", amount: 59 },
+    { name: "באו עוף", amount: 78 }, { name: "פד תאי", amount: 67 }, { name: "שרקן פא", amount: 36 },
+  ];
+  check("a reader one row off all the way down is recognised", rowShifted(main, gem));
+  const inStep = [
+    { name: "אגרול", amount: 45 }, { name: "בקר צ'ילי קראנץ'", amount: 59 }, { name: "קונג פאו צ'יקן", amount: 78 },
+    { name: "באו עוף", amount: 67 }, { name: "פד תאי", amount: 81 }, { name: "שיקן פאי", amount: 36 },
+  ];
+  check("a reader in step is not", !rowShifted(main, inStep));
+}
+{
+  // ...but two neighbouring prices swapped by the main reading (FBB4AQ) is not a shift.
+  const main = normalizeLineItems([54, 32, 64, 68, 58, 55, 58, 68, 124].map((total, k) =>
+    ({ description: ["מזטים", "לחמה בעג'ין", "ארנטריב מפורק", "מרגז", "טרטר פילה", "שיפוד פטריות", "שיפוד כרוב", "שיפוד פרגית", "סמאש בורגר"][k]!, quantity: 1, total })));
+  const reader = [54, 32, 64, 58, 68, 55, 58, 68, 124].map((amount, k) =>
+    ({ name: ["מזטים", "לחמה בעג'ין", "ארנטריב מפורק", "מרגז", "טרטר פילה", "שיפוד פטריות", "שיפוד כרוב", "שיפוד פרגית", "סמאש בורגר"][k]!, amount }));
+  check("two swapped prices are not a row shift (the reorder fixes those)", !rowShifted(main, reader));
 }
 
 check("no names -> the bill unchanged", applyNames(gpt4o, []).items === gpt4o);
