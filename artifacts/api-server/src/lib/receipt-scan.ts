@@ -216,6 +216,16 @@ export async function askSpelling(
   return parseSpelling(completion.choices[0]?.message?.content ?? "");
 }
 
+/** How long the other names readers may take once one has answered. */
+const STRAGGLER_GRACE_MS = 3_000;
+
+/**
+ * The longest the Gemini money read may take before gpt-4o reads instead. Its
+ * slowest 5% took 6-10 s on the fixtures; a call Replit's Gemini never answers
+ * otherwise holds the whole scan.
+ */
+const GEMINI_MONEY_TIMEOUT_MS = 9_000;
+
 /** Below this there is no point starting the spelling check. */
 const MIN_SPELLING_MS = 2_500;
 
@@ -322,6 +332,16 @@ function readNames(
   warn: (err: unknown, message: string) => void,
 ): Promise<NamesPick> {
   const deadlineMs = () => Math.max(1, timing.budgetMs - (Date.now() - timing.startedAt));
+  // Once one reader has answered, the others get STRAGGLER_GRACE_MS more.
+  // Replit's Gemini at times does not answer at all (3 calls in 5 hung for a
+  // full minute, 2026-09-30, then answered in 2.5 s), and a scan waited the
+  // whole names budget for it with Claude's reading already in hand.
+  const cancel = new AbortController();
+  outer.addEventListener("abort", () => cancel.abort(), { once: true });
+  let grace: ReturnType<typeof setTimeout> | undefined;
+  const answered = () => {
+    if (!grace) grace = setTimeout(() => cancel.abort(), STRAGGLER_GRACE_MS);
+  };
   return Promise.all(
     readers.map(async (reader): Promise<NamesAnswer | string> => {
       const label = readerLabel(reader);
@@ -331,19 +351,26 @@ function readNames(
         const lines = await askForNames(openai, reader.model, urls, {
           effort: reader.effort,
           deadlineMs: deadlineMs(),
-          signal: outer,
+          signal: cancel.signal,
         });
-        return lines && lines.length > 0 ? { reader, lines } : `${label}:no-answer`;
+        if (lines && lines.length > 0) {
+          answered();
+          return { reader, lines };
+        }
+        return `${label}:no-answer`;
       } catch (err) {
         // Replit's Anthropic integration answered 429 at the same moments as
         // the OpenAI gateway (eval of 2026-09-28), so it counts as the same
         // limit: any 429 rests the names readings.
         noteRateLimit(err);
-        if (!outer.aborted) warn(err, `names reading by ${label} failed`);
-        return `${label}:${failure(err)}`;
+        if (!cancel.signal.aborted) warn(err, `names reading by ${label} failed`);
+        return `${label}:${cancel.signal.aborted && !outer.aborted ? "too-slow" : failure(err)}`;
       }
     }),
-  ).then((results) => ({
+  ).then((results) => {
+    clearTimeout(grace);
+    return results;
+  }).then((results) => ({
     answers: results.filter((r): r is NamesAnswer => typeof r !== "string"),
     skipped: results.filter((r): r is string => typeof r === "string"),
   }));
@@ -385,7 +412,10 @@ export async function scanReceipt(
    */
   const readMoney = async (url: string, opts: CallOptions, note: string): Promise<string> => {
     try {
-      return await askForReceipt(openai, config.model, url, opts);
+      const limit = isGemini(config.model) && config.fallbackModel
+        ? Math.min(opts.deadlineMs ?? Infinity, GEMINI_MONEY_TIMEOUT_MS)
+        : opts.deadlineMs;
+      return await askForReceipt(openai, config.model, url, { ...opts, ...(limit !== undefined ? { deadlineMs: limit } : {}) });
     } catch (err) {
       if (!config.fallbackModel || config.fallbackModel === config.model || opts.signal?.aborted) throw err;
       noteRateLimit(err);
