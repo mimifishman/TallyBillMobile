@@ -177,16 +177,21 @@ export async function geminiGenerate(
 export const isGemini = (model: string) => model.startsWith("gemini-");
 
 /**
- * Our own Google AI Studio key (GEMINI_API_KEY) when there is one, else
- * Replit's Gemini integration. Replit's is shared and rate-limited per
- * project: scans failed with 429s at a few scans a minute on 2026-09-29, on
- * every provider at the same moments. Our own key has its own, higher limits.
+ * Replit's Gemini integration, or our own Google AI Studio key
+ * (GEMINI_API_KEY). Replit's is shared and rate-limited per project: scans
+ * failed with 429s at a few scans a minute on 2026-09-29, on every provider
+ * at the same moments. An own key on a paid tier has its own, higher limits.
  */
 function geminiAccess(): { base: string; headers: Record<string, string> } {
+  // Our own key only when chosen (OCR_GEMINI_SOURCE=own) or when Replit's
+  // integration is missing. Measured 2026-09-30: the free-tier AI Studio key
+  // took 9-17 s for a two-word answer (Google's own server-timing said so),
+  // against about 1 s through Replit's gateway.
   const own = process.env["GEMINI_API_KEY"]?.trim();
-  if (own) return { base: "https://generativelanguage.googleapis.com/v1beta", headers: { "x-goog-api-key": own } };
   const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
   const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
+  const useOwn = own && ((process.env["OCR_GEMINI_SOURCE"] ?? "").trim() === "own" || !key || !base);
+  if (useOwn) return { base: "https://generativelanguage.googleapis.com/v1beta", headers: { "x-goog-api-key": own } };
   if (!key || !base) throw new Error("no Gemini credentials");
   // Replit's proxy adds Google credentials of its own. From 2026-09-30 it
   // refuses a request that also carries x-goog-api-key (401 "API key ... used
