@@ -68,20 +68,24 @@ export function interpretReceipt(parsed: AIReceiptResponse): Reading {
   // bill land on it is taken even when "printedTotal" is the subtotal.
   const totalPayable = normalizePrintedTotal(parsed.totalPayable);
   const claimedDiscount = normalizeBillDiscount(parsed.billDiscount);
-  const billDiscount =
-    shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount, taxAmount) ||
-    (totalPayable !== null && shouldApplyBillDiscount(itemsTotal, totalPayable, claimedDiscount, taxAmount))
-      ? claimedDiscount
-      : null;
+  const byPrinted = shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount, taxAmount);
+  const byPayable = !byPrinted && totalPayable !== null &&
+    shouldApplyBillDiscount(itemsTotal, totalPayable, claimedDiscount, taxAmount);
+  const billDiscount = byPrinted || byPayable ? claimedDiscount : null;
 
   // The receipt's own total, checked against what was read. It cannot fix a
-  // bad scan, but it can say one happened. When "printedTotal" does not agree
-  // but the final amount due does, the bill does agree with the receipt.
-  let check = checkAgainstPrintedTotal(items, printedTotal, billDiscount, taxAmount);
-  if (check.reconciled !== true && totalPayable !== null) {
-    const payable = checkAgainstPrintedTotal(items, totalPayable, billDiscount, taxAmount);
-    if (payable.reconciled === true) check = payable;
-  }
+  // bad scan, but it can say one happened.
+  //
+  // The final amount due stands in for it ONLY when it is what proved the bill
+  // discount. Never otherwise: on a curled photo of the 306 receipt, 2026-09-30,
+  // the header-cut reading lost a line (252.00 of 330.00) and the model gave
+  // its own item sum, 252.00, as "totalPayable". Taken as the check, it said
+  // the bill agreed, so the whole-photo re-read that had every line right was
+  // never used. A figure the model can work out from its own items is not a
+  // check — the same failure as gpt-5.4's invented printedTotal.
+  const check = byPayable
+    ? checkAgainstPrintedTotal(items, totalPayable, billDiscount, taxAmount)
+    : checkAgainstPrintedTotal(items, printedTotal, billDiscount, taxAmount);
 
   return {
     items,

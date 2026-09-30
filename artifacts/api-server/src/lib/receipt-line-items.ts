@@ -99,7 +99,11 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  */
 function itemName(raw: string): string {
   const first = raw.split(/\r?\n/).map((l) => l.trim()).find((l) => l.replace(/^(<<|>>)\s*/, "") !== "") ?? "";
-  return first.replace(/^(<<|>>)\s*/, "").trim();
+  // Options can also come back on the same line: "קונג פאו צ'יקן >> לא חריף".
+  // Such a name looks unlike the names readers' copy of the line, which hid a
+  // row shift from rowShifted on the curled 306 photo (2026-09-30).
+  const item = first.replace(/^(<<|>>)\s*/, "").split(/\s+(?:<<|>>)(?:\s+|$)/)[0] ?? "";
+  return item.trim();
 }
 
 /**

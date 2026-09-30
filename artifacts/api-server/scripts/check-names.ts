@@ -116,6 +116,11 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
   const alone = voteNames(gpt4o, [claude]);
   check("one reader against gpt-4o: the reader wins a tie", alone.items[2]!.description === "מדטים", alone.items[2]);
   check("no readings -> gpt-4o's names", voteNames(gpt4o, []).changed === 0);
+  const garbled = withNames(["בקוך צי'ר' קראנצ'"]);
+  check("a lone reader's name that looks nothing like the line's is not taken",
+    voteNames(gpt4o, [garbled]).items[0]!.description === gpt4o[0]!.description, voteNames(gpt4o, [garbled]).items[0]);
+  const fix = withNames(["עגור קסם"]);
+  check("a lone reader's spelling fix still is", voteNames(gpt4o, [fix]).items[0]!.description === "עגור קסם");
 }
 
 {
@@ -224,6 +229,8 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
     { description: "שיקן פאי", quantity: 1, total: 0, originalTotal: 36, discountLabel: "הנחה 100.00%" },
   ]);
   check("an item's option lines are not part of its name", bill[0]!.description === "אגרול", bill[0]);
+  const inline = normalizeLineItems([{ description: "פד תאי בסגנון הונג קונג >> בקר >> לא חריף", quantity: 1, total: 81 }]);
+  check("options written on the same line are not part of the name either", inline[0]!.description === "פד תאי בסגנון הונג קונג", inline[0]);
   const lines = [{ name: "אגרול", amount: 0 }, { name: "בקר צ'ילי קראנץ'", amount: 59 }, { name: "שיקק פאי", amount: 36 }];
   const out = applyNames(bill, lines);
   check("a printed 0.00 never names a line discounted down to 0.00",
