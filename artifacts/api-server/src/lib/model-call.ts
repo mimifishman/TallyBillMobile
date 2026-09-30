@@ -146,12 +146,13 @@ export async function geminiGenerate(
   parts: unknown[],
   opts: { deadlineMs?: number; signal?: AbortSignal; thinking?: boolean; json?: boolean } = {},
 ): Promise<string> {
-  const { key, base } = geminiAccess();
+  const access = geminiAccess();
+  const { base } = access;
   const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
     .filter((s): s is AbortSignal => s !== undefined);
   const res = await fetch(`${base}/models/${model}:generateContent`, {
     method: "POST",
-    headers: { "x-goog-api-key": key, "content-type": "application/json" },
+    headers: { ...access.headers, "content-type": "application/json" },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts }],
@@ -181,13 +182,17 @@ export const isGemini = (model: string) => model.startsWith("gemini-");
  * project: scans failed with 429s at a few scans a minute on 2026-09-29, on
  * every provider at the same moments. Our own key has its own, higher limits.
  */
-function geminiAccess(): { key: string; base: string } {
+function geminiAccess(): { base: string; headers: Record<string, string> } {
   const own = process.env["GEMINI_API_KEY"]?.trim();
-  if (own) return { key: own, base: "https://generativelanguage.googleapis.com/v1beta" };
+  if (own) return { base: "https://generativelanguage.googleapis.com/v1beta", headers: { "x-goog-api-key": own } };
   const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
   const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
   if (!key || !base) throw new Error("no Gemini credentials");
-  return { key, base };
+  // Replit's proxy adds Google credentials of its own. From 2026-09-30 it
+  // refuses a request that also carries x-goog-api-key (401 "API key ... used
+  // with other authentication credentials"), which silently sent every money
+  // read to the gpt-4o fallback. It accepts the key as a bearer token.
+  return { base, headers: { authorization: `Bearer ${key}` } };
 }
 
 /** An image data URL as Gemini's inline part. */
