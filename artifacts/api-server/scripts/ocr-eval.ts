@@ -329,11 +329,26 @@ interface ScanResult {
  * Settings come from the same environment variables the route reads, with the
  * route's defaults; `--models` replaces only the main reader.
  */
+/**
+ * --app-size: the photo as the app sends it — upright, at most 1800 pixels
+ * wide, JPEG at 0.85 (mobile ScanContext). The fixtures are camera originals,
+ * up to 2.7 MB; preparing one of those took up to 35 s on Replit, 2026-09-30,
+ * which no real scan ever meets.
+ */
+async function asTheAppSends(photo: Buffer): Promise<Buffer> {
+  if (!process.argv.includes("--app-size")) return photo;
+  const sharp = (await import("sharp")).default;
+  const img = sharp(photo, { failOn: "none" }).rotate();
+  const meta = await img.metadata();
+  const upright = (meta.orientation ?? 1) >= 5 ? { w: meta.height ?? 0, h: meta.width ?? 0 } : { w: meta.width ?? 0, h: meta.height ?? 0 };
+  return (upright.w > 1800 ? img.resize({ width: 1800 }) : img).jpeg({ quality: 85 }).toBuffer();
+}
+
 async function scanLocally(file: string, model: string | null): Promise<ScanResult> {
   const env = (name: string, fallback: string) => (process.env[name] ?? fallback).trim();
   const second = env("OCR_SECOND_MODEL", "gpt-5.4");
   const startedAt = Date.now();
-  const { bill, notes } = await scanReceipt(openaiClient(), readFileSync(join(RECEIPTS, file)), {
+  const { bill, notes } = await scanReceipt(openaiClient(), await asTheAppSends(readFileSync(join(RECEIPTS, file))), {
     // Keep in step with the route's defaults, or --local scores a different reader.
     model: model ?? env("OCR_MODEL", "gemini-3.5-flash:none"),
     fallbackModel: env("OCR_FALLBACK_MODEL", "gpt-4o"),
