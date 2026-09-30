@@ -224,6 +224,8 @@ const money = (items: typeof gpt4o) => JSON.stringify(items.map(({ description: 
     { description: "שיקן פאי", quantity: 1, total: 0, originalTotal: 36, discountLabel: "הנחה 100.00%" },
   ]);
   check("an item's option lines are not part of its name", bill[0]!.description === "אגרול", bill[0]);
+  const inline = normalizeLineItems([{ description: "פד תאי בסגנון הונג קונג >> בקר >> לא חריף", quantity: 1, total: 81 }]);
+  check("options written on the same line are not part of the name either", inline[0]!.description === "פד תאי בסגנון הונג קונג", inline[0]);
   const lines = [{ name: "אגרול", amount: 0 }, { name: "בקר צ'ילי קראנץ'", amount: 59 }, { name: "שיקק פאי", amount: 36 }];
   const out = applyNames(bill, lines);
   check("a printed 0.00 never names a line discounted down to 0.00",
