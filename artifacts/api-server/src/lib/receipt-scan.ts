@@ -273,6 +273,13 @@ export function hedged<T>(
   });
 }
 
+/**
+ * How long a cropped reading that agrees with its receipt waits for the
+ * whole-photo one, already running, to check it (see scanReceipt). Both start
+ * together and take about the same time, so it is usually already there.
+ */
+const WHOLE_GRACE_MS = 3_000;
+
 /** How long the other names readers may take once one has answered. */
 const STRAGGLER_GRACE_MS = 3_000;
 
@@ -542,8 +549,35 @@ export async function scanReceipt(
         }
       }
       notes["X-OCR-Uncropped"] = outcome;
-    } else {
-      // The cropped reading is fine; stop paying for the whole-photo one.
+    } else if (wholeCall) {
+      // The cropped reading says it agrees with the receipt — but a reading
+      // can agree with a total it made up. On a curled photo of the 306
+      // receipt (2026-09-30) the header cut sliced off the first item, and
+      // gemini gave its own item sum, 252.00, as the printed total; the
+      // whole-photo reading, already running, had all 6 lines and 330.00.
+      // The cut can only lose lines and never changes the total printed at
+      // the foot, so when the whole-photo reading agrees with the receipt
+      // and finds more lines or a different printed total, it wins. It is
+      // waited for only a little, and never past the budget.
+      const grace = new Promise<null>((r) => setTimeout(() => r(null), Math.max(0, Math.min(WHOLE_GRACE_MS, left() - MIN_SECOND_OPINION_MS))));
+      const settled = await Promise.race([wholeCall, grace]);
+      let outcome = "not-needed";
+      if (!settled) {
+        outcome = "too-slow";
+      } else if (settled.ok && settled.value) {
+        const parsed = parseModelJson(settled.value);
+        if (parsed) {
+          const uncropped = interpretReceipt(parsed);
+          const otherTotal = uncropped.check.printedTotal !== null && first.check.printedTotal !== null &&
+            Math.abs(uncropped.check.printedTotal - first.check.printedTotal) >= 0.005;
+          if (uncropped.check.reconciled === true && (uncropped.items.length > first.items.length || otherTotal)) {
+            outcome = otherTotal ? "used-other-total" : "used-more-lines";
+            dataUrl = wholePrep.dataUrl;
+            first = uncropped;
+          }
+        }
+      }
+      if (outcome !== "not-needed") notes["X-OCR-Uncropped"] = outcome;
       cancelWhole.abort();
     }
 
