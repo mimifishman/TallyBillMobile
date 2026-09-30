@@ -144,9 +144,9 @@ export async function geminiGenerate(
   model: string,
   system: string,
   parts: unknown[],
-  opts: { deadlineMs?: number; signal?: AbortSignal; thinking?: boolean; json?: boolean } = {},
+  opts: { deadlineMs?: number; signal?: AbortSignal; thinking?: boolean; json?: boolean; route?: GeminiRoute } = {},
 ): Promise<string> {
-  const access = geminiAccess();
+  const access = geminiAccess(opts.route);
   const { base } = access;
   const signals = [opts.signal, opts.deadlineMs ? AbortSignal.timeout(Math.max(1, Math.round(opts.deadlineMs))) : undefined]
     .filter((s): s is AbortSignal => s !== undefined);
@@ -176,13 +176,24 @@ export async function geminiGenerate(
 
 export const isGemini = (model: string) => model.startsWith("gemini-");
 
-/** Which way Gemini calls go — "own" key, "replit" gateway, or "none" — for the X-OCR-Gemini note. */
-export function geminiRoute(): "own" | "replit" | "none" {
-  try {
-    return geminiAccess().base.startsWith("https://generativelanguage.googleapis.com") ? "own" : "replit";
-  } catch {
-    return "none";
-  }
+export type GeminiRoute = "own" | "replit";
+
+/** Which way Gemini calls go first — "own" key, "replit" gateway, or "none" — for the X-OCR-Gemini note. */
+export function geminiRoute(): GeminiRoute | "none" {
+  return geminiRoutes()[0] ?? "none";
+}
+
+/**
+ * The ways to Gemini that are configured, preferred first: our own key unless
+ * OCR_GEMINI_SOURCE=replit. Two routes to the same model fail independently —
+ * each has hung for 10-60 s at times the other answered in about a second —
+ * so a slow call on one can be raced on the other (receipt-scan.ts).
+ */
+export function geminiRoutes(): GeminiRoute[] {
+  const own = !!process.env["GEMINI_API_KEY"]?.trim();
+  const replit = !!process.env["AI_INTEGRATIONS_GEMINI_API_KEY"] && !!process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"];
+  const both: GeminiRoute[] = (process.env["OCR_GEMINI_SOURCE"] ?? "").trim() === "replit" ? ["replit", "own"] : ["own", "replit"];
+  return both.filter((r) => (r === "own" ? own : replit));
 }
 
 /**
@@ -191,17 +202,18 @@ export function geminiRoute(): "own" | "replit" | "none" {
  * failed with 429s at a few scans a minute on 2026-09-29, on every provider
  * at the same moments. An own key on a paid tier has its own, higher limits.
  */
-function geminiAccess(): { base: string; headers: Record<string, string> } {
+function geminiAccess(route?: GeminiRoute): { base: string; headers: Record<string, string> } {
   // Our own key whenever it is set, unless OCR_GEMINI_SOURCE=replit. On the
   // free tier it took 9-17 s for a two-word answer; on the paid tier, from
   // 2026-09-30, about 1 s, and all 20 fixtures scored the same both ways
   // (money all right; Hebrew names 137 vs 136 of 142; p95 11.0 vs 11.7 s).
-  const own = process.env["GEMINI_API_KEY"]?.trim();
-  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
-  const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]?.replace(/\/$/, "");
-  const useOwn = own && ((process.env["OCR_GEMINI_SOURCE"] ?? "").trim() !== "replit" || !key || !base);
-  if (useOwn) return { base: "https://generativelanguage.googleapis.com/v1beta", headers: { "x-goog-api-key": own } };
-  if (!key || !base) throw new Error("no Gemini credentials");
+  const pick = route ?? geminiRoutes()[0];
+  if (!pick) throw new Error("no Gemini credentials");
+  if (pick === "own") {
+    return { base: "https://generativelanguage.googleapis.com/v1beta", headers: { "x-goog-api-key": process.env["GEMINI_API_KEY"]!.trim() } };
+  }
+  const key = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"]!;
+  const base = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"]!.replace(/\/$/, "");
   // Replit's proxy adds Google credentials of its own. From 2026-09-30 it
   // refuses a request that also carries x-goog-api-key (401 "API key ... used
   // with other authentication credentials"), which silently sent every money

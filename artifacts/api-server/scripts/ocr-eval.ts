@@ -366,6 +366,9 @@ function describeNotes(get: (name: string) => string | null): string | null {
     get("X-OCR-Recovered") ? `recovered:${get("X-OCR-Recovered")}` : null,
     get("X-OCR-Reordered") ? `reordered:${get("X-OCR-Reordered")}` : null,
     get("X-OCR-Fallback") ? `fallback:${get("X-OCR-Fallback")}` : null,
+    get("X-OCR-Hedge") ? `hedge:${get("X-OCR-Hedge")}` : null,
+    get("X-OCR-Uncropped-Hedge") ? `whole-hedge:${get("X-OCR-Uncropped-Hedge")}` : null,
+    get("X-OCR-Uncropped-Fallback") ? `whole-fallback:${get("X-OCR-Uncropped-Fallback")}` : null,
   ].filter(Boolean).join(" ") || null;
 }
 

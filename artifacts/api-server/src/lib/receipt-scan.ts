@@ -24,7 +24,7 @@
  * second opinion.
  */
 import type OpenAI from "openai";
-import { chatCompletion, claudeMessage, geminiGenerate, geminiImage, geminiRoute, isClaude, isGemini, RECEIPT_TOKEN_CEILING } from "./model-call";
+import { chatCompletion, claudeMessage, geminiGenerate, geminiImage, geminiRoute, geminiRoutes, isClaude, isGemini, RECEIPT_TOKEN_CEILING, type GeminiRoute } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
 import { applyNames, NAMES_PROMPT, parseNameLines, rowShifted, voteNames, type NameLine } from "./receipt-names";
@@ -117,6 +117,8 @@ interface CallOptions {
   effort?: Effort | null;
   deadlineMs?: number;
   signal?: AbortSignal;
+  /** For a Gemini model: which way to it. Left out, the preferred one. */
+  route?: GeminiRoute;
 }
 
 /**
@@ -214,6 +216,61 @@ export async function askSpelling(
     requestOptions(opts),
   );
   return parseSpelling(completion.choices[0]?.message?.content ?? "");
+}
+
+/**
+ * When a Gemini money read on the preferred route has not answered, the same
+ * read also starts on the other route; the first answer is used. On
+ * 2026-09-30 the own-key route took over 9 s on 5 reads of 40 in one eval —
+ * gpt-4o then stood in and missed two discounts it always misses — while
+ * each route on its own answers most reads in 3-6 s.
+ */
+const GEMINI_HEDGE_MS = 5_000;
+
+/**
+ * The same call on each route, the next one starting `hedgeMs` after the one
+ * before if nothing has answered; the first answer wins and the rest are
+ * cancelled. Each route gets `limitMs` from its own start. Rejects with the
+ * last failure when every route failed.
+ */
+export function hedged<T>(
+  call: (route: GeminiRoute, signal: AbortSignal, deadlineMs: number) => Promise<T>,
+  routes: GeminiRoute[],
+  timing: { limitMs: number; hedgeMs: number; signal?: AbortSignal },
+  onHedgeWin: (route: GeminiRoute) => void,
+): Promise<T> {
+  const cancel = new AbortController();
+  timing.signal?.addEventListener("abort", () => cancel.abort(), { once: true });
+  return new Promise<T>((resolve, reject) => {
+    let running = 0, next = 0, done = false, lastError: unknown = new Error("no Gemini route");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => {
+      if (done || next >= routes.length) return;
+      const k = next++;
+      const route = routes[k]!;
+      running++;
+      if (next < routes.length) timer = setTimeout(start, timing.hedgeMs);
+      call(route, cancel.signal, timing.limitMs).then(
+        (value) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          cancel.abort();
+          if (k > 0) onHedgeWin(route);
+          resolve(value);
+        },
+        (err: unknown) => {
+          running--;
+          lastError = err;
+          if (done) return;
+          // A route that failed outright hands over at once, not at the hedge mark.
+          if (next < routes.length) { clearTimeout(timer); start(); return; }
+          if (running === 0) { done = true; reject(lastError); }
+        },
+      );
+    };
+    start();
+  });
 }
 
 /** How long the other names readers may take once one has answered. */
@@ -416,7 +473,16 @@ export async function scanReceipt(
       const limit = isGemini(config.model) && config.fallbackModel
         ? Math.min(opts.deadlineMs ?? Infinity, GEMINI_MONEY_TIMEOUT_MS)
         : opts.deadlineMs;
-      return await askForReceipt(openai, config.model, url, { ...opts, ...(limit !== undefined ? { deadlineMs: limit } : {}) });
+      const routes = isGemini(config.model) ? geminiRoutes() : [];
+      if (routes.length < 2) {
+        return await askForReceipt(openai, config.model, url, { ...opts, ...(limit !== undefined ? { deadlineMs: limit } : {}) });
+      }
+      return await hedged(
+        (route, signal, deadlineMs) => askForReceipt(openai, config.model, url, { ...opts, route, signal, deadlineMs }),
+        routes,
+        { limitMs: limit ?? GEMINI_MONEY_TIMEOUT_MS, hedgeMs: GEMINI_HEDGE_MS, signal: opts.signal },
+        (route) => { notes[`${note.replace("Fallback", "Hedge")}`] = `${route}:used`; },
+      );
     } catch (err) {
       if (!config.fallbackModel || config.fallbackModel === config.model || opts.signal?.aborted) throw err;
       noteRateLimit(err);
