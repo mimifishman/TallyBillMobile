@@ -249,5 +249,23 @@ check("JSON inside prose is found", parseModelJson('here: {"items":[]} done')?.i
 check("no JSON is null, not a throw", parseModelJson("sorry, I cannot read that") === null);
 check("broken JSON is null, not a throw", parseModelJson("{ items: [ }") === null);
 
+{
+  // NY check-level discount, gemini via the Gemini API: printedTotal came back
+  // as the pre-discount subtotal. The final amount due proves the discount.
+  const items = [18, 9, 17, 19, 16, 14, 11].map((total, k) => ({ description: `dish ${k}`, quantity: 1, total }));
+  const r = interpretReceipt({ items, printedTotal: 104, billDiscount: 15.6, taxAmount: 7.85, totalPayable: 96.25 });
+  check("a bill discount proven by the final amount due is taken", r.billDiscount === 15.6, r.billDiscount);
+  check("and the bill agrees with the receipt", r.check.reconciled === true, r.check);
+  const old = interpretReceipt({ items, printedTotal: 104, billDiscount: 15.6, taxAmount: 7.85 });
+  check("without the final amount due it is still refused (as before)", old.billDiscount === null, old.billDiscount);
+  const restated = interpretReceipt({
+    items: [{ description: "a", quantity: 1, total: 40, originalTotal: 50 }, { description: "b", quantity: 1, total: 60, originalTotal: 70 }],
+    printedTotal: 100, billDiscount: 20, taxAmount: 8, totalPayable: 108,
+  });
+  check("a footer that restates line discounts is still not taken twice", restated.billDiscount === null, restated.billDiscount);
+  const short = interpretReceipt({ items: items.slice(1), printedTotal: 104, billDiscount: 15.6, taxAmount: 7.85, totalPayable: 96.25 });
+  check("a bill missing a line still does not agree", short.check.reconciled === false, short.check);
+}
+
 console.log(failed === 0 ? "\nall good" : `\n${failed} failing`);
 process.exit(failed === 0 ? 0 : 1);

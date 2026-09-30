@@ -21,6 +21,7 @@ Return ONLY valid JSON with this exact structure:
   ],
   "billDiscount": null,
   "printedTotal": 19.96,
+  "totalPayable": 21.46,
   "taxAmount": 1.50,
   "tipAmount": null,
   "currency": "USD"
@@ -53,6 +54,7 @@ Rules:
   A receipt often has a card-terminal slip printed below it, repeating the amount under its own headings — a cash price, an amount tendered, change, EMV codes. That is a second document. None of its figures describe the items: a lower "cash price" is not a discount, and "TIP/CHNG" is change rather than a gratuity.
   NEVER use a figure that has tax, a service charge or a tip ADDED ON TOP of the items — on a US receipt that is the "TOTAL" line, and the subtotal printed above it is the one to use. This does NOT apply where the prices already include the tax: on a French "TOTAL TTC" or an Israeli VAT-inclusive receipt nothing was added on top, so that total IS the item sum and IS the figure to use. Never use a card-payment, amount-received or change-due line. Beware a receipt for one person's share of a split table — the payable amount there covers only part of the items, so it is not the figure to use.
   Use null if the receipt genuinely does not print one. Never guess it.
+- "totalPayable" is the final amount due for the whole bill as printed — usually the last total line, such as "TOTAL", "סה\"כ לתשלום" or "TOTAL TTC": after every discount, and including any tax or service charge the receipt adds. If a tip line is printed, take the figure before the tip. Read it off the receipt, never work it out; use null if none is printed. Return it even when it is the same figure as "printedTotal" — it is a second, independent check.
 - A discount is any line with a negative amount, or any line labelled as a discount, promotion, happy hour, loyalty, member price, or a percentage off. In Hebrew it is usually "הנחה".
 - CASE 1 — a discount printed directly BELOW a purchased item, usually with nothing in the quantity column, belongs to that item. Fold it in: "total" becomes the amount actually charged, "originalTotal" is the amount before the discount, and "discountLabel" is the discount's printed wording.
   Example: "1  Caesar Salad  57.00" followed by "25% Happy Hour  -14.00" is ONE item — total 43.00, originalTotal 57.00, discountLabel "25% Happy Hour".

@@ -21,6 +21,8 @@ export interface AIReceiptResponse {
   items?: RawLineItem[];
   billDiscount?: number | null;
   printedTotal?: number | null;
+  /** The final amount due, as printed: after discounts, with any tax added. */
+  totalPayable?: number | null;
   taxAmount?: unknown;
   tipAmount?: unknown;
   currency?: string | null;
@@ -56,17 +58,35 @@ export function interpretReceipt(parsed: AIReceiptResponse): Reading {
   // A footer discount is only passed on when taking it off is what agrees with
   // the receipt's own total. Otherwise it is the receipt restating a saving
   // already inside the line totals, and applying it would undercharge.
+  //
+  // Either printed figure may be the proof. Which one a model returns as
+  // "printedTotal" is not stable: on a NY receipt with a check-level discount
+  // and only a taxed TOTAL after it, gemini-3.5-flash returned the pre-discount
+  // subtotal 3 times in 4 through the Gemini API and the TOTAL 4 in 4 through
+  // Vertex — the same model build, a prompt one token apart (2026-09-30). So
+  // the final amount due is asked for as well, and a discount that makes the
+  // bill land on it is taken even when "printedTotal" is the subtotal.
+  const totalPayable = normalizePrintedTotal(parsed.totalPayable);
   const claimedDiscount = normalizeBillDiscount(parsed.billDiscount);
-  const billDiscount = shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount, taxAmount)
-    ? claimedDiscount
-    : null;
+  const billDiscount =
+    shouldApplyBillDiscount(itemsTotal, printedTotal, claimedDiscount, taxAmount) ||
+    (totalPayable !== null && shouldApplyBillDiscount(itemsTotal, totalPayable, claimedDiscount, taxAmount))
+      ? claimedDiscount
+      : null;
+
+  // The receipt's own total, checked against what was read. It cannot fix a
+  // bad scan, but it can say one happened. When "printedTotal" does not agree
+  // but the final amount due does, the bill does agree with the receipt.
+  let check = checkAgainstPrintedTotal(items, printedTotal, billDiscount, taxAmount);
+  if (check.reconciled !== true && totalPayable !== null) {
+    const payable = checkAgainstPrintedTotal(items, totalPayable, billDiscount, taxAmount);
+    if (payable.reconciled === true) check = payable;
+  }
 
   return {
     items,
     billDiscount,
-    // The receipt's own total, checked against what was read. It cannot fix a
-    // bad scan, but it can say one happened.
-    check: checkAgainstPrintedTotal(items, printedTotal, billDiscount, taxAmount),
+    check,
     // The app adds these to the bill and formats them with .toFixed(2).
     taxAmount,
     tipAmount: normalizeReceiptAmount(parsed.tipAmount),
