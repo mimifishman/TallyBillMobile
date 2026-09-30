@@ -27,7 +27,7 @@ import type OpenAI from "openai";
 import { chatCompletion, claudeMessage, geminiGenerate, geminiImage, isClaude, isGemini, RECEIPT_TOKEN_CEILING } from "./model-call";
 import { OCR_PROMPT } from "./receipt-prompt";
 import { receiptDataUrl, receiptStrips } from "./receipt-image";
-import { applyNames, NAMES_PROMPT, parseNameLines, voteNames, type NameLine } from "./receipt-names";
+import { applyNames, NAMES_PROMPT, parseNameLines, rowShifted, voteNames, type NameLine } from "./receipt-names";
 import { recoverMissedLines, reorderByReaders } from "./receipt-recover";
 import { applySpelling, parseSpelling, SPELLING_PROMPT, spellingRequest, type SpellingLine } from "./receipt-spelling";
 import {
@@ -485,7 +485,13 @@ export async function scanReceipt(
     // only their words change.
     if (namesBlock) notes["X-OCR-Names"] = namesBlock;
     if (namesPick) {
-      const { answers, skipped } = await namesPick;
+      const { answers: heard, skipped } = await namesPick;
+      // A reader that read every row one off is not used at all.
+      const answers = heard.filter(({ reader, lines }) => {
+        if (!rowShifted(bill.items, lines)) return true;
+        skipped.push(`${readerLabel(reader)}:row-shifted`);
+        return false;
+      });
 
       // A line gpt-4o missed, put back only when the printed total proves it.
       // Before the names go on, so the new line gets its name voted like any other.

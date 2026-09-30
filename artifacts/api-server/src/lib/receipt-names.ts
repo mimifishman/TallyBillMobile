@@ -257,3 +257,37 @@ export function voteNames(
   });
   return { items, changed, candidates, agreed };
 }
+
+/**
+ * Is this names reading off by one row, all the way down?
+ *
+ * On a curled photo of the 306 receipt (2026-09-30) the paper sloped, each
+ * price sat a row below its name, and both strip readers paired every name
+ * with the price one row up: "בקר צ'ילי קראנץ'" at 45.00, the egg roll's
+ * price. The main reading, from the whole photo, had every row right, and two
+ * shifted readers outvoted it.
+ *
+ * A shift is told apart from a local swap (reorderByReaders) by how many lines
+ * it touches: each reader line is matched to the main reading's line with the
+ * same name, and its amount then fits either that line (in step), or the line
+ * next to it (shifted). Shifted on at least two lines and on more lines than
+ * in step: the reader read the rows wrong, and none of its lines is used.
+ */
+export function rowShifted(items: LineItem[], lines: NameLine[]): boolean {
+  let inStep = 0, shifted = 0, from = 0;
+  for (const line of lines) {
+    let best = -1, bestLike = SHIFT_LIKE;
+    for (let i = from; i < items.length; i++) {
+      const like = similarity(foldForVote(items[i]!.description), foldForVote(withoutQuantity(line.name, items[i]!.quantity)));
+      if (like >= bestLike) { best = i; bestLike = like; }
+    }
+    if (best < 0) continue;
+    from = best + 1;
+    if (amountFits(items[best]!, line.amount)) inStep++;
+    else if ([best - 1, best + 1].some((k) => items[k] && amountFits(items[k]!, line.amount))) shifted++;
+  }
+  return shifted >= 2 && shifted > inStep;
+}
+
+/** How like the main reading's name a reader's name must be to count as the same line. */
+const SHIFT_LIKE = 0.7;
