@@ -48,7 +48,10 @@ function ClassicTabLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primaryText,
         tabBarInactiveTintColor: colors.mutedForeground,
-        headerShown: true,
+        // Every tab screen draws its own header under the safe-area inset.
+        // A navigator header on top added a second, plain title bar that
+        // stayed white in dark mode (seen on Android; iOS 26 uses NativeTabs).
+        headerShown: false,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
           fontSize: 11,
@@ -126,7 +129,9 @@ function ClassicTabLayout() {
         name="circles"
         options={{
           title: "My Circles",
-          tabBarButton: user ? undefined : () => null,
+          // href: null removes the tab. A tabBarButton that renders null
+          // still keeps its slot on Android, leaving a gap in the tab bar.
+          href: user ? undefined : null,
           tabBarIcon: ({ color, focused }) => (
             <View style={styles.iconWrap}>
               {isIOS ? (
