@@ -17,7 +17,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl, setExtraHeadersGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { billIdFromUrl, getBillCode } from "@/lib/billCodeStore";
 import { getOrCreateGuestOwnerId, getCachedGuestOwnerId } from "@/utils/guestBillStore";
 
@@ -116,6 +116,20 @@ const envStyles = StyleSheet.create({
   footer: { fontSize: 13, lineHeight: 20, color: "#5B6779", marginTop: 24 },
 });
 
+/**
+ * Keeps the splash up until we know who the user is, so launch goes straight
+ * from the splash to the right screen. Hiding it as soon as fonts loaded
+ * showed a blank screen while Clerk loaded, then the welcome screen, then a
+ * jump to login.
+ */
+function HideSplashWhenReady() {
+  const { isLoading } = useAuth();
+  useEffect(() => {
+    if (!isLoading) SplashScreen.hideAsync();
+  }, [isLoading]);
+  return null;
+}
+
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -135,9 +149,16 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (!fontsLoaded && !fontError) return;
+    // HideSplashWhenReady normally hides the splash. The misconfigured-build
+    // screen never mounts it, and if Clerk can't load we'd rather show the
+    // app than a splash forever, so fall back after a few seconds.
+    if (missingEnv.length > 0) {
       SplashScreen.hideAsync();
+      return;
     }
+    const fallback = setTimeout(() => SplashScreen.hideAsync(), 6000);
+    return () => clearTimeout(fallback);
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
@@ -156,6 +177,7 @@ export default function RootLayout() {
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
+                <HideSplashWhenReady />
                 <GestureHandlerRootView>
                   <KeyboardProvider>
                     <RootLayoutNav />

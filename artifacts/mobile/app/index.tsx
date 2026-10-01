@@ -49,7 +49,9 @@ export default function IndexScreen() {
     setShowNamePrompt(false);
   };
 
-  if (isLoading) {
+  // While loading, and while the effect above sends a signed-out user to
+  // login, show the spinner rather than flashing the welcome screen.
+  if (isLoading || (!user && !isGuest)) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primaryText} />
