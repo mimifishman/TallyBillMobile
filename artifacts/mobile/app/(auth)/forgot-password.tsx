@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -61,6 +62,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <View style={styles.flex}>
+      <StatusBar style="light" />
       <LinearGradient colors={colors.gradientPrimary} style={styles.gradient}>
         <View style={{ height: insets.top + 16 }} />
         <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Go back">
