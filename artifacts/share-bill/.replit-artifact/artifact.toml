@@ -27,6 +27,13 @@ serve = "static"
 from = "/.well-known/apple-app-site-association"
 to = "/apple-app-site-association.json"
 
+# Android reads this file to verify tallybill.app links (autoVerify), so
+# /b/ links open the app instead of the browser. The fingerprint is the
+# EAS release signing key for app.tallybill.
+[[services.production.rewrites]]
+from = "/.well-known/assetlinks.json"
+to = "/assetlinks.json"
+
 [[services.production.rewrites]]
 from = "/b/*"
 to = "/app.html"

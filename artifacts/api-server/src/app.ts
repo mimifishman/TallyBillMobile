@@ -104,8 +104,8 @@ app.get(
 //
 // Set ANDROID_SHA256_CERT env var before publishing to the Play Store.
 // Multiple fingerprints can be listed (upload key + app signing key).
-const ANDROID_PACKAGE = "com.tallybill.mobile";
-const ANDROID_SHA256_CERT = process.env.ANDROID_SHA256_CERT ?? "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
+const ANDROID_PACKAGE = "app.tallybill";
+const ANDROID_SHA256_CERT = process.env.ANDROID_SHA256_CERT ?? "FF:65:80:B4:C5:1B:DA:CB:42:57:22:75:8C:5E:CD:FD:28:66:24:21:19:8B:58:1B:0F:EA:62:47:62:F5:ED:19";
 
 app.get(
   "/.well-known/assetlinks.json",

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.tallybill",
+      "sha256_cert_fingerprints": [
+        "FF:65:80:B4:C5:1B:DA:CB:42:57:22:75:8C:5E:CD:FD:28:66:24:21:19:8B:58:1B:0F:EA:62:47:62:F5:ED:19"
+      ]
+    }
+  }
+]
