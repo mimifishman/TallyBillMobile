@@ -3,6 +3,7 @@ import { useAuth as useClerkAuth, useSSO, useSignUp } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { Redirect, router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -242,6 +243,7 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.flex}>
+      <StatusBar style="light" />
       <LinearGradient colors={colors.gradientPrimary} style={styles.gradient}>
         <View style={{ height: insets.top + 16 }} />
         <TouchableOpacity style={styles.backBtnGradient} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Go back">
