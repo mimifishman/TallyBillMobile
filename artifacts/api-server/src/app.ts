@@ -102,10 +102,21 @@ app.get(
 // The fingerprint format is colon-separated hex bytes, e.g.:
 //   "AB:CD:EF:..."
 //
-// Set ANDROID_SHA256_CERT env var before publishing to the Play Store.
-// Multiple fingerprints can be listed (upload key + app signing key).
+// Play re-signs the app with Google's own key, so list both: the EAS upload
+// key and Google's app-signing key (Play Console → Test and release → App
+// integrity → App signing). ANDROID_SHA256_CERTS overrides, comma-separated.
+// The live copy is artifacts/share-bill/public/assetlinks.json; keep both equal.
 const ANDROID_PACKAGE = "app.tallybill";
-const ANDROID_SHA256_CERT = process.env.ANDROID_SHA256_CERT ?? "FF:65:80:B4:C5:1B:DA:CB:42:57:22:75:8C:5E:CD:FD:28:66:24:21:19:8B:58:1B:0F:EA:62:47:62:F5:ED:19";
+const ANDROID_SHA256_CERTS = (
+  process.env.ANDROID_SHA256_CERTS ??
+  [
+    "FF:65:80:B4:C5:1B:DA:CB:42:57:22:75:8C:5E:CD:FD:28:66:24:21:19:8B:58:1B:0F:EA:62:47:62:F5:ED:19", // EAS upload key
+    "PASTE_GOOGLE_PLAY_APP_SIGNING_SHA256_HERE", // Google Play app signing
+  ].join(",")
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 app.get(
   "/.well-known/assetlinks.json",
@@ -117,7 +128,7 @@ app.get(
         target: {
           namespace: "android_app",
           package_name: ANDROID_PACKAGE,
-          sha256_cert_fingerprints: [ANDROID_SHA256_CERT],
+          sha256_cert_fingerprints: ANDROID_SHA256_CERTS,
         },
       },
     ]);
