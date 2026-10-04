@@ -347,6 +347,7 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemTotal, setNewItemTotal] = useState("");
   const [newItemQty, setNewItemQty] = useState("1");
+  const [newItemRate, setNewItemRate] = useState("");
 
   const [splitLineId, setSplitLineId] = useState<number | null>(null);
   const [splitQtyInput, setSplitQtyInput] = useState("");
@@ -502,19 +503,35 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
     setShowAddPerson(false);
   };
 
+  // A discount on a new item, read as on the item editor: the price is the
+  // FULL price and the rate comes off it.
+  const newItemFull = parseFloat(newItemTotal.replace(",", ".")) || 0;
+  const newItemRateRaw = newItemRate.trim() === "" ? 0 : Number(newItemRate.replace(",", "."));
+  const newItemRateError =
+    !Number.isFinite(newItemRateRaw) || newItemRateRaw < 0 || newItemRateRaw > 100 ? "0 to 100" : null;
+  const newItemOff = newItemRateError || newItemRateRaw <= 0 || newItemFull <= 0
+    ? 0
+    : Math.round(newItemFull * (newItemRateRaw / 100) * 100) / 100;
+  const newItemPays = Math.round((newItemFull - newItemOff) * 100) / 100;
+
   const handleAddItem = () => {
     const desc = newItemDesc.trim();
-    if (!desc) return;
-    const total = parseFloat(newItemTotal) || 0;
+    if (!desc || newItemRateError) return;
     const quantity = Math.max(1, parseFloat(newItemQty) || 1);
-    const unitPrice = quantity > 0 ? total / quantity : total;
     addLine.mutate({
       billId,
-      data: { description: desc, quantity, unitPrice, total },
+      data: {
+        description: desc,
+        quantity,
+        unitPrice: newItemPays / quantity,
+        total: newItemPays,
+        originalTotal: newItemOff > 0 ? newItemFull : null,
+      },
     });
     setNewItemDesc("");
     setNewItemTotal("");
     setNewItemQty("1");
+    setNewItemRate("");
     setShowAddItem(false);
   };
 
@@ -922,6 +939,22 @@ function BillView({ data, onChange }: { data: BillDetail; onChange: () => void }
                 className="w-full border-2 border-border rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <label htmlFor="new-item-rate" className="text-muted-foreground">Discount</label>
+            <input
+              id="new-item-rate"
+              value={newItemRate}
+              onChange={(e) => setNewItemRate(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+              inputMode="decimal"
+              placeholder="0"
+              className={`w-16 border-2 rounded-lg px-2 py-2 text-base text-center focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring ${newItemRateError ? "border-destructive" : "border-border"}`}
+            />
+            <span className="text-muted-foreground">%</span>
+            <span className={`ml-auto text-sm font-medium whitespace-nowrap ${newItemRateError ? "text-destructive" : "text-primary-text"}`}>
+              {newItemRateError ?? (newItemOff > 0 ? `you pay ${fmt(newItemPays)}` : "")}
+            </span>
           </div>
           <ModalButtons
             onCancel={() => setShowAddItem(false)}
