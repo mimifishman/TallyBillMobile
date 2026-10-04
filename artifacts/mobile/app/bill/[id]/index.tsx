@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
+import { ReviewItemSheet, type ReviewItemValues } from "@/components/ReviewItemSheet";
 import { BottomSheet } from "@/components/BottomSheet";
 import { PressableScale } from "@/components/PressableScale";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
@@ -55,7 +56,7 @@ import { TaxTipField } from "@/components/TaxTipField";
 import { DiscountSheet, type DiscountLineInput, type DiscountResult } from "@/components/DiscountSheet";
 import { totalDiscount } from "@/utils/discount";
 import { amountFromPercent, fmtPct, toPercent, type MoneyMode } from "@/utils/taxTip";
-import { getCurrencySymbol, formatMoney } from "@/utils/currency";
+import { formatMoney } from "@/utils/currency";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { DateField } from "@/components/DateField";
 import { confirmDeleteBill } from "@/utils/confirmDeleteBill";
@@ -93,9 +94,6 @@ export default function BillDetailScreen() {
   const [showCirclePicker, setShowCirclePicker] = useState(false);
   const [addingFromCircleId, setAddingFromCircleId] = useState<number | null>(null);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [newItemDesc, setNewItemDesc] = useState("");
-  const [newItemTotal, setNewItemTotal] = useState("");
-  const [newItemQty, setNewItemQty] = useState("1");
   const [showEditHeader, setShowEditHeader] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
@@ -560,19 +558,21 @@ export default function BillDetailScreen() {
     }
   };
 
-  const handleAddItem = () => {
-    if (!newItemDesc.trim()) return;
+  // The same sheet the review screen uses, so an item added by hand can carry
+  // a discount too; sent as handleUpdateLine sends an edit.
+  const handleAddItem = (values: ReviewItemValues) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const qty = Math.max(1, parseInt(newItemQty) || 1);
-    const total = parseFloat(newItemTotal) || 0;
-    const unitPrice = total / qty;
+    const charged = Math.round((values.total - values.discountAmount) * 100) / 100;
     addLineMutation.mutate({
       billId,
-      data: { description: newItemDesc.trim(), quantity: qty, unitPrice, total },
+      data: {
+        description: values.name,
+        quantity: values.quantity,
+        unitPrice: charged / (values.quantity || 1),
+        total: charged,
+        originalTotal: values.discountAmount > 0 ? values.total : null,
+      },
     });
-    setNewItemDesc("");
-    setNewItemTotal("");
-    setNewItemQty("1");
     setShowAddItem(false);
   };
 
@@ -725,7 +725,6 @@ export default function BillDetailScreen() {
   const canEditHeader = canEdit;
   const canRemoveFromList = !isOwner && !isGuestOwner && (!!isMember || guestHasBill);
 
-  const currencySymbol = getCurrencySymbol(bill.currency);
   const fmt = (n: number) => formatMoney(n, bill.currency);
 
   /** What is actually owed for the items: each line's total is already net. */
@@ -1343,56 +1342,13 @@ export default function BillDetailScreen() {
             </View>
       </BottomSheet>
 
-      <BottomSheet visible={showAddItem} onClose={() => setShowAddItem(false)} title="Add Item">
-        <View style={styles.sheetContent}>
-            <AutoFocusTextInput
-              style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted }]}
-              placeholder="e.g. Spicy tuna roll, dessert, drinks"
-              placeholderTextColor={colors.mutedForeground}
-              value={newItemDesc}
-              onChangeText={setNewItemDesc}
-              autoFocus
-              returnKeyType="next"
-            />
-            <View style={styles.addItemAmountRow}>
-              <View style={styles.addItemQtyWrap}>
-                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>QTY</Text>
-                <TextInput
-                  style={[styles.sheetInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, textAlign: "center" }]}
-                  placeholder="1"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={newItemQty}
-                  onChangeText={setNewItemQty}
-                  keyboardType="number-pad"
-                />
-              </View>
-              <View style={styles.addItemTotalWrap}>
-                <Text style={[styles.sheetFieldLabel, { color: colors.mutedForeground }]}>TOTAL AMOUNT</Text>
-                <View style={[styles.amountInputWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                  {currencySymbol ? (
-                    <Text style={[styles.amountPrefix, { color: colors.mutedForeground }]}>{currencySymbol}</Text>
-                  ) : null}
-                  <TextInput
-                    style={[styles.amountInput, { color: colors.foreground }]}
-                    placeholder="0.00"
-                    placeholderTextColor={colors.mutedForeground}
-                    value={newItemTotal}
-                    onChangeText={setNewItemTotal}
-                    keyboardType="decimal-pad"
-                    returnKeyType="done"
-                    onSubmitEditing={handleAddItem}
-                  />
-                </View>
-              </View>
-            </View>
-            <PressableScale onPress={handleAddItem} style={[styles.sheetPrimaryBtn, { backgroundColor: colors.primary }]}>
-              <Text style={styles.sheetPrimaryBtnText}>Add Item</Text>
-            </PressableScale>
-            <TouchableOpacity onPress={() => setShowAddItem(false)} style={styles.sheetCancelBtn}>
-              <Text style={[styles.sheetCancelBtnText, { color: colors.mutedForeground }]}>Nevermind</Text>
-            </TouchableOpacity>
-          </View>
-      </BottomSheet>
+      <ReviewItemSheet
+        visible={showAddItem}
+        mode="add"
+        initial={null}
+        onSave={handleAddItem}
+        onClose={() => setShowAddItem(false)}
+      />
 
       {(scan.status === "scanning" || scan.status === "ready" || scan.status === "error") && scan.billId === billId && (
         <TouchableOpacity
@@ -1670,19 +1626,6 @@ const styles = StyleSheet.create({
   editableRow: { paddingVertical: SPACING.sm, minHeight: 44 },
   taxTipSubtotal: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   taxTipTotal: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  addItemAmountRow: { flexDirection: "row", gap: SPACING.md, alignItems: "flex-end" },
-  addItemQtyWrap: { width: 80 },
-  addItemTotalWrap: { flex: 1 },
-  amountInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.lg,
-    gap: 6,
-  },
-  amountPrefix: { fontSize: FONT_SIZE.body, fontFamily: "Inter_600SemiBold" },
-  amountInput: { flex: 1, paddingVertical: 14, fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular" },
   splitHint: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 }, // TODO: one-off
   scanBanner: {
     position: "absolute",
