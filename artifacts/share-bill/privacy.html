@@ -63,7 +63,7 @@
   <header>
     <p class="brand">TallyBill</p>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: August 26, 2026</p>
+    <p class="updated">Last updated: October 4, 2026</p>
   </header>
 
   <p class="lede">TallyBill scans restaurant receipts and splits them between people. This policy explains what the app collects, who it is shared with, how long it is kept, and how to delete it.</p>
@@ -80,6 +80,7 @@
     <tr><td>Receipt photographs</td><td>To read the line items, prices and totals off your receipt.</td></tr>
     <tr><td>Bill contents</td><td>Bill names, item names, prices, the names you give people on a bill, and the amounts each person owes.</td></tr>
     <tr><td>Approximate country</td><td>Determined from your network address to pick a sensible default currency. Not stored, and not associated with your account.</td></tr>
+    <tr><td>Network address and a random guest ID</td><td>To limit how many receipts one phone or one network can scan in an hour and in a day. Kept only as a counter, deleted within about a day, and not associated with your name or email address.</td></tr>
   </table>
 
   <p>We do not collect your precise location, your contacts, your browsing or search history, or usage analytics. TallyBill contains no advertising and no advertising or analytics SDKs. <strong>We do not sell or share your data, and we do not use it for tracking or advertising.</strong></p>
@@ -89,13 +90,13 @@
   <ul>
     <li><strong>Clerk</strong> handles registration, sign-in and session management. Your name, email address and credentials are held by Clerk.</li>
     <li><strong>Replit</strong> hosts the TallyBill server and database, and operates the AI gateway that receipt scanning runs through. Receipt photographs pass through Replit on their way to the vision model.</li>
-    <li><strong>OpenAI</strong> supplies the vision model (GPT-4o) that reads the line items, prices and totals off your receipt, and that translates item names when you ask it to. Your receipt photograph is sent to it for that purpose and for no other.</li>
+    <li><strong>OpenAI</strong>, <strong>Google</strong> (Gemini) and <strong>Anthropic</strong> (Claude) supply the AI models that read the line items, prices and totals off your receipt, and that translate item names when you ask them to. Your receipt photograph, or parts of it, is sent to them for that purpose and for no other.</li>
     <li><strong>Google Cloud Storage</strong> holds the receipt photographs themselves. Deleting a bill removes its photograph from storage; deleting your account removes all of them.</li>
     <li><strong>ip-api.com</strong> converts your network address into a country code so the app can default to the right currency. We do not store the result.</li>
   </ul>
   <p>None of these are advertising networks or data brokers. They act on our instructions to deliver features you asked for.</p>
 
-  <p>Replit and OpenAI process receipt photographs under their own terms rather than ours, and those terms may allow them to retain a copy for a limited period for abuse monitoring. We do not control that retention and we do not receive any copy back. We never send your name, your email address, or the names you give people on a bill to either of them &mdash; only the receipt photograph, plus the item names themselves when you ask for a translation.</p>
+  <p>Replit, OpenAI, Google and Anthropic process receipt photographs under their own terms rather than ours, and those terms may allow them to retain a copy for a limited period for abuse monitoring. We do not control that retention and we do not receive any copy back. We never send your name, your email address, or the names you give people on a bill to any of them &mdash; only the receipt photograph, plus the item names themselves when you ask for a translation.</p>
 
   <h2>How long we keep things</h2>
   <div class="callout">
@@ -110,9 +111,10 @@
     <li>your account and sign-in credentials;</li>
     <li>every bill you own, with its line items and stored receipt images;</li>
     <li>your Circles and their members;</li>
-    <li>your participation in bills owned by other people.</li>
+    <li>your access to bills owned by other people.</li>
   </ul>
-  <p>This cannot be undone, and we do not retain a copy. Bills owned by other people that you were part of remain theirs; your entry is removed from them.</p>
+  <p>This cannot be undone, and we do not retain a copy of your account. Bills owned by other people that you were part of remain theirs. The name you were listed under stays on those bills so their totals do not change, but it is no longer connected to your account or email address.</p>
+  <p>You can also ask us to delete your account without the app: email <a href="mailto:support@tallybill.app">support@tallybill.app</a> from the address you signed up with. See <a href="/support#delete-account">how to delete your account</a>.</p>
 
   <h2>Bills you share</h2>
   <p>Every bill has a six-character join code. Anyone you give that code to can open the bill and see its contents — item names, the names of the people on it and what each person owes. Share codes only with people you intend to split with.</p>
