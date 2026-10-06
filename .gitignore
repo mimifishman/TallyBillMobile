@@ -65,3 +65,23 @@ Thumbs.db
 /Receipts AI/
 # Phone photos shared over WhatsApp can carry personal data. Keep them local.
 /attached_assets/WhatsApp_Image_*
+
+# Store signing and upload keys. This repo is public: none of these may ever be
+# committed. They live on EAS (expo.dev) or in the macOS Keychain instead.
+# The release skill refuses to run if git tracks any file like these.
+*.p8
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+*.pem
+AuthKey_*
+*service-account*.json
+*service_account*.json
+google-play*.json
+credentials.json
+/credentials/
+# Store builds downloaded from EAS
+*.aab
+*.apk
+*.ipa
