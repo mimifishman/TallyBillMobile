@@ -12,6 +12,7 @@
     },
     "development": {
       "extends": "base",
+      "channel": "development",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -20,10 +21,12 @@
     },
     "preview": {
       "extends": "base",
+      "channel": "preview",
       "distribution": "internal"
     },
     "production": {
       "extends": "base",
+      "channel": "production",
       "autoIncrement": true
     }
   },
