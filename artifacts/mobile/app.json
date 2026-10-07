@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "TallyBill",
-    "slug": "mobile",
+    "slug": "tallybill",
     "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
