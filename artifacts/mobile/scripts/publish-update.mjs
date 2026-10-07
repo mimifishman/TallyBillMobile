@@ -100,14 +100,18 @@ for (const b of builds) {
 if (!skipBuildCheck) console.log(`✓ ${builds.length} installed build(s) of ${version} on "${channel}"; no native change since them`);
 
 // --- 2. Bundle with the store builds' values ---
-fs.rmSync(OUT, { recursive: true, force: true });
-console.log("Bundling iOS and Android…");
-run("pnpm", ["exec", "expo", "export", "--platform", "ios", "--platform", "android", "--output-dir", "dist-update"], {
-  env: { ...process.env, ...env, NODE_ENV: "production" },
-  stdio: ["ignore", "inherit", "inherit"],
-});
-
-// --- 3. Prove the bundle has the right values before anyone can download it ---
+// --clear every time: Metro caches transformed files WITH the inlined env values,
+// so a cached run can hide a missing value (seen 2026-10-07: a bundle made with
+// no env still showed the live key, from the previous run's cache).
+const bundleEnv = { ...process.env, ...env, NODE_ENV: "production" };
+const CHECK = path.join(appDir, "dist-update-check");
+function exportTo(dir, extra) {
+  fs.rmSync(path.join(appDir, dir), { recursive: true, force: true });
+  run("pnpm", ["exec", "expo", "export", "--clear", "--platform", "ios", "--platform", "android", "--output-dir", dir, ...extra], {
+    env: bundleEnv,
+    stdio: ["ignore", "ignore", "inherit"],
+  });
+}
 const devEnvFile = path.join(appDir, ".env.development");
 const devValues = fs.existsSync(devEnvFile)
   ? fs
@@ -116,17 +120,38 @@ const devValues = fs.existsSync(devEnvFile)
       .map((l) => l.match(/^\s*EXPO_PUBLIC_[A-Z_]+\s*=\s*(.+?)\s*$/)?.[1])
       .filter(Boolean)
   : [];
+function bundleText(dir, platform) {
+  const d = path.join(dir, "_expo", "static", "js", platform);
+  const files = fs.existsSync(d) ? fs.readdirSync(d) : [];
+  if (files.length === 0) die(`no ${platform} bundle in ${d}`);
+  return files.map((f) => fs.readFileSync(path.join(d, f)).toString("latin1")).join("\n");
+}
+
+// --- 3. Prove the values are in before anyone can download it ---
+// a) A plain-JS copy, made from the same code and values, where the compiled
+//    check in app/_layout.tsx is readable. A missing value compiles to
+//    `""==="".trim()` (seen in a bundle made without the values).
+console.log("Checking a readable copy of the bundle…");
+exportTo("dist-update-check", ["--no-bytecode"]);
 for (const platform of ["ios", "android"]) {
-  const dir = path.join(OUT, "_expo", "static", "js", platform);
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
-  if (files.length === 0) die(`no ${platform} bundle in ${dir}`);
-  const text = files.map((f) => fs.readFileSync(path.join(dir, f)).toString("latin1")).join("\n");
-  const must = [env.EXPO_PUBLIC_DOMAIN, env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY];
-  // The exact development values (tracked .env.development). Generic strings such
-  // as "pk_test_" or "replit.dev" are no good: Clerk's own library contains both.
-  const mustNot = devValues;
-  for (const s of must) if (!text.includes(s)) die(`${platform} bundle is missing ${s}`);
-  for (const s of mustNot) if (text.includes(s)) die(`${platform} bundle contains ${s} (a development value)`);
+  const js = bundleText(CHECK, platform);
+  if (js.includes('""==="".trim()')) die(`${platform}: an EXPO_PUBLIC value is empty in the bundle`);
+  for (const v of [env.EXPO_PUBLIC_DOMAIN, env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY]) {
+    if (!js.includes(`"${v}"`)) die(`${platform}: "${v}" is not inlined in the bundle`);
+  }
+  // Generic strings such as "pk_test_" or "replit.dev" are no good here:
+  // Clerk's own library contains both.
+  for (const v of devValues) if (js.includes(v)) die(`${platform}: bundle contains the development value ${v}`);
+}
+fs.rmSync(CHECK, { recursive: true, force: true });
+
+// b) The real (Hermes) bundle that gets uploaded.
+console.log("Bundling iOS and Android…");
+exportTo("dist-update", []);
+for (const platform of ["ios", "android"]) {
+  const hbc = bundleText(OUT, platform);
+  if (!hbc.includes(env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY)) die(`${platform}: the uploaded bundle lacks the Clerk key`);
+  for (const v of devValues) if (hbc.includes(v)) die(`${platform}: the uploaded bundle contains ${v}`);
 }
 console.log(`✓ both bundles use ${env.EXPO_PUBLIC_DOMAIN} and the live Clerk key, and no development values`);
 
