@@ -108,13 +108,23 @@ run("pnpm", ["exec", "expo", "export", "--platform", "ios", "--platform", "andro
 });
 
 // --- 3. Prove the bundle has the right values before anyone can download it ---
+const devEnvFile = path.join(appDir, ".env.development");
+const devValues = fs.existsSync(devEnvFile)
+  ? fs
+      .readFileSync(devEnvFile, "utf8")
+      .split("\n")
+      .map((l) => l.match(/^\s*EXPO_PUBLIC_[A-Z_]+\s*=\s*(.+?)\s*$/)?.[1])
+      .filter(Boolean)
+  : [];
 for (const platform of ["ios", "android"]) {
   const dir = path.join(OUT, "_expo", "static", "js", platform);
   const files = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
   if (files.length === 0) die(`no ${platform} bundle in ${dir}`);
   const text = files.map((f) => fs.readFileSync(path.join(dir, f)).toString("latin1")).join("\n");
   const must = [env.EXPO_PUBLIC_DOMAIN, env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY];
-  const mustNot = ["pk_test_", "replit.dev"];
+  // The exact development values (tracked .env.development). Generic strings such
+  // as "pk_test_" or "replit.dev" are no good: Clerk's own library contains both.
+  const mustNot = devValues;
   for (const s of must) if (!text.includes(s)) die(`${platform} bundle is missing ${s}`);
   for (const s of mustNot) if (text.includes(s)) die(`${platform} bundle contains ${s} (a development value)`);
 }
