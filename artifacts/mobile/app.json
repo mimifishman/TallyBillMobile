@@ -3,11 +3,19 @@
     "name": "TallyBill",
     "slug": "mobile",
     "version": "1.2.1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/cd58be3e-53c4-45d2-84a6-0aceb15c4336",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
