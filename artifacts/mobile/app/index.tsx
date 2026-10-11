@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -18,6 +19,7 @@ import { AutoFocusTextInput } from "@/components/AutoFocusTextInput";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
+import { WELCOME_SEEN_KEY } from "@/lib/welcome";
 
 export default function IndexScreen() {
   const { user, isLoading, isGuest, guestName, saveGuestName } = useAuth();
@@ -27,17 +29,27 @@ export default function IndexScreen() {
   const [nameInput, setNameInput] = useState("");
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  // null until read. Only signed-out first launches look at it: anyone already
+  // signed in or using the app as a guest knows how it works.
+  const [welcomeSeen, setWelcomeSeen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(WELCOME_SEEN_KEY)
+      .then((v) => setWelcomeSeen(v === "1"))
+      .catch(() => setWelcomeSeen(true));
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
     if (!user && !isGuest) {
-      router.replace("/(auth)/login");
+      if (welcomeSeen === null) return;
+      router.replace(welcomeSeen ? "/(auth)/login" : "/welcome");
       return;
     }
     if (prompt === "1" && guestName === null) {
       setShowNamePrompt(true);
     }
-  }, [isLoading, user, isGuest, prompt, guestName]);
+  }, [isLoading, user, isGuest, prompt, guestName, welcomeSeen]);
 
   const handleNameSubmit = async () => {
     await saveGuestName(nameInput.trim());

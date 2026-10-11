@@ -403,6 +403,15 @@ export default function SettingsScreen() {
         <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push("/welcome?replay=1")}
+            activeOpacity={0.75}
+          >
+            <IconBox name="help-circle" color={colors.primaryText} />
+            <Text style={[styles.menuItemText, { color: colors.foreground }]}>How TallyBill works</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
             onPress={handleShareApp}
             activeOpacity={0.75}
           >
