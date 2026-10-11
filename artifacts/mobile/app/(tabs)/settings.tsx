@@ -1,13 +1,17 @@
 import { Feather } from "@expo/vector-icons";
 import { useUser } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +29,32 @@ import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { getInitials } from "@workspace/utils";
 
 const PREF_LANGUAGE_KEY = "@tallybill/receipt_language";
+
+const APP_VERSION = Constants.expoConfig?.version ?? "";
+const SUPPORT_EMAIL = "support@tallybill.app";
+const SHARE_MESSAGE =
+  "I split restaurant bills with TallyBill: snap the receipt and it works out who owes what, in almost any language. https://tallybill.app";
+// The write-a-review page in each store. The in-app review prompt (expo-store-review)
+// is not used here: Google and Apple both say not to fire it from a button, because
+// their quota may silently show nothing.
+const REVIEW_URLS = Platform.select({
+  ios: ["itms-apps://apps.apple.com/app/id6800714204?action=write-review", "https://apps.apple.com/app/id6800714204?action=write-review"],
+  android: ["market://details?id=app.tallybill", "https://play.google.com/store/apps/details?id=app.tallybill"],
+  default: ["https://tallybill.app"],
+});
+
+/** Opens the first URL that works; false if none did. */
+async function openFirst(urls: string[]): Promise<boolean> {
+  for (const url of urls) {
+    try {
+      await Linking.openURL(url);
+      return true;
+    } catch {
+      // Try the next one: e.g. no Play Store app, or no mail app set up.
+    }
+  }
+  return false;
+}
 
 function IconBox({
   name,
@@ -190,6 +220,33 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleShareApp = async () => {
+    try {
+      await Share.share({ message: SHARE_MESSAGE });
+    } catch (e) {
+      if (__DEV__) console.warn("[share app error]", e);
+    }
+  };
+
+  const handleRateApp = async () => {
+    if (!(await openFirst(REVIEW_URLS))) {
+      Alert.alert("Couldn't open the store", "Please search for TallyBill in your app store to leave a rating.");
+    }
+  };
+
+  const handleSendFeedback = async () => {
+    const subject = encodeURIComponent("TallyBill feedback");
+    const body = encodeURIComponent(
+      `\n\n---\nTallyBill ${APP_VERSION} on ${Platform.OS === "ios" ? "iOS" : "Android"} ${String(Platform.Version)}`,
+    );
+    if (!(await openFirst([`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`]))) {
+      Alert.alert("No email app found", `Send your feedback to ${SUPPORT_EMAIL}`, [
+        { text: "Copy address", onPress: () => { void Clipboard.setStringAsync(SUPPORT_EMAIL); } },
+        { text: "OK", style: "cancel" },
+      ]);
+    }
+  };
+
   const guestDisplayName = guestName || "Guest";
   const guestInitial = getInitials(guestDisplayName);
 
@@ -341,6 +398,44 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>TALLYBILL</Text>
+        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={handleShareApp}
+            activeOpacity={0.75}
+          >
+            <IconBox name="share-2" color={colors.primaryText} />
+            <Text style={[styles.menuItemText, { color: colors.foreground }]}>Share TallyBill</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={handleRateApp}
+            activeOpacity={0.75}
+          >
+            <IconBox name="star" color={colors.primaryText} />
+            <Text style={[styles.menuItemText, { color: colors.foreground }]}>Rate TallyBill</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={handleSendFeedback}
+            activeOpacity={0.75}
+          >
+            <IconBox name="mail" color={colors.primaryText} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.menuItemText, { color: colors.foreground }]}>Send feedback</Text>
+              <Text style={[styles.menuItemSub, { color: colors.mutedForeground }]}>
+                Ideas, problems, a receipt it misread
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {user && !isGuest && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
@@ -411,7 +506,7 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      <Text style={[styles.version, { color: colors.mutedForeground }]}>TallyBill v1.0</Text>
+      <Text style={[styles.version, { color: colors.mutedForeground }]}>TallyBill v{APP_VERSION}</Text>
 
       {user && (
         <TouchableOpacity
