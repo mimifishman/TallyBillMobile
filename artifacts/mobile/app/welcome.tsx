@@ -33,6 +33,12 @@ const SLIDES: {
     body: "Snap a photo of any receipt, in any language. TallyBill reads the items and prices for you.",
   },
   {
+    image: require("@/assets/images/welcome-review.jpg"),
+    aspect: 940 / 720,
+    title: "Check the items",
+    body: "Items appear in your language, with the receipt's own wording underneath. Fix anything, or add an item it missed.",
+  },
+  {
     image: require("@/assets/images/welcome-assign.jpg"),
     aspect: 880 / 720,
     title: "Tap who had what",
@@ -47,7 +53,7 @@ const SLIDES: {
 ];
 
 /**
- * The first-run guide: three slides shown once, before the first sign-in
+ * The first-run guide: four slides shown once, before the first sign-in
  * screen. Settings → "How TallyBill works" opens it again with ?replay=1,
  * and then finishing it just goes back.
  */
