@@ -1,8 +1,9 @@
-import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  Image,
+  ImageSourcePropType,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -17,37 +18,53 @@ import { useColors } from "@/hooks/useColors";
 import { FONT_SIZE, RADIUS, SPACING } from "@/constants/styles";
 import { WELCOME_SEEN_KEY } from "@/lib/welcome";
 
+// Real app screens, cropped from the Play Store captures (made-up receipts).
+// `aspect` is the image's height / width.
 const SLIDES: {
-  icon: React.ComponentProps<typeof Feather>["name"];
+  image: ImageSourcePropType;
+  aspect: number;
   title: string;
   body: string;
 }[] = [
   {
-    icon: "camera",
+    image: require("@/assets/images/welcome-scan.jpg"),
+    aspect: 553 / 720,
     title: "Scan the receipt",
     body: "Snap a photo of any receipt, in any language. TallyBill reads the items and prices for you.",
   },
   {
-    icon: "users",
+    image: require("@/assets/images/welcome-review.jpg"),
+    aspect: 940 / 720,
+    title: "Check the items",
+    body: "Items appear in your language, with the receipt's own wording underneath. Fix anything, or add an item it missed.",
+  },
+  {
+    image: require("@/assets/images/welcome-assign.jpg"),
+    aspect: 880 / 720,
     title: "Tap who had what",
     body: "Add the people at the table and tap each item to assign it. Shared plates split evenly.",
   },
   {
-    icon: "share-2",
+    image: require("@/assets/images/welcome-totals.jpg"),
+    aspect: 1000 / 720,
     title: "Share and settle",
     body: "See what everyone owes, tax and tip included, then share the bill with a link. Friends don't need the app.",
   },
 ];
 
 /**
- * The first-run guide: three slides shown once, before the first sign-in
+ * The first-run guide: four slides shown once, before the first sign-in
  * screen. Settings → "How TallyBill works" opens it again with ?replay=1,
  * and then finishing it just goes back.
  */
 export default function WelcomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  // The screenshot gets what the text and buttons leave free, so a small
+  // phone still shows the whole slide without scrolling.
+  const shotWidth = Math.min(width - SPACING.huge * 2, 300);
+  const shotMaxHeight = height * 0.42;
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
@@ -100,8 +117,26 @@ export default function WelcomeScreen() {
       >
         {SLIDES.map((slide) => (
           <View key={slide.title} style={[styles.slide, { width }]}>
-            <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
-              <Feather name={slide.icon} size={56} color={colors.primaryText} />
+            {/* Two layers: on iOS, overflow:hidden would also clip the shadow. */}
+            <View style={[styles.shotShadow, { backgroundColor: colors.card }]}>
+              <View
+                style={[
+                  styles.shot,
+                  {
+                    width: shotWidth,
+                    height: Math.min(shotWidth * slide.aspect, shotMaxHeight),
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                {/* Full width and top-aligned: a tall screen is cut at the bottom, never squashed. */}
+                <Image
+                  source={slide.image}
+                  style={{ width: shotWidth, height: shotWidth * slide.aspect }}
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
+                />
+              </View>
             </View>
             <Text style={[styles.title, { color: colors.foreground }]}>{slide.title}</Text>
             <Text style={[styles.body, { color: colors.mutedForeground }]}>{slide.body}</Text>
@@ -145,14 +180,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xxxl,
     gap: SPACING.lg,
   },
-  iconCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64, // TODO: one-off (circular: half of 128px)
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: SPACING.lg,
+  shotShadow: {
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.sm,
+    shadowColor: "#1C1917",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
   },
+  shot: { borderRadius: RADIUS.lg, borderWidth: 1, overflow: "hidden" },
   title: { fontSize: FONT_SIZE.heading, fontFamily: "Inter_700Bold", textAlign: "center" },
   body: { fontSize: FONT_SIZE.body, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
   dots: { flexDirection: "row", justifyContent: "center", gap: SPACING.sm, marginVertical: SPACING.xxl },
