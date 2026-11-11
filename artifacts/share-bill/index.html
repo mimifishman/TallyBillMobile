@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>TallyBill: Split Any Receipt — scan, translate &amp; split the bill</title>
-<meta name="description" content="Snap any receipt, in any language. TallyBill translates it, splits it by who had what, and takes discounts off the right items. Tax and tip included. Free for iPhone." />
+<meta name="description" content="Snap any receipt, in any language. TallyBill translates it, splits it by who had what, and takes discounts off the right items. Tax and tip included. Free for iPhone and Android." />
 <link rel="canonical" href="https://tallybill.app/" />
 
 <!-- Safari on iPhone shows a small "Open / Get" banner for the app -->
@@ -34,7 +34,7 @@
   "name": "TallyBill: Split Any Receipt",
   "alternateName": "TallyBill",
   "description": "Scan any receipt, in any language. TallyBill translates it, splits it by who had what, and takes discounts off the right items. Tax and tip included.",
-  "operatingSystem": "iOS",
+  "operatingSystem": "iOS, Android",
   "applicationCategory": "FinanceApplication",
   "url": "https://tallybill.app/",
   "downloadUrl": "https://apps.apple.com/app/id6800714204",
@@ -59,7 +59,7 @@
     { "@type": "Question", "name": "Do I have to make an account?",
       "acceptedAnswer": { "@type": "Answer", "text": "No. Guest mode lets you scan and split a bill right away. Make an account only when you want to keep your bills and Circles." } },
     { "@type": "Question", "name": "Is there an Android app?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Not yet. TallyBill is for iPhone. Friends on Android or a laptop can still join any shared bill in their browser with the join code." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. TallyBill is free on Google Play for Android, and on the App Store for iPhone. Friends without the app can still join any shared bill in their browser with the join code." } },
     { "@type": "Question", "name": "What does TallyBill cost?",
       "acceptedAnswer": { "@type": "Answer", "text": "Nothing. TallyBill is free. There are no ads, no subscriptions and no in-app purchases. It works out who owes what. You settle up the way you normally do." } }
   ]
@@ -118,6 +118,11 @@
   /* ---------- APP STORE BADGE (official artwork, unchanged) ---------- */
   .badge{display:inline-block;line-height:0;border-radius:10px}
   .badge img{height:54px;width:162px}
+  /* Google's badge PNG has clear space built in (visible 564x168 of 646x250);
+     the negative margin trims it so both badges are 54px tall */
+  .badge-play img{height:80px;width:207px;margin:-13px}
+  .badges{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .final .badges{justify-content:center}
 
   /* ---------- HERO ---------- */
   .hero{position:relative;overflow:hidden;padding:72px 0 56px}
@@ -348,6 +353,9 @@
         <a class="badge" href="https://apps.apple.com/app/id6800714204" target="_blank" rel="noopener">
           <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us" alt="Download TallyBill on the App Store" width="162" height="54">
         </a>
+        <a class="badge badge-play" href="https://play.google.com/store/apps/details?id=app.tallybill" target="_blank" rel="noopener">
+          <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get TallyBill on Google Play" width="207" height="80">
+        </a>
         <a class="btn btn-ghost" href="#how">How it works</a>
       </div>
       <div class="hero-note">
@@ -561,16 +569,21 @@
         <div>
           <div class="sec-eyebrow">Get the app</div>
           <h2>Two taps and you're splitting</h2>
-          <p class="get-sub">TallyBill is free on the App Store, for iPhone. No ads, no subscriptions, no in-app purchases.</p>
+          <p class="get-sub">TallyBill is free on the App Store and Google Play. No ads, no subscriptions, no in-app purchases.</p>
 
           <div class="estep">
             <div class="estep-n">1</div>
             <div>
               <b>Download TallyBill</b>
               <span>No account and no payment details needed.</span><br>
+              <span class="badges">
               <a class="badge" href="https://apps.apple.com/app/id6800714204" target="_blank" rel="noopener">
                 <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/white/en-us" alt="Download TallyBill on the App Store" width="162" height="54" loading="lazy">
               </a>
+              <a class="badge badge-play" href="https://play.google.com/store/apps/details?id=app.tallybill" target="_blank" rel="noopener">
+                <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get TallyBill on Google Play" width="207" height="80" loading="lazy">
+              </a>
+              </span>
             </div>
           </div>
           <div class="estep">
@@ -583,8 +596,8 @@
         </div>
 
         <div class="side-card">
-          <h3>Friends not on iPhone?</h3>
-          <p>They don't need the app. Send the join code and they can open the bill in any browser, on Android or a laptop.</p>
+          <h3>Friends without the app?</h3>
+          <p>They don't need it. Send the join code and they can open the bill in any browser, on a phone or a laptop.</p>
         </div>
       </div>
     </div>
@@ -625,7 +638,7 @@
       </details>
       <details class="reveal">
         <summary>Is there an Android app?<span class="plus"></span></summary>
-        <p>Not yet. TallyBill is for iPhone. Friends on Android or a laptop can still join any shared bill in their browser with the join code.</p>
+        <p>Yes. TallyBill is free on <a href="https://play.google.com/store/apps/details?id=app.tallybill" target="_blank" rel="noopener">Google Play</a> for Android, and on the App Store for iPhone. Friends without the app can still join any shared bill in their browser with the join code.</p>
       </details>
       <details class="reveal">
         <summary>What does TallyBill cost?<span class="plus"></span></summary>
@@ -644,10 +657,15 @@
   <div class="wrap">
     <svg width="64" height="64" style="margin:0 auto 8px;display:block" aria-hidden="true"><use href="#logo"/></svg>
     <h2>Dinner's done. Math's done too.</h2>
-    <p>Split the bill, not the friendship. Free for iPhone.</p>
+    <p>Split the bill, not the friendship. Free for iPhone and Android.</p>
+    <div class="badges">
     <a class="badge" href="https://apps.apple.com/app/id6800714204" target="_blank" rel="noopener">
       <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us" alt="Download TallyBill on the App Store" width="162" height="54" loading="lazy">
     </a>
+    <a class="badge badge-play" href="https://play.google.com/store/apps/details?id=app.tallybill" target="_blank" rel="noopener">
+      <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get TallyBill on Google Play" width="207" height="80" loading="lazy">
+    </a>
+    </div>
   </div>
 </section>
 </main>
